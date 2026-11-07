@@ -7,7 +7,7 @@ import { drawActor, drawTarget, drawCoin, drawObj, KEY_COLORS } from '../render/
 import { C, hexToRgb } from '../render/palette.js';
 import { drawText, textWidth } from '../ui/font.js';
 import { sfx } from '../core/audio.js';
-import { VIEW_W, VIEW_H, MAP_H, BUTTON, BUTTON2 } from '../core/input.js';
+import { VIEW_W, VIEW_H, MAP_H, BUTTON, BUTTON2, PAUSE_BTN } from '../core/input.js';
 
 const YELLOW = hexToRgb(C.yellow), RED = hexToRgb(C.red);
 
@@ -218,6 +218,19 @@ export class Play {
     this.drawHud(g);
   }
 
+  // Step-by-step coaching for the tutorial level, driven by what the player is doing.
+  tutorialHint() {
+    if (!this.level.tutorial) return null;
+    const w = this.world, p = w.player;
+    if (w.open) return 'EXIT IS OPEN! RUN FOR IT!';
+    if (p.hidden) return 'SAFE! WAIT, THEN MOVE TO COME OUT';
+    if (w.targets.some((t) => t.progress > 0 && !t.done)) return 'KEEP HOLDING THE BUTTON... WATCH THE CONE';
+    if (w.adults.some((a) => a.awake && a.alert > 0.3)) return 'SEEN! GO TO A BOX OR CURTAIN AND PRESS TAGO';
+    if (w.coins === 0 && w.time < 4) return 'DRAG OR WASD TO MOVE. FAR DRAG / SHIFT RUNS';
+    if (w.coins === 0) return 'WALK TO THE PURSE, HOLD KUPIT. AVOID YELLOW';
+    return 'GOOD! GET THE REST, THEN FIND THE EXIT';
+  }
+
   drawAdult(g, a) {
     const dir = Math.abs(Math.cos(a.a)) > Math.abs(Math.sin(a.a)) ? (Math.cos(a.a) < 0 ? 1 : 2) : (Math.sin(a.a) < 0 ? 3 : 0);
     const frame = a.moving ? Math.floor(a.stepT * 6) % 4 : 0;
@@ -259,14 +272,19 @@ export class Play {
     drawText(g, pr ? pr.label : w.open ? 'GO TO THE EXIT!' : `NEED ${this.level.quota - w.coins} MORE`, 6, MAP_H + 8, pr ? C.gold : w.open ? C.green : C.gray);
     let kx = 6;
     for (const k of w.player.keys) { drawObj(g, 'key', kx + 3, MAP_H + 24, k); kx += 10; }
-    drawText(g, 'SHIFT RUN  E/SPACE ACT  Q THROW', 6, MAP_H + 32, C.dgray);
+    drawText(g, this.input.touchUsed ? 'DRAG: MOVE   DRAG FAR: RUN' : 'SHIFT RUN  E ACT  Q THROW  P PAUSE', 6, MAP_H + 32, C.dgray);
 
-    if (this.level.hint && w.time < 6) {
-      drawText(g, this.level.hint, VIEW_W / 2, 29, C.yellow, { ...sh, align: 'center' });
+    const th = this.tutorialHint();
+    const hint = th || (this.level.hint && w.time < 8 ? this.level.hint : null);
+    if (hint) {
+      g.globalAlpha = 0.7; g.fillStyle = C.ink; g.fillRect(0, 18, VIEW_W, 11); g.globalAlpha = 1;
+      drawText(g, hint, VIEW_W / 2, 21, th ? C.white : C.yellow, { align: 'center' });
     }
-    if (w.time < 6 && this.level.tutorial) {
-      drawText(g, 'DRAG OR WASD TO MOVE. PUSH FAR OR SHIFT TO RUN', VIEW_W / 2, 20, C.white, { ...sh, align: 'center' });
-    }
+
+    // pause button
+    disc(g, PAUSE_BTN.x, PAUSE_BTN.y, PAUSE_BTN.r, C.ink);
+    disc(g, PAUSE_BTN.x, PAUSE_BTN.y, PAUSE_BTN.r - 2, C.wallD);
+    g.fillStyle = C.white; g.fillRect(PAUSE_BTN.x - 3, PAUSE_BTN.y - 4, 2, 8); g.fillRect(PAUSE_BTN.x + 1, PAUSE_BTN.y - 4, 2, 8);
 
     // action button with context label
     const down = this.input.action();

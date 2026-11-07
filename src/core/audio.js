@@ -41,4 +41,6 @@ export const sfx = {
   unlock: () => ac(),
 };
 
+export const isMuted = () => muted;
+export const setMuted = (v) => { muted = !!v; };
 export const toggleMute = () => (muted = !muted);

@@ -1,5 +1,5 @@
 const KEY = 'kupit.save.v1';
-const fresh = () => ({ unlocked: 0, stars: {}, bank: 0 });
+const fresh = () => ({ unlocked: 0, stars: {}, best: {}, bank: 0, muted: false });
 
 export function loadSave() {
   try {

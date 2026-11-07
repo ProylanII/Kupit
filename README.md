@@ -19,6 +19,8 @@ Open http://localhost:8080 (phone on same LAN works too). `?level=2` jumps to a 
 | Run (loud!) | Shift | drag far |
 | Act: kupit (hold), hide, open/close door, switch, turn on TV/radio | E / Space | big button |
 | Throw tsinelas / pandesal | Q | small button |
+| Pause | P / Esc | pause button |
+| Sound on/off | M | pause menu / title |
 
 Collect the coin quota, then reach the exit.
 
@@ -49,6 +51,7 @@ npm test             # level validator (solvability) + LOS/AI unit tests
 
 - [x] Phase 1: vertical slice
 - [x] Phase 2: hiding, items, traps, doors/keys, switches/gates, devices, chase AI, new adult types, 5 levels
+- [x] UI pass: title menu, level select (best times), how-to-play, pause menu, sound toggle, tutorial coaching, end-of-level menus
 - [ ] Phase 3: sari-sari store upgrades, character select (Jun, Bing, Kuya Ramil, Nene)
 - [ ] Phase 4: bosses (Lola's Siesta, Mama sa Kusina, Tatay + Aso, Ninang's Fiesta, Sari-Sari Store)
 - [ ] Phase 5: 12+ levels, bigger scrolling maps, random-house mode

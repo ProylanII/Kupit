@@ -4,6 +4,7 @@ export const MAP_H = 352;  // 22 tiles; below it is the control strip
 export const VIEW_H = 392;
 export const BUTTON = { x: 214, y: 372, r: 18 };  // on-screen action button
 export const BUTTON2 = { x: 176, y: 372, r: 14 }; // throw item
+export const PAUSE_BTN = { x: 138, y: 372, r: 10 }; // pause
 const STICK_R = 22;
 
 export class Input {
@@ -17,9 +18,13 @@ export class Input {
     this.prevA = false;
     this.prevT = false;
     this.touchUsed = false;
+    this.hits = new Set();  // keys pressed this frame (no auto-repeat)
+    this.tapPos = null;     // pointer-down position this frame, game pixels
+    this.pauseTap = false;
 
     addEventListener('keydown', (e) => {
       const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      if (!e.repeat) this.hits.add(k);
       if (!this.keys.has(k) && (k === 'Enter' || k === ' ' || k === 'e')) this.tapped = true;
       this.keys.add(k);
       if (k.startsWith('Arrow') || k === ' ') e.preventDefault();
@@ -31,6 +36,8 @@ export class Input {
       const p = this.pos(e);
       if (e.pointerType !== 'mouse') this.touchUsed = true;
       this.tapped = true;
+      this.tapPos = p;
+      if (this.buttonEnabled && Math.hypot(p.x - PAUSE_BTN.x, p.y - PAUSE_BTN.y) <= PAUSE_BTN.r + 6) { this.pauseTap = true; return; }
       const onBtn = this.buttonEnabled && Math.hypot(p.x - BUTTON.x, p.y - BUTTON.y) <= BUTTON.r + 6;
       const onBtn2 = !onBtn && this.button2Enabled && Math.hypot(p.x - BUTTON2.x, p.y - BUTTON2.y) <= BUTTON2.r + 5;
       const role = onBtn ? 'btn' : onBtn2 ? 'btn2' : 'stick';
@@ -96,6 +103,9 @@ export class Input {
     return r;
   }
 
+  pressed(k) { return this.hits.has(k); }
+  // Drop held pointers/keys so a menu tap doesn't turn into a stick drag when play starts.
+  reset() { this.pointers.clear(); this.keys.clear(); this.prevA = this.prevT = false; }
   consumeTap() { const t = this.tapped; this.tapped = false; return t; }
-  endFrame() { this.tapped = false; }
+  endFrame() { this.tapped = false; this.hits.clear(); this.tapPos = null; this.pauseTap = false; }
 }
