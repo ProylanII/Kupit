@@ -1,8 +1,10 @@
 # Level format
 
 One JSON file per level in `src/data/levels/`, listed in order in `index.json`.
-Coordinates are tile `[x, y]` (0,0 = top-left). Maps are 15×22 tiles (240×352 px).
-`npm test` validates every level: widths, placement, adult routes (A*), and player solvability with keys/gates.
+Coordinates are tile `[x, y]` (0,0 = top-left). Maps can be any size (all rows the same width). A 15×22 map fits the screen;
+anything bigger scrolls with a camera that follows the player, and an edge marker points at the next objective.
+`npm test` validates every level (`src/game/validate.js`): widths, placement, adult routes (A*), player solvability with keys/gates,
+and that standing still at the spawn for 4 s is safe. The same validator checks every generated Random House.
 
 ## Tiles
 

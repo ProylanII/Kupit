@@ -32,9 +32,9 @@ function ring(g, cx, cy, r, color) {
   }
 }
 
-function bubble(g, text, cx, y, fg = C.ink, bg = C.white) {
+function bubble(g, text, cx, y, camX, fg = C.ink, bg = C.white) {
   const w = textWidth(text) + 4;
-  const x = Math.max(1, Math.min(VIEW_W - w - 1, Math.round(cx - w / 2)));
+  const x = Math.max(camX + 1, Math.min(camX + VIEW_W - w - 1, Math.round(cx - w / 2)));
   g.fillStyle = C.ink; g.fillRect(x - 1, y - 1, w + 2, 9);
   g.fillStyle = bg; g.fillRect(x, y, w, 7);
   drawText(g, text, x + 2, y + 1, fg);
@@ -55,7 +55,20 @@ export class Play {
     this.coneCv.width = VIEW_W; this.coneCv.height = VIEW_H;
     this.coneG = this.coneCv.getContext('2d');
     input.buttonEnabled = true;
+    this.cam = { x: 0, y: 0 };
+    this.updateCamera(1);
   }
+
+  // Follow the player; maps bigger than the 240x352 view scroll, smaller ones stay put.
+  updateCamera(k) {
+    const p = this.world.player, m = this.world.map;
+    const tx = Math.max(0, Math.min(m.w * TILE - VIEW_W, p.x - VIEW_W / 2));
+    const ty = Math.max(0, Math.min(m.h * TILE - MAP_H, p.y - MAP_H / 2));
+    this.cam.x += (tx - this.cam.x) * Math.min(1, k);
+    this.cam.y += (ty - this.cam.y) * Math.min(1, k);
+  }
+
+  get scrolls() { const m = this.world.map; return m.w * TILE > VIEW_W || m.h * TILE > MAP_H; }
 
   get status() { return this.world.status; }
   get result() { return this.world.result; }
@@ -67,6 +80,7 @@ export class Play {
     this.input.button2Enabled = w.player.items.length > 0;
     this.input.abilityEnabled = true;
     w.update(dt, this.input.poll());
+    this.updateCamera(dt * 9);
     for (const e of w.events) this.onEvent(e, dt);
     w.events.length = 0;
     for (const p of this.parts) { p.y += p.vy * dt; p.vy += 90 * dt; p.l -= dt * 1.6; }
@@ -104,7 +118,7 @@ export class Play {
 
   // ---------------------------------------------------------------- drawing
   drawCones(g) {
-    const d = this.coneData.data;
+    const d = this.coneData.data, cx = this.cx, cy = this.cy;
     d.fill(0);
     for (const a of this.world.adults) {
       if (!a.awake) continue;
@@ -112,8 +126,8 @@ export class Play {
       const N = a.rays.length - 1;
       const t = Math.min(1, a.alert * 1.4);
       const col = [0, 1, 2].map((i) => Math.round(YELLOW[i] + (RED[i] - YELLOW[i]) * t));
-      const x0 = Math.max(0, Math.floor(a.x - range)), x1 = Math.min(VIEW_W - 1, Math.ceil(a.x + range));
-      const y0 = Math.max(0, Math.floor(a.y - range)), y1 = Math.min(VIEW_H - 1, Math.ceil(a.y + range));
+      const x0 = Math.max(cx, Math.floor(a.x - range)), x1 = Math.min(cx + VIEW_W - 1, Math.ceil(a.x + range));
+      const y0 = Math.max(cy, Math.floor(a.y - range)), y1 = Math.min(cy + VIEW_H - 1, Math.ceil(a.y + range));
       for (let py = y0; py <= y1; py++) {
         for (let px = x0; px <= x1; px++) {
           if (a.alert < 0.35 ? (px + py) & 1 : a.alert < 0.7 ? (px & 1) && (py & 1) : 0) continue;
@@ -123,13 +137,13 @@ export class Play {
           const rel = angDiff(Math.atan2(dy, dx) - a.a);
           if (rel < -fov || rel > fov) continue;
           if (dist > a.rays[Math.round(((rel + fov) / (2 * fov)) * N)]) continue;
-          const o = (py * VIEW_W + px) * 4;
+          const o = ((py - cy) * VIEW_W + (px - cx)) * 4;
           d[o] = col[0]; d[o + 1] = col[1]; d[o + 2] = col[2]; d[o + 3] = 255;
         }
       }
     }
     this.coneG.putImageData(this.coneData, 0, 0);
-    g.drawImage(this.coneCv, 0, 0);
+    g.drawImage(this.coneCv, cx, cy);
   }
 
   drawDynamicTiles(g) {
@@ -164,6 +178,9 @@ export class Play {
 
   draw(g) {
     const w = this.world, p = w.player;
+    this.cx = Math.round(this.cam.x); this.cy = Math.round(this.cam.y);
+    g.save();
+    g.translate(-this.cx, -this.cy);
     g.drawImage(this.bg, 0, 0);
     // floor-level stuff
     for (const t of w.traps) {
@@ -189,7 +206,7 @@ export class Play {
     for (const f of w.foods) drawObj(g, 'pandesal', f.x, f.y);
     for (const h of w.hides) if (h.kind !== 'curtain') drawObj(g, h.kind, h.x, h.y + 2);
 
-    if (this.level.night) { g.globalAlpha = 0.38; g.fillStyle = '#10183a'; g.fillRect(0, 0, VIEW_W, VIEW_H); g.globalAlpha = 1; }
+    if (this.level.night) { g.globalAlpha = 0.38; g.fillStyle = '#10183a'; g.fillRect(this.cx, this.cy, VIEW_W, VIEW_H); g.globalAlpha = 1; }
     this.drawCones(g);
 
     const actors = [...w.adults.map((a) => ({ a, y: a.y }))];
@@ -219,8 +236,10 @@ export class Play {
     }
     for (const q of this.parts) { g.globalAlpha = Math.min(1, q.l * 2); drawCoin(g, q.x, q.y); }
     g.globalAlpha = 1;
-    if (w.say) bubble(g, w.say.text, p.x, Math.round(p.y) - 30);
-    for (const a of w.adults) if (a.say) bubble(g, a.say.text, a.x, Math.round(a.y) - 34, C.ink, a.state === 'chase' ? C.red : C.white);
+    if (w.say) bubble(g, w.say.text, p.x, Math.round(p.y) - 30, this.cx);
+    for (const a of w.adults) if (a.say) bubble(g, a.say.text, a.x, Math.round(a.y) - 34, this.cx, C.ink, a.state === 'chase' ? C.red : C.white);
+    g.restore();
+    this.drawCompass(g);
     this.drawHud(g);
   }
 
@@ -291,6 +310,30 @@ export class Play {
       g.fillStyle = C.ink; g.fillRect(cx - 7, top - 3, 14, 3);
       g.fillStyle = a.alert >= 0.6 ? C.red : C.yellow; g.fillRect(cx - 6, top - 2, Math.round(12 * Math.min(1, a.alert)), 1);
     }
+  }
+
+  // Big maps: when the objective is off screen, show a marker on the screen edge pointing at it.
+  drawCompass(g) {
+    if (!this.scrolls) return;
+    const w = this.world, p = w.player;
+    let goal = null, col = C.gold;
+    if (w.open) { goal = w.exit; col = C.green; }
+    else {
+      let bd = Infinity;
+      for (const t of w.targets) if (!t.done) { const d = Math.hypot(t.x - p.x, t.y - p.y); if (d < bd) { bd = d; goal = t; } }
+    }
+    if (!goal) return;
+    const sx = goal.x - this.cx, sy = goal.y - this.cy;
+    if (sx > 4 && sx < VIEW_W - 4 && sy > 4 && sy < MAP_H - 4) return;
+    const cxs = VIEW_W / 2, cys = MAP_H / 2, dx = sx - cxs, dy = sy - cys;
+    const k = Math.min((VIEW_W / 2 - 9) / Math.abs(dx || 1e-6), (MAP_H / 2 - 9) / Math.abs(dy || 1e-6));
+    const mx = Math.round(cxs + dx * k), my = Math.round(cys + dy * k);
+    const pulse = Math.floor(performance.now() / 300) % 2;
+    disc(g, mx, my, 6, C.ink);
+    disc(g, mx, my, 4, pulse ? col : C.white);
+    // little pointer toward the goal
+    const m = Math.hypot(dx, dy) || 1;
+    disc(g, Math.round(mx + (dx / m) * 7), Math.round(my + (dy / m) * 7), 1, col);
   }
 
   drawHud(g) {

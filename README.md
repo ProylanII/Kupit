@@ -30,7 +30,8 @@ Collect the coin quota, then reach the exit.
   Tatay (fast), Kuya (tattletale: alerts everyone), Aso (dog: barks, loves pandesal).
 - **Noise**: running, creaky floors and lego (ARAY!) make noise rings. Yellow rings lure adults over.
 - **Hide** in boxes, curtains, laundry baskets. If someone watched you hide, they'll find you.
-- **Bosses**: multi-phase levels (10 levels total; bosses are marked BOSS). Hitting coin thresholds triggers phases: adults get faster, wake up, throw sandok, or reinforcements arrive. First clear pays a coin bonus.
+- **Random House**: a seeded generator builds a new multi-room house (doors, archways, locked doors with keys, adults, traps) at difficulty 1-5. Daily House is the same for everyone each day. Pays coins but has no unlocks.
+- **Bosses**: multi-phase levels (14 levels, 5 of them bosses are marked BOSS). Hitting coin thresholds triggers phases: adults get faster, wake up, throw sandok, or reinforcements arrive. First clear pays a coin bonus.
 - **Kids**: each has a skill (cooldown). Jun: silent dash. Bing: hide anywhere 3s (smaller, slower). Kuya Ramil: yell to lure ahead (throws far, loud run). Nene: freeze watchers 3s (kupit faster). Buy kids and upgrades in the store with coins earned (coins + stars per clear).
 - **Distract**: throw a tsinelas, turn on the TV/radio, toss pandesal to the dog.
 - **Puzzles**: doors block sight; locked doors need the matching key; switches open gates (some close again on a timer).
@@ -46,6 +47,7 @@ npm test             # level validator (solvability) + LOS/AI unit tests
 - `src/world` tilemap + line of sight (DOM-free, tested)
 - `src/entities` player, adults (Mama/Lola/Tita), targets
 - `src/render` palette, tiles, placeholder pixel sprites (`sprites.js` is the swap point for Blender-rendered sheets)
+- `src/game/house.js` seeded Random House generator; `src/game/validate.js` level validator (both tested)
 - `src/game/progression.js` characters, upgrades, `computeMods` (tested)
 - `src/game/world.js` all level rules (DOM-free, tested); `src/scenes/play.js` draws it
 - `src/data/levels/*.json` levels; list them in `index.json`. Format: [docs/LEVEL_FORMAT.md](docs/LEVEL_FORMAT.md)
@@ -58,5 +60,5 @@ npm test             # level validator (solvability) + LOS/AI unit tests
 - [x] UI pass: title menu, level select (best times), how-to-play, pause menu, sound toggle, tutorial coaching, end-of-level menus
 - [x] Phase 3: sari-sari store (6 upgrades x 3 levels), character select with skills (Jun, Bing, Kuya Ramil, Nene)
 - [x] Phase 4: five bosses with multi-phase fights (Lola's Siesta, Mama sa Kusina, Tatay + Aso, Ninang's Fiesta, Sari-Sari Store)
-- [ ] Phase 5: 12+ levels, bigger scrolling maps, random-house mode
+- [x] Phase 5: 14 levels (4 new big scrolling ones), camera + objective marker, Random House and Daily House modes
 - [ ] Phase 6: Blender-rendered pixel sprites, music, PWA
