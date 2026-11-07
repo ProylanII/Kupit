@@ -38,6 +38,8 @@ export const sfx = {
   thud: () => beep(90, 0.12, { type: 'triangle', vol: 0.12 }),
   hide: () => beep(300, 0.08, { slide: -120, type: 'triangle', vol: 0.06 }),
   music: () => [392, 494, 587, 494].forEach((f, i) => beep(f, 0.12, { at: i * 0.13, type: 'triangle' })),
+  skill: () => { beep(440, 0.1, { slide: 440, type: 'triangle', vol: 0.07 }); beep(880, 0.12, { at: 0.08, type: 'triangle', vol: 0.05 }); },
+  buy: () => { beep(660, 0.07); beep(990, 0.07, { at: 0.07 }); beep(1320, 0.14, { at: 0.14 }); },
   unlock: () => ac(),
 };
 

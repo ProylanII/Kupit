@@ -1,10 +1,13 @@
 const KEY = 'kupit.save.v1';
-const fresh = () => ({ unlocked: 0, stars: {}, best: {}, bank: 0, muted: false });
+const fresh = () => ({ unlocked: 0, stars: {}, best: {}, bank: 0, muted: false, upgrades: {}, chars: ['jun'], char: 'jun' });
 
 export function loadSave() {
   try {
     const s = JSON.parse(localStorage.getItem(KEY));
-    return s && typeof s === 'object' ? { ...fresh(), ...s } : fresh();
+    const out = s && typeof s === 'object' ? { ...fresh(), ...s } : fresh();
+    if (!Array.isArray(out.chars) || !out.chars.includes('jun')) out.chars = ['jun', ...(Array.isArray(out.chars) ? out.chars : [])];
+    if (!out.chars.includes(out.char)) out.char = 'jun';
+    return out;
   } catch { return fresh(); }
 }
 

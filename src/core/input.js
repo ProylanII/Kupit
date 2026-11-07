@@ -4,6 +4,7 @@ export const MAP_H = 352;  // 22 tiles; below it is the control strip
 export const VIEW_H = 392;
 export const BUTTON = { x: 214, y: 372, r: 18 };  // on-screen action button
 export const BUTTON2 = { x: 176, y: 372, r: 14 }; // throw item
+export const ABILITY_BTN = { x: 100, y: 372, r: 11 }; // character skill
 export const PAUSE_BTN = { x: 138, y: 372, r: 10 }; // pause
 const STICK_R = 22;
 
@@ -15,6 +16,9 @@ export class Input {
     this.tapped = false;
     this.buttonEnabled = false;
     this.button2Enabled = false;
+    this.abilityEnabled = false;
+    this.prevAb = false;
+    this.abilityTap = false; // latched so a very short tap still counts
     this.prevA = false;
     this.prevT = false;
     this.touchUsed = false;
@@ -40,7 +44,9 @@ export class Input {
       if (this.buttonEnabled && Math.hypot(p.x - PAUSE_BTN.x, p.y - PAUSE_BTN.y) <= PAUSE_BTN.r + 6) { this.pauseTap = true; return; }
       const onBtn = this.buttonEnabled && Math.hypot(p.x - BUTTON.x, p.y - BUTTON.y) <= BUTTON.r + 6;
       const onBtn2 = !onBtn && this.button2Enabled && Math.hypot(p.x - BUTTON2.x, p.y - BUTTON2.y) <= BUTTON2.r + 5;
-      const role = onBtn ? 'btn' : onBtn2 ? 'btn2' : 'stick';
+      const onBtn3 = !onBtn && !onBtn2 && this.abilityEnabled && Math.hypot(p.x - ABILITY_BTN.x, p.y - ABILITY_BTN.y) <= ABILITY_BTN.r + 5;
+      if (onBtn3) this.abilityTap = true;
+      const role = onBtn ? 'btn' : onBtn2 ? 'btn2' : onBtn3 ? 'btn3' : 'stick';
       this.pointers.set(e.pointerId, { role, sx: p.x, sy: p.y, x: p.x, y: p.y });
       canvas.setPointerCapture(e.pointerId);
     });
@@ -95,17 +101,24 @@ export class Input {
     return false;
   }
 
+  abilityHeld() {
+    if (this.keys.has('f') || this.keys.has('x')) return true;
+    for (const q of this.pointers.values()) if (q.role === 'btn3') return true;
+    return false;
+  }
+
   // One snapshot per frame with press edges, for the game world.
   poll() {
-    const a = this.action(), t = this.throwHeld();
-    const r = { mv: this.move(), action: a, actionPressed: a && !this.prevA, throwPressed: t && !this.prevT };
-    this.prevA = a; this.prevT = t;
+    const a = this.action(), t = this.throwHeld(), b = this.abilityHeld();
+    const r = { mv: this.move(), action: a, actionPressed: a && !this.prevA, throwPressed: t && !this.prevT, abilityPressed: (b && !this.prevAb) || this.abilityTap || this.hits.has('f') || this.hits.has('x') };
+    this.abilityTap = false;
+    this.prevA = a; this.prevT = t; this.prevAb = b;
     return r;
   }
 
   pressed(k) { return this.hits.has(k); }
   // Drop held pointers/keys so a menu tap doesn't turn into a stick drag when play starts.
-  reset() { this.pointers.clear(); this.keys.clear(); this.prevA = this.prevT = false; }
+  reset() { this.pointers.clear(); this.keys.clear(); this.prevA = this.prevT = this.prevAb = false; }
   consumeTap() { const t = this.tapped; this.tapped = false; return t; }
   endFrame() { this.tapped = false; this.hits.clear(); this.tapPos = null; this.pauseTap = false; }
 }

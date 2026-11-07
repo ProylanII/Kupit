@@ -61,6 +61,7 @@ export class Adult {
     this.last = { x: this.x, y: this.y };
     this.say = null;
     this.food = null;
+    this.freezeT = 0; // charmed: sees nothing, forgets the player
   }
 
   // Adults walk through closed doors (they open them), never through gates.
@@ -163,6 +164,16 @@ export class Adult {
       return;
     }
 
+    // charmed (Nene's Pa-cute): blind and calm for a few seconds
+    if (this.freezeT > 0) {
+      this.freezeT -= dt;
+      this.alert = 0;
+      this.seen = false;
+      this.awake = true;
+      if (this.state === 'chase') { this.state = 'search'; this.searchT = SEARCH_TIME; this.sawHide = false; }
+      return;
+    }
+
     // sleep / phone cycle only runs during a calm patrol
     if (c.cycle && this.state === 'patrol' && this.hearT <= 0 && this.alert < 0.3) {
       this.t += dt;
@@ -178,7 +189,7 @@ export class Adult {
     this.seen = this.canSee(player);
     if (this.seen) {
       const dist = Math.hypot(player.x - this.x, player.y - this.y);
-      if (this.state !== 'chase') this.alert += dt * c.rate * (dist < 32 ? 2.5 : 1);
+      if (this.state !== 'chase') this.alert += dt * c.rate * (world.mods?.alertRate ?? 1) * (dist < 32 ? 2.5 : 1);
       if (this.state !== 'chase' || dist < 24) this.a += angDiff(Math.atan2(player.y - this.y, player.x - this.x) - this.a) * Math.min(1, dt * 8);
       if (this.alert >= 1 && this.state !== 'chase') {
         if (c.dog) {

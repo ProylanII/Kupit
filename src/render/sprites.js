@@ -65,6 +65,10 @@ function legs(view, frame, n, skirt) {
 
 export const LOOKS = {
   kid:  { H: C.ink,    S: C.skin, T: C.gold,   B: C.blue,   F: C.skin2, E: C.ink, legsN: 2 },
+  jun:  { H: C.ink,    S: C.skin, T: C.gold,   B: C.blue,   F: C.skin2, E: C.ink, legsN: 2 },
+  bing: { H: C.ink,    S: C.skin, T: C.pink,   B: C.purple, F: C.skin2, E: C.ink, legsN: 2, longHair: true },
+  ramil: { H: '#3a2418', S: C.skin2, T: C.green, B: C.dgray, F: C.skin2, E: C.ink, legsN: 3 },
+  nene: { H: '#3a2418', S: C.skin, T: C.orange, B: C.white, F: C.skin2, E: C.ink, legsN: 2, longHair: true },
   mama: { H: '#3a2418', S: C.skin, T: C.red,   B: C.dgray,  F: C.skin2, E: C.ink, legsN: 4, longHair: true },
   lola: { H: C.white,  S: C.skin, T: C.purple, B: '#6b4a8c', F: C.skin2, E: C.ink, legsN: 4, skirt: true },
   tita: { H: C.pink,   S: C.skin, T: C.teal,   B: C.white,  F: C.skin2, E: C.ink, legsN: 4, longHair: true },

@@ -3,6 +3,7 @@ import { TileMap, TILE } from '../world/tilemap.js';
 import { Player } from '../entities/player.js';
 import { Adult } from '../entities/adult.js';
 import { Target } from '../entities/target.js';
+import { computeMods } from './progression.js';
 
 export const REACH = 18;          // interact distance (px)
 const THROW_SPEED = 140, THROW_MAX = 72;
@@ -13,10 +14,14 @@ const at = (p) => ({ x: p[0] * TILE + TILE / 2, y: p[1] * TILE + TILE / 2, tx: p
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 export class World {
-  constructor(level) {
+  // loadout: { char, upgrades } from the save; defaults = Jun with no upgrades
+  constructor(level, loadout = {}) {
     this.level = level;
+    this.mods = computeMods(loadout.char, loadout.upgrades);
     this.map = new TileMap(level.tiles);
-    this.player = new Player(level.spawn[0], level.spawn[1]);
+    this.player = new Player(level.spawn[0], level.spawn[1], this.mods);
+    this.player.items = Array(this.mods.startItems).fill('tsinelas');
+    this.abilityCd = 0;
     this.adults = level.adults.map((d) => new Adult(d, this.map));
     this.targets = level.targets.map((t) => new Target(t));
     this.exit = at(level.exit);
@@ -43,6 +48,7 @@ export class World {
     this.runRingT = 0;
   }
 
+  get patience() { return this.level.patience ? this.level.patience + this.mods.patienceBonus : 0; }
   get open() { return this.coins >= this.level.quota; }
   emit(e) { this.events.push(e); }
   noise(n) { this.noises.push(n); this.emit({ type: 'ring', x: n.x, y: n.y, r: n.r, lure: !!n.lure }); }
@@ -109,6 +115,7 @@ export class World {
     switch (c.kind) {
       case 'unhide':
         p.hidden = null;
+        p.hideT = 0;
         for (const a of this.adults) a.sawHide = false;
         this.emit({ type: 'unhide' });
         break;
@@ -116,6 +123,7 @@ export class World {
         // anyone looking right now knows where you went
         for (const a of this.adults) if (a.awake && a.canSee(p)) a.sawHide = true;
         p.hidden = c.obj;
+        p.hideT = 0;
         p.x = c.obj.x; p.y = c.obj.y;
         this.emit({ type: 'hide' });
         break;
@@ -140,6 +148,44 @@ export class World {
         this.emit({ type: 'device' });
         break;
     }
+  }
+
+  // Character skill (button / F key). Returns true if it fired and starts the cooldown.
+  useAbility() {
+    const p = this.player, sk = this.mods.skill;
+    if (this.status !== 'play' || this.abilityCd > 0 || p.stunT > 0) return false;
+    switch (sk.id) {
+      case 'dash':
+        if (p.hidden) return false;
+        p.dashT = 0.7;
+        break;
+      case 'hide':
+        if (p.hidden) return false;
+        this.interact({ kind: 'hide', obj: { x: p.x, y: p.y, kind: 'pocket' } });
+        p.hideT = 3;
+        break;
+      case 'shout': {
+        if (p.hidden) return false;
+        const [fx, fy] = p.facing(), m = Math.hypot(fx, fy) || 1;
+        let d = 56;
+        while (d > 12 && this.map.isSolidAt(p.x + (fx / m) * d, p.y + (fy / m) * d)) d -= 8;
+        this.noise({ x: p.x + (fx / m) * d, y: p.y + (fy / m) * d, r: 90, lure: true });
+        this.talk('HOY!');
+        break;
+      }
+      case 'charm': {
+        let n = 0;
+        for (const a of this.adults) {
+          if (a.alert > 0.05 || a.state === 'chase' || (a.awake && a.canSee(p))) { a.freezeT = 3; a.talk('AWW!', 3); n++; }
+        }
+        if (!n) return false;
+        break;
+      }
+      default: return false;
+    }
+    this.abilityCd = sk.cd;
+    this.emit({ type: 'ability' });
+    return true;
   }
 
   toggleSwitch(s, byPlayer) {
@@ -179,6 +225,8 @@ export class World {
     if (this.status !== 'play') return;
     const p = this.player, map = this.map;
     this.time += dt;
+    this.abilityCd = Math.max(0, this.abilityCd - dt);
+    if (p.hidden && p.hideT > 0 && (p.hideT -= dt) <= 0) this.interact({ kind: 'unhide' });
     this.noises = [];
     if (this.say && (this.say.t -= dt) <= 0) this.say = null;
 
@@ -189,6 +237,7 @@ export class World {
     this.prompt = ctx;
     const stealing = !p.hidden && input.action && ctx?.kind === 'steal';
     if (input.throwPressed && p.items.length && !p.hidden) this.throwItem();
+    if (input.abilityPressed) this.useAbility();
 
     // --- player move
     const n = p.update(dt, map, input.mv, stealing || !!p.hidden);
@@ -200,7 +249,7 @@ export class World {
     // --- stealing
     for (const t of this.targets) {
       if (stealing && t === ctx.obj) {
-        t.progress += dt / t.time;
+        t.progress += dt / (t.time * this.mods.stealTime);
         this.emit({ type: 'stealTick' });
         if (t.progress >= 1) {
           t.done = true; t.progress = 1; this.coins += t.coins;
@@ -214,7 +263,7 @@ export class World {
     this.items = this.items.filter((it) => {
       if (p.hidden || it.noPickT > 0 || dist(it, p) > 9) return true;
       if (it.kind === 'key') { p.keys.add(it.color); this.talk('MAY SUSI!'); this.emit({ type: 'pickup' }); return false; }
-      if (p.items.length >= 3) return true;
+      if (p.items.length >= this.mods.itemCap) return true;
       p.items.push(it.kind); this.emit({ type: 'pickup' });
       return false;
     });
@@ -232,7 +281,7 @@ export class World {
     for (const pr of this.projectiles) {
       const nx = pr.x + pr.vx * dt, ny = pr.y + pr.vy * dt;
       pr.d += Math.hypot(pr.vx, pr.vy) * dt;
-      if (map.isSolidAt(nx, ny) || pr.d >= THROW_MAX) { pr.done = true; this.land(pr); } else { pr.x = nx; pr.y = ny; }
+      if (map.isSolidAt(nx, ny) || pr.d >= THROW_MAX * this.mods.throwRange) { pr.done = true; this.land(pr); } else { pr.x = nx; pr.y = ny; }
     }
     this.projectiles = this.projectiles.filter((pr) => !pr.done);
 
@@ -256,7 +305,7 @@ export class World {
     }
     if (this.status !== 'play') return;
 
-    if (this.level.patience && this.time >= this.level.patience) {
+    if (this.patience && this.time >= this.patience) {
       this.status = 'caught'; this.reason = 'time';
       this.catcher = this.adults.find((a) => a.type === 'mama') || this.adults[0];
       this.emit({ type: 'caught' });

@@ -3,8 +3,10 @@ import { loadSave, writeSave } from './core/save.js';
 import { sfx, setMuted, isMuted } from './core/audio.js';
 import { Play } from './scenes/play.js';
 import { drawText } from './ui/font.js';
-import { drawActor, drawStar, drawTarget } from './render/sprites.js';
+import { drawActor, drawStar, drawTarget, drawCoin } from './render/sprites.js';
+import { CHARACTERS, CHAR_ORDER } from './game/progression.js';
 import { C } from './render/palette.js';
+import { shopScreen, charScreen } from './scenes/shop.js';
 import { drawMenu, drawButton, buttonRect, menuHit, hit } from './ui/menu.js';
 
 const canvas = document.getElementById('game');
@@ -34,20 +36,21 @@ async function loadLevels() {
 
 let levels = [];
 let idx = 0;
-let mode = 'loading'; // loading | title | levels | help | play | paused | caught | clear
+let mode = 'loading'; // loading | title | levels | help | store | chars | play | paused | caught | clear
 let play = null;
 let age = 0;
 let sel = 0;       // highlighted menu item
 let scroll = 0;    // level-select scroll offset
 let prevMode = 'title'; // where BACK goes from levels/help
 let newBest = false;
+let earned = 0;
 
 const setMode = (m) => { mode = m; age = 0; sel = 0; };
 const unlockedMax = () => Math.min(save.unlocked, levels.length - 1);
 
 function start(i) {
   idx = i;
-  play = new Play(levels[idx], input);
+  play = new Play(levels[idx], input, { char: save.char, upgrades: save.upgrades });
   input.reset();
   setMode('play');
 }
@@ -80,9 +83,9 @@ function menuPick(n, y0, gap = 22, ready = true) {
 const soundLabel = () => `SOUND: ${isMuted() ? 'OFF' : 'ON'}`;
 
 // ---- title ------------------------------------------------------------------
-const TITLE_Y = 196;
+const TITLE_Y = 188, TITLE_GAP = 21;
 function titleItems() {
-  return [save.unlocked > 0 ? `CONTINUE: LEVEL ${unlockedMax() + 1}` : 'PLAY', 'LEVELS', 'HOW TO PLAY', soundLabel()];
+  return [save.unlocked > 0 ? `CONTINUE: LEVEL ${unlockedMax() + 1}` : 'PLAY', 'LEVELS', 'STORE', 'CHARACTERS', 'HOW TO PLAY', soundLabel()];
 }
 
 function drawTitle() {
@@ -90,22 +93,25 @@ function drawTitle() {
   for (let x = 0; x < VIEW_W; x += 16) { g.fillStyle = (x / 16) % 2 ? C.wood : C.wood2; g.fillRect(x, 166, 16, 16); }
   const t = performance.now() / 1000;
   const kx = 40 + ((t * 18) % 120);
-  drawActor(g, 'kid', kx, 174, 2, Math.floor(t * 6) % 4);
+  drawActor(g, CHARACTERS[save.char].look, kx, 174, 2, Math.floor(t * 6) % 4);
   drawTarget(g, 'purse', 190, 174, false);
   drawActor(g, 'mama', 215, 180, 1, 0);
   drawText(g, 'KUPIT', VIEW_W / 2, 50, C.gold, { scale: 9, align: 'center', shadow: C.gold2 });
   drawText(g, 'SNEAK. KUPIT. ESCAPE.', VIEW_W / 2, 112, C.white, { align: 'center' });
-  drawMenu(g, titleItems(), sel, TITLE_Y);
+  drawMenu(g, titleItems(), sel, TITLE_Y, TITLE_GAP);
+  drawCoin(g, 8, 8); drawText(g, String(save.bank), 16, 9, C.white);
   drawText(g, 'A PIXEL STEALTH GAME', VIEW_W / 2, 336, C.dgray, { align: 'center' });
   drawText(g, 'M: SOUND', VIEW_W / 2, 348, C.dgray, { align: 'center' });
 }
 
 function updateTitle() {
-  const pick = menuPick(4, TITLE_Y);
+  const pick = menuPick(6, TITLE_Y, TITLE_GAP);
   if (pick === 0) start(unlockedMax());
   else if (pick === 1) { prevMode = 'title'; setMode('levels'); sel = unlockedMax(); }
-  else if (pick === 2) { prevMode = 'title'; setMode('help'); }
-  else if (pick === 3) toggleSound();
+  else if (pick === 2) { shopScreen.sel = 0; setMode('store'); }
+  else if (pick === 3) { charScreen.sel = CHAR_ORDER.indexOf(save.char); setMode('chars'); }
+  else if (pick === 4) { prevMode = 'title'; setMode('help'); }
+  else if (pick === 5) toggleSound();
 }
 
 // ---- level select -------------------------------------------------------------
@@ -161,6 +167,8 @@ const HELP = [
   ['SEEN?', 'YELLOW CONE: THEY SEE YOU. IF IT TURNS RED THEY CHASE!'],
   ['HIDE', 'PRESS TAGO AT A BOX, CURTAIN OR BASKET. MOVE TO COME OUT.'],
   ['THROW', 'SMALL BUTTON OR Q THROWS ITEMS. NOISE LURES ADULTS AWAY.'],
+  ['SKILL', 'EACH KID HAS A SKILL: TAP THE GREEN BUTTON OR PRESS F.'],
+  ['STORE', 'COINS BUY PERMANENT UPGRADES AND NEW KIDS.'],
   ['DOORS', 'DOORS BLOCK SIGHT. KEYS OPEN LOCKS. LEVERS OPEN GATES.'],
   ['STARS', 'CLEAR IT, BEAT PAR TIME, AND NEVER GET REALLY SPOTTED.'],
 ];
@@ -180,9 +188,9 @@ function drawHelp() {
   let y = 38;
   for (const [h, body] of HELP) {
     drawText(g, h, 12, y, C.yellow);
-    const lines = wrap(body, 52);
+    const lines = wrap(body, 56);
     lines.forEach((l, i) => drawText(g, l, 12, y + 9 + i * 8, C.white));
-    y += 9 + lines.length * 8 + 12;
+    y += 9 + lines.length * 8 + 6;
   }
   drawButton(g, backRect(), 'BACK', true);
 }
@@ -246,12 +254,14 @@ function drawClear() {
   drawText(g, `COINS ${r.coins}   TIME ${Math.floor(r.time)}S`, VIEW_W / 2, 155, C.white, { align: 'center' });
   drawText(g, newBest ? 'NEW BEST TIME!' : `BEST ${Math.floor(save.best[levels[idx].id] || r.time)}S`, VIEW_W / 2, 167, newBest ? C.green : C.gray, { align: 'center' });
   drawText(g, `${r.fast ? 'FAST + ' : `PAR ${levels[idx].par}S  `}${r.stealth ? 'SILENT' : 'SPOTTED A BIT'}`, VIEW_W / 2, 179, C.gray, { align: 'center' });
-  if (age > 0.5) drawMenu(g, [last ? 'TITLE' : 'NEXT LEVEL', 'PLAY AGAIN', 'LEVELS'], sel, END_Y);
+  drawText(g, `+${earned} COINS   BANK ${save.bank}`, VIEW_W / 2, 195, C.gold, { align: 'center' });
+  if (age > 0.5) drawMenu(g, [last ? 'TITLE' : 'NEXT LEVEL', 'PLAY AGAIN', 'LEVELS', 'STORE'], sel, END_Y, 21);
 }
 
 function updateClear() {
   const last = idx === levels.length - 1;
-  const pick = menuPick(3, END_Y, 22, age > 0.5);
+  const pick = menuPick(4, END_Y, 21, age > 0.5);
+  if (pick === 3) { shopScreen.sel = 0; setMode('store'); return; }
   if (pick === 0) { if (last) setMode('title'); else start(idx + 1); }
   else if (pick === 1) start(idx);
   else if (pick === 2) { prevMode = 'title'; setMode('levels'); sel = Math.min(idx + 1, levels.length - 1); }
@@ -266,10 +276,13 @@ function afterPlay() {
     if (newBest) save.best[id] = t;
     save.stars[id] = Math.max(save.stars[id] || 0, play.result.stars);
     save.unlocked = Math.max(save.unlocked, Math.min(idx + 1, levels.length - 1));
-    save.bank += play.result.coins;
+    earned = play.result.coins + play.result.stars;
+    save.bank += earned;
     writeSave(save);
   }
 }
+
+const shopCtx = { save, persist: () => writeSave(save), back: () => setMode('title') };
 
 let last = performance.now();
 function frame(now) {
@@ -286,6 +299,8 @@ function frame(now) {
     if (mode === 'play') play.draw(g);
   }
   const screens = { title: [updateTitle, drawTitle], levels: [updateLevels, drawLevels], help: [updateHelp, drawHelp],
+    store: [() => shopScreen.update(input, shopCtx, dt), () => shopScreen.draw(g, shopCtx)],
+    chars: [() => charScreen.update(input, shopCtx, dt), () => charScreen.draw(g, shopCtx)],
     paused: [updatePaused, drawPaused], caught: [updateCaught, drawCaught], clear: [updateClear, drawClear] };
   if (screens[m]) { screens[m][0](); if (mode === m) screens[m][1](); } // skip the draw if the screen just changed
   else if (m === 'loading') { g.fillStyle = C.ink; g.fillRect(0, 0, VIEW_W, VIEW_H); drawText(g, 'LOADING...', VIEW_W / 2, 170, C.white, { align: 'center' }); }

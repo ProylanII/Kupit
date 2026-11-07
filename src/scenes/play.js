@@ -7,7 +7,7 @@ import { drawActor, drawTarget, drawCoin, drawObj, KEY_COLORS } from '../render/
 import { C, hexToRgb } from '../render/palette.js';
 import { drawText, textWidth } from '../ui/font.js';
 import { sfx } from '../core/audio.js';
-import { VIEW_W, VIEW_H, MAP_H, BUTTON, BUTTON2, PAUSE_BTN } from '../core/input.js';
+import { VIEW_W, VIEW_H, MAP_H, BUTTON, BUTTON2, PAUSE_BTN, ABILITY_BTN } from '../core/input.js';
 
 const YELLOW = hexToRgb(C.yellow), RED = hexToRgb(C.red);
 
@@ -41,9 +41,9 @@ function bubble(g, text, cx, y, fg = C.ink, bg = C.white) {
 }
 
 export class Play {
-  constructor(level, input) {
+  constructor(level, input, loadout) {
     this.input = input;
-    this.world = new World(level);
+    this.world = new World(level, loadout);
     this.level = level;
     this.bg = buildBackground(this.world.map);
     this.parts = [];
@@ -64,6 +64,7 @@ export class Play {
   update(dt) {
     const w = this.world;
     this.input.button2Enabled = w.player.items.length > 0;
+    this.input.abilityEnabled = true;
     w.update(dt, this.input.poll());
     for (const e of w.events) this.onEvent(e, dt);
     w.events.length = 0;
@@ -91,6 +92,7 @@ export class Play {
       case 'ouch': sfx.ouch(); break;
       case 'pickup': case 'unlock': sfx.pickup(); break;
       case 'throw': sfx.whoosh(); break;
+      case 'ability': sfx.skill(); break;
       case 'land': sfx.thud(); break;
       case 'hide': case 'unhide': sfx.hide(); break;
       case 'device': sfx.music(); break;
@@ -191,7 +193,7 @@ export class Play {
     if (!p.hidden) actors.push({ p: true, y: p.y });
     actors.sort((u, v) => u.y - v.y);
     for (const e of actors) {
-      if (e.p) drawActor(g, 'kid', p.x, p.y, p.dir, p.moving ? Math.floor(p.stepT * 8) % 4 : 0);
+      if (e.p) drawActor(g, w.mods.look, p.x, p.y, p.dir, p.moving ? Math.floor(p.stepT * 8) % 4 : 0);
       else this.drawAdult(g, e.a);
     }
     for (const h of w.hides) if (h.kind === 'curtain') drawObj(g, 'curtain', h.x, h.y - 1);
@@ -260,8 +262,8 @@ export class Play {
     drawText(g, `${w.coins}/${this.level.quota}`, 13, 6, C.white, sh);
     drawText(g, this.level.name, VIEW_W / 2, 6, C.white, { ...sh, align: 'center' });
     drawText(g, `${Math.floor(w.time)}S`, VIEW_W - 5, 6, w.time > this.level.par ? C.orange : C.white, { ...sh, align: 'right' });
-    if (this.level.patience) { // "KAIN NA!" meter: Mama calls you for dinner when it runs out
-      const left = Math.max(0, 1 - w.time / this.level.patience);
+    if (w.patience) { // "KAIN NA!" meter: Mama calls you for dinner when it runs out
+      const left = Math.max(0, 1 - w.time / w.patience);
       g.fillStyle = C.ink; g.fillRect(4, 13, VIEW_W - 8, 3);
       g.fillStyle = left < 0.25 ? C.red : C.orange; g.fillRect(5, 14, Math.round((VIEW_W - 10) * left), 1);
     }
@@ -272,7 +274,7 @@ export class Play {
     drawText(g, pr ? pr.label : w.open ? 'GO TO THE EXIT!' : `NEED ${this.level.quota - w.coins} MORE`, 6, MAP_H + 8, pr ? C.gold : w.open ? C.green : C.gray);
     let kx = 6;
     for (const k of w.player.keys) { drawObj(g, 'key', kx + 3, MAP_H + 24, k); kx += 10; }
-    drawText(g, this.input.touchUsed ? 'DRAG: MOVE   DRAG FAR: RUN' : 'SHIFT RUN  E ACT  Q THROW  P PAUSE', 6, MAP_H + 32, C.dgray);
+    drawText(g, this.input.touchUsed ? 'DRAG: MOVE   DRAG FAR: RUN' : 'SHIFT RUN  E ACT  Q THROW  F SKILL', 6, MAP_H + 32, C.dgray);
 
     const th = this.tutorialHint();
     const hint = th || (this.level.hint && w.time < 8 ? this.level.hint : null);
@@ -280,6 +282,12 @@ export class Play {
       g.globalAlpha = 0.7; g.fillStyle = C.ink; g.fillRect(0, 18, VIEW_W, 11); g.globalAlpha = 1;
       drawText(g, hint, VIEW_W / 2, 21, th ? C.white : C.yellow, { align: 'center' });
     }
+
+    // character skill button
+    const sk = w.mods.skill, cd = w.abilityCd, rdy = cd <= 0;
+    disc(g, ABILITY_BTN.x, ABILITY_BTN.y, ABILITY_BTN.r, C.ink);
+    disc(g, ABILITY_BTN.x, ABILITY_BTN.y, ABILITY_BTN.r - 2, rdy ? (this.input.abilityHeld() ? C.green : C.teal) : C.dgray);
+    drawText(g, rdy ? sk.label : String(Math.ceil(cd)), ABILITY_BTN.x, ABILITY_BTN.y - 2, rdy ? C.ink : C.gray, { align: 'center' });
 
     // pause button
     disc(g, PAUSE_BTN.x, PAUSE_BTN.y, PAUSE_BTN.r, C.ink);
