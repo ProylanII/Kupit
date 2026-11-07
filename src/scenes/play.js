@@ -287,13 +287,29 @@ export class Play {
       g.fillStyle = C.ink; g.fillRect(4 + i * 8, 12, 7, 5);
       g.fillStyle = i <= w.phase ? C.red : C.dgray; g.fillRect(5 + i * 8, 13, 5, 3);
     }
-    const a = b.bar !== undefined ? w.adults[b.bar] : null, cy = a?.cfg.cycle;
-    if (a && cy && a.state === 'patrol') {
-      const len = cy.on + cy.off, t = a.t % len, awake = t < cy.on;
-      const left = awake ? cy.on - t : len - t, full = awake ? cy.on : cy.off;
-      drawText(g, awake ? 'WATCH' : 'SLEEP', VIEW_W - 62, 12, awake ? C.red : C.green, { align: 'right' });
+    // the boss: name + sleep/cooking cycle bar, or her alert level
+    const a = w.adults[b.index ?? 0];
+    if (a) {
+      const cy = a.cfg.cycle;
+      let fill, col, label = a.cfg.name;
+      if (cy && a.state === 'patrol') {
+        const len = cy.on + cy.off, t = a.t % len, awake = t < cy.on;
+        fill = (awake ? cy.on - t : len - t) / (awake ? cy.on : cy.off);
+        col = awake ? C.red : C.green;
+        label += awake ? ' !' : a.cfg.cook ? ' ~' : ' ZZ';
+      } else {
+        fill = a.state === 'chase' ? 1 : a.alert;
+        col = a.state === 'chase' || a.cfg.hunt ? C.red : C.yellow;
+        if (a.state === 'inspect') label += ' ?';
+      }
+      drawText(g, label, VIEW_W - 62, 12, col, { align: 'right', shadow: C.ink });
       g.fillStyle = C.ink; g.fillRect(VIEW_W - 60, 12, 56, 5);
-      g.fillStyle = awake ? C.red : C.green; g.fillRect(VIEW_W - 59, 13, Math.round(54 * left / full), 3);
+      g.fillStyle = col; g.fillRect(VIEW_W - 59, 13, Math.round(54 * Math.min(1, fill)), 3);
+    }
+    if (w.escapeT > 0) { // escape countdown
+      const blink = w.escapeT < 6 && Math.floor(performance.now() / 200) % 2;
+      g.globalAlpha = 0.75; g.fillStyle = C.ink; g.fillRect(VIEW_W / 2 - 50, 31, 100, 20); g.globalAlpha = 1;
+      drawText(g, `TAKBO! ${Math.ceil(w.escapeT)}`, VIEW_W / 2, 34, blink ? C.white : C.red, { scale: 2, align: 'center', shadow: C.ink });
     }
     const bn = this.banner;
     if (bn) {

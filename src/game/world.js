@@ -35,6 +35,9 @@ export class World {
     this.projectiles = [];
     this.hostiles = []; // things thrown at the player (sandok)
     this.phase = 0;     // boss phases triggered so far
+    this.escapeT = 0;   // final boss phase: seconds left to reach the exit
+    this.trail = [];    // player scent trail (tracker dogs follow it)
+    this.trailT = 0;
     this.foods = [];
     this.events = [];
     this.noises = [];
@@ -198,6 +201,7 @@ export class World {
     for (const d of ph.spawn || []) this.adults.push(new Adult(d, this.map));
     for (const [x, y] of ph.open || []) if (this.map.ch(x, y) === 'G') this.map.set(x, y, 'g');
     for (const [x, y] of ph.close || []) if (this.map.ch(x, y) === 'g' && !this.occupied(x, y)) this.map.set(x, y, 'G');
+    if (ph.escape) this.escapeT = ph.escape;
     this.emit({ type: 'phase', text: ph.banner || '', n: this.phase });
   }
 
@@ -267,7 +271,15 @@ export class World {
       if ((this.runRingT -= dt) <= 0) { this.emit({ type: 'ring', x: n.x, y: n.y, r: n.r, lure: false }); this.runRingT = 0.35; }
     }
 
-    // --- stealing
+    // --- scent trail
+    if (!p.hidden && (this.trailT -= dt) <= 0) {
+      this.trail.push({ x: p.x, y: p.y, t: this.time });
+      if (this.trail.length > 40) this.trail.shift();
+      this.trailT = 0.4;
+    }
+
+    // --- stealing (a light sleeper nearby wakes up faster while you rummage)
+    if (stealing) for (const a of this.adults) if (a.cfg.lightSleeper && !a.awake && dist(a, p) < 56) a.t += dt * 1.5;
     for (const t of this.targets) {
       if (stealing && t === ctx.obj) {
         t.progress += dt / (t.time * this.mods.stealTime);
@@ -340,6 +352,14 @@ export class World {
     // --- boss phases
     while (this.bossPhases[this.phase] && this.coins >= this.bossPhases[this.phase].at) this.applyPhase(this.bossPhases[this.phase++]);
     if (this.status !== 'play') return;
+
+    if (this.escapeT > 0 && (this.escapeT -= dt) <= 0 && !this.god) {
+      this.escapeT = 0;
+      this.status = 'caught'; this.reason = 'escape';
+      this.catcher = this.adults[this.level.boss?.index ?? 0] || this.adults[0];
+      this.emit({ type: 'caught' });
+      return;
+    }
 
     if (this.patience && this.time >= this.patience && !this.god) {
       this.status = 'caught'; this.reason = 'time';

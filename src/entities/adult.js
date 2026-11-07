@@ -67,6 +67,29 @@ export class Adult {
     this.food = null;
     this.freezeT = 0; // charmed: sees nothing, forgets the player
     this.rangedT = 1; // ladle cooldown
+    this.inspectList = []; // hiding spots a boss is about to check
+    this.huntT = 0;        // countdown to the next hunt (final boss phase)
+    this.sniffT = -1;      // newest scent-trail point already followed (tracker dog)
+  }
+
+  // Bosses (cfg.checksHides) look inside the hiding spots near where they lost you or heard something.
+  startInspect(world, x, y) {
+    if (!this.cfg.checksHides) return false;
+    const d = (h) => Math.hypot(h.x - x, h.y - y);
+    const list = world.hides.filter((h) => d(h) < 96).sort((a, b) => d(a) - d(b)).slice(0, 2);
+    const ph = world.player.hidden; // Bing's hide-anywhere spot counts too
+    if (ph && !list.includes(ph) && d(ph) < 96) list.unshift(ph);
+    this.inspectList = list;
+    return this.nextInspect();
+  }
+
+  nextInspect() {
+    while (this.inspectList.length) {
+      const h = this.inspectList[0];
+      if (this.goTo(h.x, h.y)) { this.state = 'inspect'; this.talk('SILIPIN KO...', 1.2); return true; }
+      this.inspectList.shift();
+    }
+    return false;
   }
 
   // Boss phases change an adult mid-level: new stats, cycle, sweep or patrol route.
@@ -235,6 +258,28 @@ export class Adult {
       }
     }
 
+    // --- final boss phase: keeps heading for roughly where you are
+    const calm = this.state === 'patrol' || this.state === 'return' || this.state === 'search';
+    if (c.hunt && calm && (this.huntT -= dt) <= 0) {
+      this.huntT = c.hunt.every;
+      const s = c.hunt.spread ?? 32;
+      this.investigate(player.x + (Math.random() * 2 - 1) * s, player.y + (Math.random() * 2 - 1) * s);
+      this.talk('NASAAN KA?!', 1.2);
+    }
+    // --- tracker dog: follows the player's scent trail when it crosses it
+    if (c.tracker && calm && this.state !== 'investigate' && world.trail?.length) {
+      const tr = world.trail;
+      for (let i = tr.length - 1; i >= 0 && tr[i].t > this.sniffT; i--) {
+        if (Math.hypot(tr[i].x - this.x, tr[i].y - this.y) < 28) {
+          const q = tr[Math.min(tr.length - 1, i + 4)];
+          this.sniffT = q.t;
+          this.investigate(q.x, q.y);
+          if (this.state === 'investigate') this.talk('SNIFF SNIFF', 1);
+          break;
+        }
+      }
+    }
+
     // --- behaviour
     switch (this.state) {
       case 'chase': {
@@ -245,11 +290,13 @@ export class Adult {
         const dist = Math.hypot(player.x - this.x, player.y - this.y);
         if (dist < CATCH_DIST && (!player.hidden || this.sawHide)) { this.caught = true; return; }
         if ((done && !this.seen) || this.lostT > 5) {
-          this.state = 'search';
-          this.searchT = SEARCH_TIME;
           this.alert = 0.6;
           this.sawHide = false;
-          this.talk('NASAAN NA?', 1.5);
+          if (!this.startInspect(world, this.last.x, this.last.y)) {
+            this.state = 'search';
+            this.searchT = SEARCH_TIME;
+            this.talk('NASAAN NA?', 1.5);
+          }
         }
         break;
       }
@@ -260,10 +307,18 @@ export class Adult {
             if (world.eatFood(this.food)) { this.state = 'eat'; this.eatT = 8; this.talk('NOM NOM', 2); }
             else this.state = 'search', this.searchT = 1;
             this.food = null;
-          } else { this.state = 'search'; this.searchT = SEARCH_TIME; }
+          } else if (!this.startInspect(world, this.target.x, this.target.y)) { this.state = 'search'; this.searchT = SEARCH_TIME; }
         }
         break;
       }
+      case 'inspect':
+        if (this.follow(dt, c.speed * 1.2, world)) {
+          const h = this.inspectList.shift();
+          if (player.hidden && player.hidden === h) { this.talk('HULI KA!', 2); this.caught = true; return; }
+          this.talk('WALA...', 1);
+          if (!this.nextInspect()) { this.state = 'search'; this.searchT = 1.2; }
+        }
+        break;
       case 'search':
         this.a += Math.sin(this.searchT * 3) * dt * 3;
         if ((this.searchT -= dt) <= 0) { this.state = 'return'; this.goTo(this.pts[this.i].x, this.pts[this.i].y); }

@@ -52,6 +52,7 @@ export function validateLevel(L) {
     const c = map.ch(p[0], p[1]);
     if (map.tileSolid(p[0], p[1]) || 'dgDG'.includes(c)) bad(`${what} ${p} must be on plain floor (got '${c}')`);
   };
+  if (L.hint && L.hint.length > 58) bad(`hint is ${L.hint.length} chars (max 58 fits the screen)`);
   floor(L.spawn, 'spawn');
   floor(L.exit, 'exit');
   const used = new Map();
@@ -68,7 +69,7 @@ export function validateLevel(L) {
   }
   for (const s of L.switches || []) {
     place(s.at, 'switch');
-    for (const g of s.gates) if (map.ch(g[0], g[1]) !== 'G') bad(`switch gate ${g} is not a 'G' tile`);
+    for (const g of s.gates) if (!'Gg'.includes(map.ch(g[0], g[1]))) bad(`switch gate ${g} is not a gate tile`);
   }
   for (const l of L.locks || []) {
     if (map.ch(l.at[0], l.at[1]) !== 'D') bad(`lock ${l.at} is not on a door`);
@@ -97,6 +98,7 @@ export function validateLevel(L) {
   if (L.boss) {
     let prev = 0;
     if (!L.boss.title || !(L.boss.bonus > 0) || !L.boss.phases?.length) bad('boss needs title, bonus and phases');
+    if (!L.adults[L.boss.index ?? 0]) bad('boss.index must point at an adult');
     for (const ph of L.boss.phases || []) {
       if (!(ph.at > prev && ph.at <= total)) bad(`phase at ${ph.at} must rise and be reachable (max ${total})`);
       if (!ph.banner || ph.banner.length > 30) bad('phase banner text <= 30 chars');
@@ -109,7 +111,8 @@ export function validateLevel(L) {
         if (!ADULT_TYPES[a.type]) bad(`unknown spawn type ${a.type}`);
         for (const p of a.route || [a.at]) if (map.tileSolid(p[0], p[1])) bad(`spawn point ${p} blocked`);
       }
-      for (const [x, y] of ph.open || []) if (map.ch(x, y) !== 'G') bad(`phase open ${x},${y} is not a gate`);
+      for (const [x, y] of [...(ph.open || []), ...(ph.close || [])]) if (!'Gg'.includes(map.ch(x, y))) bad(`phase gate ${x},${y} is not a gate`);
+      if (ph.escape !== undefined && !(ph.escape >= 10)) bad('escape timer must be >= 10s');
     }
   }
   return errs;

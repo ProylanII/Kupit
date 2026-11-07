@@ -1,31 +1,32 @@
 {
   "id": "boss1-lola",
   "name": "LOLA'S SIESTA",
-  "hint": "LOLA SLEEPS IN CYCLES. WATCH THE BAR! NOISE WAKES HER",
+  "hint": "STEAL WHILE LOLA SLEEPS. RUMMAGING NEAR HER WAKES HER",
   "boss": {
     "title": "LOLA'S SIESTA",
-    "bonus": 10,
-    "bar": 0,
+    "index": 0,
+    "bonus": 15,
     "phases": [
       {
         "at": 2,
-        "banner": "LOLA IS A LIGHT SLEEPER!",
+        "banner": "LOLA IS STIRRING...",
         "adult": {
           "index": 0,
           "cycle": {
-            "on": 9,
-            "off": 7
+            "on": 6,
+            "off": 6
           }
         }
       },
       {
         "at": 4,
-        "banner": "LOLA WOKE UP! MAMA IS COMING",
+        "banner": "MAMA HEARD SOMETHING!",
         "adult": {
           "index": 0,
-          "cycle": null,
-          "sleepy": false,
-          "sweep": 1.8
+          "cycle": {
+            "on": 7,
+            "off": 5
+          }
         },
         "spawn": [
           {
@@ -33,23 +34,46 @@
             "route": [
               [
                 2,
-                15
+                15,
+                1
               ],
               [
                 12,
-                15
+                15,
+                1
               ],
               [
                 12,
-                18
+                18,
+                1
               ],
               [
                 2,
-                18
+                18,
+                1
               ]
-            ]
+            ],
+            "cfg": {
+              "checksHides": true
+            }
           }
         ]
+      },
+      {
+        "at": 6,
+        "banner": "LOLA WOKE UP! TAKBO!",
+        "escape": 25,
+        "adult": {
+          "index": 0,
+          "cycle": null,
+          "sleepy": false,
+          "hunt": {
+            "every": 4,
+            "spread": 24
+          },
+          "speed": 24,
+          "sweep": 1.2
+        }
       }
     ]
   },
@@ -86,34 +110,34 @@
     19
   ],
   "quota": 6,
-  "par": 100,
+  "par": 90,
   "targets": [
     {
       "kind": "bayong",
       "at": [
-        11,
+        9,
         5
       ],
       "coins": 2,
-      "time": 1.8
+      "time": 2.0
     },
     {
       "kind": "bayong",
       "at": [
-        3,
-        8
+        5,
+        6
       ],
       "coins": 2,
-      "time": 1.8
+      "time": 2.0
     },
     {
       "kind": "bayong",
       "at": [
         7,
-        2
+        3
       ],
       "coins": 2,
-      "time": 1.8
+      "time": 2.0
     }
   ],
   "items": [
@@ -163,28 +187,42 @@
         6,
         11
       ]
+    },
+    {
+      "kind": "box",
+      "at": [
+        11,
+        8
+      ]
     }
   ],
   "traps": [
     {
       "kind": "creak",
       "at": [
-        9,
-        6
+        7,
+        7
       ]
     },
     {
       "kind": "creak",
       "at": [
-        5,
-        6
+        4,
+        5
       ]
     },
     {
       "kind": "lego",
       "at": [
+        10,
+        4
+      ]
+    },
+    {
+      "kind": "creak",
+      "at": [
         7,
-        9
+        12
       ]
     }
   ],
@@ -197,13 +235,15 @@
       ],
       "face": 1.5708,
       "sweep": 0.5,
-      "phase": 6,
+      "phase": 5,
       "cfg": {
         "range": 84,
         "cycle": {
-          "on": 6,
-          "off": 12
-        }
+          "on": 5,
+          "off": 8
+        },
+        "lightSleeper": true,
+        "checksHides": true
       }
     }
   ]

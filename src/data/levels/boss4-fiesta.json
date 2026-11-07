@@ -1,10 +1,11 @@
 {
   "id": "boss4-fiesta",
   "name": "NINANG'S FIESTA",
-  "hint": "THE NINANGS' CONES ROLL. SLIP THROUGH THE GAPS",
+  "hint": "THE NINANGS CIRCLE THE TABLES. SLIP THROUGH THE GAPS",
   "boss": {
     "title": "NINANG'S FIESTA",
-    "bonus": 16,
+    "index": 0,
+    "bonus": 22,
     "phases": [
       {
         "at": 2,
@@ -14,22 +15,19 @@
             "type": "ninang",
             "route": [
               [
-                3,
-                8
+                2,
+                7,
+                1
               ],
               [
-                11,
-                8
-              ],
-              [
-                11,
-                10
-              ],
-              [
-                3,
-                10
+                12,
+                7,
+                1
               ]
-            ]
+            ],
+            "cfg": {
+              "checksHides": true
+            }
           }
         ]
       },
@@ -59,6 +57,19 @@
             ]
           }
         ]
+      },
+      {
+        "at": 6,
+        "banner": "NINANG WANTS HER PAMASKO!",
+        "escape": 25,
+        "adult": {
+          "index": 0,
+          "hunt": {
+            "every": 4,
+            "spread": 24
+          },
+          "speed": 28
+        }
       }
     ]
   },
@@ -95,7 +106,7 @@
     1
   ],
   "quota": 6,
-  "par": 140,
+  "par": 120,
   "targets": [
     {
       "kind": "purse",
@@ -170,8 +181,8 @@
     {
       "kind": "box",
       "at": [
-        1,
-        9
+        7,
+        7
       ]
     },
     {
@@ -203,27 +214,87 @@
         4,
         5
       ]
+    },
+    {
+      "kind": "lego",
+      "at": [
+        8,
+        4
+      ]
     }
   ],
   "adults": [
     {
       "type": "ninang",
-      "at": [
-        5,
-        4
+      "route": [
+        [
+          1,
+          1
+        ],
+        [
+          6,
+          1
+        ],
+        [
+          6,
+          3
+        ],
+        [
+          1,
+          3
+        ]
       ],
-      "face": 1.5708,
-      "sweep": 1.0
+      "cfg": {
+        "checksHides": true
+      }
     },
     {
       "type": "ninang",
-      "at": [
-        9,
-        7
+      "route": [
+        [
+          13,
+          3
+        ],
+        [
+          8,
+          3
+        ],
+        [
+          8,
+          1
+        ],
+        [
+          13,
+          1
+        ]
       ],
-      "face": -1.5708,
-      "sweep": 1.0,
-      "sweepPhase": 3.5
+      "cfg": {
+        "checksHides": true
+      }
+    },
+    {
+      "type": "ninang",
+      "route": [
+        [
+          1,
+          8
+        ],
+        [
+          6,
+          8
+        ],
+        [
+          6,
+          10
+        ],
+        [
+          1,
+          10
+        ]
+      ],
+      "cfg": {
+        "checksHides": true
+      }
     },
     {
       "type": "tita",

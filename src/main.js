@@ -349,8 +349,9 @@ function drawCaught() {
     drawText(g, 'KAIN NA!', VIEW_W / 2, 100, C.orange, { scale: 5, align: 'center', shadow: C.ink });
     drawText(g, `${a ? a.cfg.name : 'MAMA'}: "DINNER TIME! COME HERE!"`, VIEW_W / 2, 155, C.white, { align: 'center' });
   } else {
-    drawText(g, 'CAUGHT!', VIEW_W / 2, 100, C.red, { scale: 6, align: 'center', shadow: C.ink });
+    drawText(g, play.reason === 'escape' ? 'HULI KA!' : 'CAUGHT!', VIEW_W / 2, 100, C.red, { scale: 6, align: 'center', shadow: C.ink });
     drawText(g, `${a.cfg.name}: "${a.cfg.shout}"`, VIEW_W / 2, 155, C.white, { align: 'center' });
+    if (play.reason === 'escape') drawText(g, 'TOO SLOW! RUN FOR THE EXIT NEXT TIME', VIEW_W / 2, 165, C.orange, { align: 'center' });
   }
   drawText(g, `COINS ${play.world.coins}/${cur.quota}   TIME ${Math.floor(play.world.time)}S`, VIEW_W / 2, 175, C.gray, { align: 'center' });
   if (age > 0.5) drawMenu(g, run ? ['TRY AGAIN', 'NEW HOUSE', 'HOUSE MENU'] : ['TRY AGAIN', 'LEVELS', 'TITLE'], sel, END_Y);

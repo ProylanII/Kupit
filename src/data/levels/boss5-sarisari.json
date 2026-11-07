@@ -1,10 +1,11 @@
 {
   "id": "boss5-sarisari",
   "name": "SARI-SARI STORE",
-  "hint": "THE KEY IS ON THE SHELVES. THE CANDY IS IN THE STOREROOM",
+  "hint": "KEY ON THE SHELVES, CANDY IN THE STOREROOM",
   "boss": {
     "title": "ALING NENA'S STORE",
-    "bonus": 25,
+    "index": 0,
+    "bonus": 30,
     "phases": [
       {
         "at": 2,
@@ -16,11 +17,53 @@
         }
       },
       {
-        "at": 8,
-        "banner": "SINO ANG KUMUHA NG CANDY?!",
+        "at": 5,
+        "banner": "NENA CALLS HER KUYA!",
+        "spawn": [
+          {
+            "type": "kuya",
+            "route": [
+              [
+                2,
+                10,
+                1
+              ],
+              [
+                12,
+                10,
+                1
+              ],
+              [
+                12,
+                14,
+                1
+              ],
+              [
+                2,
+                14,
+                1
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "at": 10,
+        "banner": "BINABA ANG SHUTTER! TAKBO!",
+        "escape": 30,
+        "close": [
+          [
+            7,
+            18
+          ]
+        ],
         "adult": {
           "index": 0,
-          "speed": 42,
+          "speed": 40,
+          "hunt": {
+            "every": 4,
+            "spread": 24
+          },
           "route": [
             [
               6,
@@ -62,7 +105,7 @@
     "#.............#",
     "#.PP.......PP.#",
     "#.............#",
-    "#.............#",
+    "#######g#######",
     "#.............#",
     "#.............#",
     "###############"
@@ -75,8 +118,8 @@
     12,
     20
   ],
-  "quota": 8,
-  "par": 170,
+  "quota": 10,
+  "par": 160,
   "targets": [
     {
       "kind": "candy",
@@ -113,6 +156,21 @@
         3
       ],
       "key": "red"
+    }
+  ],
+  "switches": [
+    {
+      "at": [
+        1,
+        13
+      ],
+      "gates": [
+        [
+          7,
+          18
+        ]
+      ],
+      "time": 8
     }
   ],
   "items": [
@@ -154,7 +212,7 @@
       "kind": "box",
       "at": [
         1,
-        19
+        15
       ]
     },
     {
@@ -219,7 +277,10 @@
           5,
           1
         ]
-      ]
+      ],
+      "cfg": {
+        "checksHides": true
+      }
     },
     {
       "type": "tita",

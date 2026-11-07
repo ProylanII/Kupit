@@ -51,7 +51,10 @@ and that standing still at the spawn for 4 s is safe. The same validator checks 
 
 - `"cfg": { ... }` overrides stats for one adult: `range`, `fov`, `speed`, `rate`, `cycle`, `sleepy`,
   `cook` (off phase = stirring a pot: blind, stands still), `ranged: { "range": 88, "cd": 3.5 }` (throws a sandok;
-  dodge by sidestepping).
+  dodge by sidestepping), `checksHides` (when she loses you or hears a noise she looks inside the nearest hiding
+  spots: hiding is no longer a free reset), `lightSleeper` (stealing within ~3 tiles drains her sleep 2.5x faster),
+  `tracker` (dog follows the player's scent trail), `hunt: { "every": 4, "spread": 24 }` (keeps heading for roughly
+  where the player is).
 - `"sweepPhase": 3.5` offsets a sweeping adult's rotation so several cones "roll" out of sync.
 
 ## Bosses
@@ -62,15 +65,19 @@ Add a `boss` block to make a level a boss fight (bosses are just levels; list th
 "boss": {
   "title": "LOLA'S SIESTA",   // intro banner
   "bonus": 10,                // extra coins the first time it is cleared
-  "bar": 0,                   // optional: adult index whose sleep/watch cycle is shown as a bar
+  "index": 0,                 // which adult is the boss: her name, cycle/alert bar in the HUD; catches on escape timeout
   "phases": [                 // fire in order once coins >= "at" (must be reachable)
     { "at": 2, "banner": "LOLA IS A LIGHT SLEEPER!",   // <= 30 chars
       "adult": { "index": 0, "cycle": { "on": 9, "off": 7 } },     // retune; null removes a stat; also speed/range/fov/rate/sweep/ranged/route
       "spawn": [ { "type": "mama", "route": [[2,15],[12,15]] } ],  // new adults join
-      "open": [[x,y]], "close": [[x,y]] }                          // gates (G/g)
+      "open": [[x,y]], "close": [[x,y]],                         // gates (G closed / g open)
+      "escape": 25 }                                                // TAKBO! seconds to reach the exit, else caught
   ]
 }
 ```
+
+Boss design rules (checked by tests): the last phase fires at the quota and has an `escape` timer, and the boss
+checks hiding spots (or a tracker dog hunts you). Hints must be <= 58 characters.
 
 Extra target kind `candy` (the garapon prize). Adult types `nena` (Aling Nena) and `ninang`.
 `npm test` also checks phases (thresholds reachable, spawn points on floor, gates exist) and that standing still
