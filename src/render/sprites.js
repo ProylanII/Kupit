@@ -2,6 +2,7 @@
 // getSprite()/drawActor() so Blender-rendered sheets can replace this file's
 // internals later without touching gameplay code.
 import { C } from './palette.js';
+import { atlasSprite } from './atlas.js';
 
 const cache = new Map();
 
@@ -107,6 +108,12 @@ export function getSprite(kind, dir, frame) {
   const key = `${kind}|${dir}|${frame}`;
   let s = cache.get(key);
   if (s) return s;
+  const art = atlasSprite(`${kind}|${dir === 1 ? 2 : dir}|${frame}`); // real art, if a sprite sheet is installed
+  if (art) {
+    const cv = dir === 1 ? mirror(art) : art;
+    cache.set(key, cv);
+    return cv;
+  }
   if (kind === 'aso') {
     let cv = build(dogRows(dir, frame), DOG_PAL);
     if (dir === 1) cv = mirror(cv);

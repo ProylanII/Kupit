@@ -38,6 +38,17 @@ Collect the coin quota, then reach the exit.
 - **Timing**: patrol waits, nap/phone cycles, timed gates, and the KAIN NA! dinner timer.
 - Stars: clear = 1, under par time = +1, never really spotted = +1.
 
+## Install / offline (PWA)
+
+Serve over http(s) and use the browser's "Install" / "Add to Home Screen". A service worker caches the game
+(`precache.json`, rebuilt by `npm run build`) so it plays offline; online it always loads the newest files.
+
+## Sound, music, feel
+
+Music is generated in the browser (`src/data/tracks.js`, 4 chiptune tracks: menu, sneak, chase, boss; the chase track
+kicks in while anyone is chasing you). `M` or the SOUND buttons mute sound and music. Phones vibrate on alerts, hits and
+phase changes (pause menu -> VIBRATE). Screen shake, a red flash on getting caught, dust when running, quick fades.
+
 ## Dev mode
 
 Open with `?dev=1` (remembered; `?dev=0` or the ` key turns it off). It unlocks every level in the level list and adds:
@@ -54,6 +65,7 @@ npm test             # level validator (solvability) + LOS/AI unit tests
 - `src/world` tilemap + line of sight (DOM-free, tested)
 - `src/entities` player, adults (Mama/Lola/Tita), targets
 - `src/render` palette, tiles, placeholder pixel sprites (`sprites.js` is the swap point for Blender-rendered sheets)
+- `src/render/atlas.js` optional Blender sprite sheet; `tools/` icon, atlas and Blender scripts ([docs/ART_PIPELINE.md](docs/ART_PIPELINE.md))
 - `src/game/house.js` seeded Random House generator; `src/game/validate.js` level validator (both tested)
 - `src/game/progression.js` characters, upgrades, `computeMods` (tested)
 - `src/game/world.js` all level rules (DOM-free, tested); `src/scenes/play.js` draws it
@@ -68,4 +80,5 @@ npm test             # level validator (solvability) + LOS/AI unit tests
 - [x] Phase 3: sari-sari store (6 upgrades x 3 levels), character select with skills (Jun, Bing, Kuya Ramil, Nene)
 - [x] Phase 4: five bosses with multi-phase fights (Lola's Siesta, Mama sa Kusina, Tatay + Aso, Ninang's Fiesta, Sari-Sari Store)
 - [x] Phase 5: 14 levels (4 new big scrolling ones), camera + objective marker, Random House and Daily House modes
-- [ ] Phase 6: Blender-rendered pixel sprites, music, PWA
+- [x] Phase 6 (code side): sprite-sheet pipeline, procedural music, PWA, juice. Blender models/renders themselves are not made yet (see docs/ART_PIPELINE.md)
+- [ ] Phase 6 (art): actual Blender characters rendered through the pipeline

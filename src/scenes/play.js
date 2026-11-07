@@ -8,6 +8,7 @@ import { C, hexToRgb } from '../render/palette.js';
 import { drawText, textWidth } from '../ui/font.js';
 import { sfx } from '../core/audio.js';
 import { dev } from '../core/dev.js';
+import { vibrate } from '../core/haptics.js';
 import { VIEW_W, VIEW_H, MAP_H, BUTTON, BUTTON2, PAUSE_BTN, ABILITY_BTN } from '../core/input.js';
 
 const YELLOW = hexToRgb(C.yellow), RED = hexToRgb(C.red);
@@ -57,6 +58,7 @@ export class Play {
     this.coneG = this.coneCv.getContext('2d');
     input.buttonEnabled = true;
     this.cam = { x: 0, y: 0 };
+    this.shake = 0; this.flash = 0; this.dust = []; this.dustT = 0; this.lastDraw = 0;
     this.updateCamera(1);
   }
 
@@ -84,6 +86,13 @@ export class Play {
     this.updateCamera(dt * 9);
     for (const e of w.events) this.onEvent(e, dt);
     w.events.length = 0;
+    const pl = w.player;
+    if ((pl.running || pl.dashT > 0) && !pl.hidden && (this.dustT -= dt) <= 0) {
+      this.dust.push({ x: pl.x + Math.random() * 6 - 3, y: pl.y + 4, vx: Math.random() * 10 - 5, l: 0.45 });
+      this.dustT = 0.06;
+    }
+    for (const d of this.dust) { d.x += d.vx * dt; d.y -= 6 * dt; d.l -= dt; }
+    this.dust = this.dust.filter((d) => d.l > 0);
     for (const p of this.parts) { p.y += p.vy * dt; p.vy += 90 * dt; p.l -= dt * 1.6; }
     this.parts = this.parts.filter((p) => p.l > 0);
     if (this.banner && (this.banner.t -= dt) <= 0) this.banner = null;
@@ -98,19 +107,19 @@ export class Play {
         if ((this.tickT -= dt) <= 0) { sfx.steal(); this.tickT = 0.22; }
         break;
       case 'coin':
-        sfx.coin();
+        sfx.coin(); vibrate(15);
         for (let i = 0; i < e.n * 2; i++) this.parts.push({ x: e.x + (Math.random() * 14 - 7), y: e.y - 4, vy: -50 - Math.random() * 40, l: 1 });
         break;
-      case 'spotted': case 'bark': sfx.alert(); break;
-      case 'caught': sfx.caught(); break;
-      case 'clear': sfx.clear(); break;
+      case 'spotted': case 'bark': sfx.alert(); vibrate(40); this.shake = Math.max(this.shake, 2); break;
+      case 'caught': sfx.caught(); vibrate([80, 40, 140]); this.shake = 6; this.flash = 0.6; break;
+      case 'clear': sfx.clear(); vibrate([30, 30, 30]); break;
       case 'door': case 'switch': sfx.click(); break;
       case 'creak': case 'locked': sfx.creak(); break;
-      case 'ouch': sfx.ouch(); break;
+      case 'ouch': sfx.ouch(); vibrate(60); this.shake = Math.max(this.shake, 3); break;
       case 'pickup': case 'unlock': sfx.pickup(); break;
       case 'throw': sfx.whoosh(); break;
-      case 'ability': sfx.skill(); break;
-      case 'phase': sfx.phase(); this.banner = { kind: 'phase', text: e.text, t: 3 }; break;
+      case 'ability': sfx.skill(); vibrate(20); break;
+      case 'phase': sfx.phase(); vibrate([40, 30, 40]); this.shake = Math.max(this.shake, 3); this.banner = { kind: 'phase', text: e.text, t: 3 }; break;
       case 'land': sfx.thud(); break;
       case 'hide': case 'unhide': sfx.hide(); break;
       case 'device': sfx.music(); break;
@@ -179,9 +188,14 @@ export class Play {
 
   draw(g) {
     const w = this.world, p = w.player;
+    const now = performance.now(), fd = Math.min(0.05, (now - (this.lastDraw || now)) / 1000);
+    this.lastDraw = now;
+    this.shake = Math.max(0, this.shake - fd * 14); this.flash = Math.max(0, this.flash - fd * 1.6);
+    const sx = this.shake > 0.3 ? Math.round((Math.random() - 0.5) * 2 * this.shake) : 0;
+    const sy = this.shake > 0.3 ? Math.round((Math.random() - 0.5) * 2 * this.shake) : 0;
     this.cx = Math.round(this.cam.x); this.cy = Math.round(this.cam.y);
     g.save();
-    g.translate(-this.cx, -this.cy);
+    g.translate(-this.cx + sx, -this.cy + sy);
     g.drawImage(this.bg, 0, 0);
     // floor-level stuff
     for (const t of w.traps) {
@@ -209,6 +223,9 @@ export class Play {
 
     if (this.level.night) { g.globalAlpha = 0.38; g.fillStyle = '#10183a'; g.fillRect(this.cx, this.cy, VIEW_W, VIEW_H); g.globalAlpha = 1; }
     this.drawCones(g);
+
+    for (const d of this.dust) { g.globalAlpha = Math.min(1, d.l * 2.2); g.fillStyle = C.white; g.fillRect(Math.round(d.x), Math.round(d.y), 2, 2); }
+    g.globalAlpha = 1;
 
     const actors = [...w.adults.map((a) => ({ a, y: a.y }))];
     if (!p.hidden) actors.push({ p: true, y: p.y });
@@ -240,6 +257,7 @@ export class Play {
     if (w.say) bubble(g, w.say.text, p.x, Math.round(p.y) - 30, this.cx);
     for (const a of w.adults) if (a.say) bubble(g, a.say.text, a.x, Math.round(a.y) - 34, this.cx, C.ink, a.state === 'chase' ? C.red : C.white);
     g.restore();
+    if (this.flash > 0) { g.globalAlpha = this.flash * 0.5; g.fillStyle = C.red; g.fillRect(0, 0, VIEW_W, MAP_H); g.globalAlpha = 1; }
     this.drawCompass(g);
     this.drawHud(g);
   }

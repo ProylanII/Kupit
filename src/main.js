@@ -9,6 +9,9 @@ import { generateHouse, dailySeed, dailyId } from './game/house.js';
 import { C } from './render/palette.js';
 import { shopScreen, charScreen } from './scenes/shop.js';
 import { dev, initDev, setDev, SPEEDS } from './core/dev.js';
+import { music } from './core/music.js';
+import { loadAtlas } from './render/atlas.js';
+import { setHaptics, hapticsOn, vibrate } from './core/haptics.js';
 import { drawMenu, drawButton, buttonRect, menuHit, hit } from './ui/menu.js';
 
 const canvas = document.getElementById('game');
@@ -18,6 +21,7 @@ const input = new Input(canvas);
 const save = loadSave();
 setMuted(save.muted);
 initDev();
+setHaptics(save.haptics !== false);
 
 // ---- integer-ish pixel scaling ------------------------------------------
 function resize() {
@@ -51,7 +55,13 @@ let newBest = false;
 let earned = 0;
 let bossBonus = 0;
 
-const setMode = (m) => { mode = m; age = 0; sel = 0; };
+const FADE = 0.25;
+let fadeT = 0, chaseHold = 0, audioReady = false;
+const setMode = (m) => {
+  const quiet = (x) => x === 'paused' || x === 'dev';
+  fadeT = quiet(m) || quiet(mode) ? 0 : FADE; // quick fade-in between screens (not for pause)
+  mode = m; age = 0; sel = 0;
+};
 const unlockedMax = () => Math.min(save.unlocked, levels.length - 1);
 
 function launch() {
@@ -75,6 +85,15 @@ function toggleSound() {
   setMuted(!isMuted());
   save.muted = isMuted();
   writeSave(save);
+  music.refresh();
+  sfx.click();
+}
+
+function toggleHaptics() {
+  save.haptics = !hapticsOn();
+  setHaptics(save.haptics);
+  writeSave(save);
+  vibrate(40);
   sfx.click();
 }
 
@@ -300,7 +319,7 @@ function devKeys() {
 
 // ---- pause ------------------------------------------------------------------------
 const PAUSE_Y = 150;
-const pauseItems = () => ['RESUME', 'RESTART', 'LEVELS', soundLabel(), 'TITLE', ...(dev.on ? ['DEV TOOLS'] : [])];
+const pauseItems = () => ['RESUME', 'RESTART', 'LEVELS', soundLabel(), `VIBRATE: ${hapticsOn() ? 'ON' : 'OFF'}`, 'TITLE', ...(dev.on ? ['DEV TOOLS'] : [])];
 function drawPaused() {
   play.draw(g);
   dim(0.75);
@@ -315,8 +334,9 @@ function updatePaused() {
   else if (pick === 1) restart();
   else if (pick === 2) { prevMode = 'paused'; setMode('levels'); sel = idx; }
   else if (pick === 3) toggleSound();
-  else if (pick === 4) setMode('title');
-  else if (pick === 5) setMode('dev');
+  else if (pick === 4) toggleHaptics();
+  else if (pick === 5) setMode('title');
+  else if (pick === 6) setMode('dev');
 }
 
 // ---- caught / clear -----------------------------------------------------------------
@@ -394,6 +414,21 @@ function afterPlay() {
 
 const shopCtx = { save, persist: () => writeSave(save), back: () => setMode('title') };
 
+// Pick the music for the current screen. Chase music sticks around a moment after the chase ends.
+function syncMusic(dt) {
+  if (input.tapPos || input.hits.size) audioReady = true; // browsers only allow audio after a gesture
+  if (!audioReady) return;
+  let want;
+  if (mode === 'play') {
+    if (play.world.adults.some((a) => a.state === 'chase')) chaseHold = 2.5; else chaseHold = Math.max(0, chaseHold - dt);
+    want = chaseHold > 0 ? 'chase' : cur.boss ? 'boss' : 'sneak';
+  } else if (mode === 'paused' || mode === 'dev') want = music.name;
+  else if (mode === 'caught' || mode === 'clear' || mode === 'loading') want = null;
+  else want = 'menu';
+  music.duck(mode === 'paused' || mode === 'dev');
+  music.play(want);
+}
+
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
@@ -422,6 +457,9 @@ function frame(now) {
   if (screens[m]) { screens[m][0](); if (mode === m) screens[m][1](); } // skip the draw if the screen just changed
   else if (m === 'loading') { g.fillStyle = C.ink; g.fillRect(0, 0, VIEW_W, VIEW_H); drawText(g, 'LOADING...', VIEW_W / 2, 170, C.white, { align: 'center' }); }
 
+  syncMusic(dt);
+  if (fadeT > 0) { g.globalAlpha = Math.min(1, fadeT / FADE); g.fillStyle = C.ink; g.fillRect(0, 0, VIEW_W, VIEW_H); g.globalAlpha = 1; fadeT -= dt; }
+
   input.endFrame();
   requestAnimationFrame(frame);
 }
@@ -429,7 +467,7 @@ function frame(now) {
 addEventListener('blur', pause);
 document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
 
-loadLevels().then((l) => {
+Promise.all([loadLevels(), loadAtlas()]).then(([l]) => {
   levels = l;
   setMode('title');
   const jump = Number(new URLSearchParams(location.search).get('level')); // ?level=2 jumps to level 2
@@ -444,3 +482,6 @@ requestAnimationFrame(frame);
 
 // Debug hook for automated checks: window.__kupit
 window.__kupit = { get play() { return play; }, get mode() { return mode; }, start, startHouse, input, save, get cur() { return cur; }, get run() { return run; } };
+
+// Installable + offline (PWA). Network-first, so updates still show up right away when online.
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});

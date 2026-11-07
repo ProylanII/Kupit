@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kupit sprite export</title>
+<style>
+  body { background: #1b1424; color: #f6f1e7; font: 14px monospace; padding: 16px; }
+  canvas { image-rendering: pixelated; border: 1px solid #5a5468; background: #2a2038; }
+  a, button { color: #ffd84d; margin-right: 12px; }
+</style>
+</head>
+<body>
+<h3>Kupit sprite export</h3>
+<p>Draws every character from the built-in placeholder sprites into a sheet + atlas.json (the same format
+<code>tools/pack_atlas.py</code> writes from Blender renders). Serve the project folder and open
+<code>/tools/export-sprites.html</code>, then save both files into <code>assets/sprites/</code>.</p>
+<p id="links">working...</p>
+<canvas id="c"></canvas>
+<script type="module">
+import { LOOKS, getSprite } from '../src/render/sprites.js';
+
+const kinds = [...Object.keys(LOOKS), 'aso'];
+const dirs = [0, 2, 3];   // down, right, up (left is mirrored in code)
+const frames = [0, 1, 2, 3];
+const list = [];
+let cw = 0, ch = 0;
+for (const k of kinds) for (const d of dirs) for (const f of frames) {
+  const s = getSprite(k, d, f);
+  list.push({ key: `${k}|${d}|${f}`, s });
+  cw = Math.max(cw, s.width); ch = Math.max(ch, s.height);
+}
+const cols = dirs.length * frames.length;
+const sheet = document.getElementById('c');
+sheet.width = cols * cw; sheet.height = kinds.length * ch;
+const g = sheet.getContext('2d');
+const atlas = { image: 'sheet.png', size: [sheet.width, sheet.height], frames: {} };
+list.forEach(({ key, s }, i) => {
+  const x = (i % cols) * cw, y = Math.floor(i / cols) * ch;
+  g.drawImage(s, x, y);
+  atlas.frames[key] = { x, y, w: s.width, h: s.height };
+});
+sheet.style.width = sheet.width * 3 + 'px';
+window.__atlas = { png: sheet.toDataURL('image/png'), json: atlas };
+
+const a1 = Object.assign(document.createElement('a'), { href: window.__atlas.png, download: 'sheet.png', textContent: 'download sheet.png' });
+const a2 = Object.assign(document.createElement('a'), {
+  href: URL.createObjectURL(new Blob([JSON.stringify(atlas, null, 2)], { type: 'application/json' })),
+  download: 'atlas.json', textContent: 'download atlas.json',
+});
+document.getElementById('links').replaceChildren(a1, a2);
+</script>
+</body>
+</html>
