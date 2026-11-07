@@ -261,6 +261,7 @@ export class World {
     else if (input.actionPressed && ctx && ctx.kind !== 'steal') { this.interact(ctx); ctx = this.context(); }
     this.prompt = ctx;
     const stealing = !p.hidden && input.action && ctx?.kind === 'steal';
+    p.stealing = stealing; // drawn with the 'reach' pose
     if (input.throwPressed && p.items.length && !p.hidden) this.throwItem();
     if (input.abilityPressed) this.useAbility();
 

@@ -4,8 +4,10 @@ The game draws characters from `assets/sprites/sheet.png` + `atlas.json` (loaded
 If a frame is missing from the atlas, `src/render/sprites.js` falls back to its code-drawn placeholder, so you can
 replace characters one at a time. `?noatlas` in the URL forces the placeholders.
 
-The shipped sheet is currently an **export of the placeholders** (pixel-identical), made with
-`tools/export-sprites.html`. Real Blender art has not been made yet.
+The shipped sheet is **drawn in code** by `tools/art/make_art.py` (Python + Pillow): every character is built from
+parts (head, hair style, top, bottom, accessories) with a 4-frame walk, poses and a 28x28 portrait.
+Edit `LOOKS`/`BUILDS` there and run `python tools/art/make_art.py` (add `--preview out.png --scale 6` to check it
+zoomed in). Real Blender art has not been made yet; when it is, `pack_atlas.py` replaces the same two files.
 
 ## Sprite contract
 
@@ -14,9 +16,11 @@ The shipped sheet is currently an **export of the placeholders** (pixel-identica
 | Kinds | `jun bing ramil nene` (kids), `mama lola tita tatay kuya nena ninang` (adults), `aso` (dog) |
 | Directions | `0` down (towards camera), `2` right, `3` up. Left is mirrored in code. |
 | Frames | `0..3` walk cycle. Frame 0 doubles as the idle pose. |
+| Poses | Optional named frames: `reach` (kid stealing), `caught` (kid), `alert` (adult spotted you), `sleep` (adult asleep). Missing poses fall back to frame 0. |
+| Portraits | Optional `portrait|<kind>` (28x28 bust) for character select, boss banners and the caught screen. |
 | Key | `"kind|dir|frame"` in `atlas.json`, e.g. `"mama|2|1"` |
-| Size | ~10x12 px body + 1px ink outline (adults are a bit taller). Any size works: feet sit on the bottom edge, body centred. |
-| Colours | Only the colours in `src/render/palette.js`; no anti-aliasing; alpha is on/off |
+| Size | Kids ~12x16 px body, adults ~14x20, plus a 1px ink outline. Any size works: feet sit on the bottom edge, body centred. |
+| Colours | Flat colours, no anti-aliasing; alpha is on/off. `pack_atlas.py` snaps to `src/render/palette.js`. |
 
 ## Workflow
 
@@ -37,12 +41,17 @@ The shipped sheet is currently an **export of the placeholders** (pixel-identica
 Hand-drawn pixel art (Aseprite/Piskel) works the same way: export frames with those names and run step 3, or write
 the sheet + atlas yourself.
 
-## Regenerating the placeholder sheet
+## Placeholders
 
-`python -m http.server 8080`, open `/tools/export-sprites.html`, download `sheet.png` and `atlas.json` into
-`assets/sprites/`. Do this if `LOOKS` in `src/render/sprites.js` changes and you still use the placeholders.
+`src/render/sprites.js` still has the old simple code-drawn characters as a fallback (`?noatlas`).
+`tools/export-sprites.html` exports those placeholders as a sheet (only useful for comparing).
 
-## Not covered yet
+## Code-drawn art (not in the sheet)
 
-Targets (purse, bayong, ...), furniture, tiles and UI icons are still code-drawn (`sprites.js`, `tiles.js`).
-Tile/object art can use the same atlas approach later.
+- `src/render/tiles.js`: plank/tile/grass floors, rugs, contact shadows, furniture (gingham tables, sofas,
+  banig beds, plants, kitchen counters with stove/sink/rice cooker, ref with magnets), walls with plaster,
+  baseboards and decor (capiz and jalousie windows, giant spoon and fork, clock, calendar, photo), hollow-block
+  fences on the yard side, and sunlight through windows. Extra colours live in `palette.js`.
+- `src/render/sprites.js`: targets, items, hiding spots (box, curtain, labahan), TV, radio (ASCII maps).
+- `src/scenes/play.js` `drawNight`: night levels get a dark layer with light pools (player, TV, moonlit windows, open exit).
+- `src/main.js` `buildTitleBg`: title screen night skyline.

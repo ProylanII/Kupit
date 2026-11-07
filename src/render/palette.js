@@ -12,6 +12,8 @@ export const C = {
   counter: '#e4dccb', counter2: '#b9ae96', fridge: '#dfe7ee', fridge2: '#9fb0bf',
   skin: '#f2c394', skin2: '#d89f6c',
   gold: '#ffd84d', gold2: '#c9962b', purse: '#8a3b1f', purse2: '#b9562e',
+  woodHi: '#d4a868', grout: '#a9b8b0', check: '#f3b8b0', check2: '#d9574f', sofaHi: '#7cc2cb',
+  plaster: '#e6d3ae', plaster2: '#cdb88f', capiz: '#f3ead2', capiz2: '#d9cba6', block: '#a7a3ad', block2: '#86818f',
   red: '#ff4b4b', green: '#46e08a', yellow: '#ffe36b', orange: '#ff9a3c',
   blue: '#2f5fbf', pink: '#ff7eb6', purple: '#8a5fb5', teal: '#2fa59b',
 };

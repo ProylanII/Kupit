@@ -3,7 +3,7 @@ import { loadSave, writeSave } from './core/save.js';
 import { sfx, setMuted, isMuted } from './core/audio.js';
 import { Play } from './scenes/play.js';
 import { drawText } from './ui/font.js';
-import { drawActor, drawStar, drawTarget, drawCoin } from './render/sprites.js';
+import { drawActor, drawStar, drawTarget, drawCoin, drawPortrait } from './render/sprites.js';
 import { CHARACTERS, CHAR_ORDER } from './game/progression.js';
 import { generateHouse, dailySeed, dailyId } from './game/house.js';
 import { C } from './render/palette.js';
@@ -123,10 +123,58 @@ function titleItems() {
   return [save.unlocked > 0 ? `CONTINUE: LEVEL ${unlockedMax() + 1}` : 'PLAY', 'LEVELS', 'RANDOM HOUSE', 'STORE', 'CHARACTERS', 'HOW TO PLAY', soundLabel()];
 }
 
+// Title backdrop: night sky, moon and a row of houses with lit capiz windows. Drawn once, stars twinkle on top.
+let titleBg = null;
+function buildTitleBg() {
+  const cv = document.createElement('canvas'); cv.width = VIEW_W; cv.height = 184;
+  const b = cv.getContext('2d');
+  const f = (c, x, y, w, h) => { b.fillStyle = c; b.fillRect(x, y, w, h); };
+  const sky = ['#0c1230', '#111a3e', '#18224c', '#20295a', '#2b3066', '#3a3570'];
+  sky.forEach((c, i) => f(c, 0, i * 26, VIEW_W, 26));
+  for (let i = 1; i < sky.length; i++) for (let x = i & 1; x < VIEW_W; x += 2) { f(sky[i], x, i * 26 - 1, 1, 1); f(sky[i - 1], x + 1, i * 26, 1, 1); }
+  // moon with craters and a soft halo
+  b.globalAlpha = 0.12; for (let r = 18; r > 11; r -= 3) disc(b, 204, 28, r, C.capiz); b.globalAlpha = 1;
+  disc(b, 204, 28, 11, '#f3ead2'); disc(b, 208, 24, 9, '#fff8e6');
+  f('#d9cba6', 199, 29, 3, 2); f('#d9cba6', 205, 34, 2, 2); f('#d9cba6', 209, 27, 2, 1);
+  // houses: [x, width, wall height, roof]
+  const houses = [[-6, 50, 30, 'peak'], [40, 40, 22, 'flat'], [76, 56, 36, 'peak'], [128, 34, 24, 'flat'], [158, 52, 32, 'peak'], [206, 44, 26, 'flat']];
+  const ground = 166;
+  for (const [x, w, h, roof] of houses) {
+    const top = ground - h;
+    f('#1d1838', x, top, w, h);
+    f('#262046', x, top, 2, h);
+    if (roof === 'peak') for (let i = 0; i <= w / 2 + 3; i++) f('#151130', x - 3 + i, top - Math.floor(i / 2), w + 6 - i * 2, 1);
+    else { f('#151130', x - 2, top - 3, w + 4, 3); f('#2b2552', x - 2, top - 3, w + 4, 1); }
+    for (let wx = x + 6; wx + 10 < x + w; wx += 16) { // lit capiz windows
+      const lit = (wx * 7 + h) % 3 !== 0;
+      f('#3b2a1c', wx - 1, top + 6, 12, 10);
+      f(lit ? '#ffd27a' : '#2a3560', wx, top + 7, 10, 8);
+      if (lit) { f('#f0a848', wx, top + 11, 10, 1); f('#f0a848', wx + 4, top + 7, 1, 8); f('#fff0b8', wx + 1, top + 8, 2, 2); }
+    }
+  }
+  // fence + ground strip
+  for (let x = 0; x < VIEW_W; x += 6) f('#2a2448', x, ground - 8, 4, 8);
+  f('#2a2448', 0, ground - 6, VIEW_W, 1);
+  for (let x = 0; x < VIEW_W; x += 16) { f((x / 16) % 2 ? C.wood : C.wood2, x, ground, 16, 16); f(C.woodLine, x, ground + 7, 16, 1); f(C.woodLine, x + ((x * 3) % 16), ground, 1, 7); }
+  f(C.ink, 0, ground + 16, VIEW_W, 2);
+  return cv;
+}
+
+function disc(c, cx, cy, r, col) {
+  c.fillStyle = col;
+  for (let dy = -r; dy <= r; dy++) { const h = Math.round(Math.sqrt(r * r - dy * dy)); c.fillRect(cx - h, cy + dy, h * 2 + 1, 1); }
+}
+
 function drawTitle() {
   g.fillStyle = C.ink; g.fillRect(0, 0, VIEW_W, VIEW_H);
-  for (let x = 0; x < VIEW_W; x += 16) { g.fillStyle = (x / 16) % 2 ? C.wood : C.wood2; g.fillRect(x, 166, 16, 16); }
+  if (!titleBg) titleBg = buildTitleBg();
+  g.drawImage(titleBg, 0, 0);
   const t = performance.now() / 1000;
+  for (let i = 0; i < 46; i++) { // twinkling stars
+    const h = Math.imul(i + 1, 2654435761) >>> 0, x = h % VIEW_W, y = (h >>> 12) % 118;
+    if (Math.hypot(x - 204, y - 28) < 16 || (Math.floor(t * 3) + i) % 11 === 0) continue;
+    g.fillStyle = i % 4 ? '#8a86b0' : C.white; g.fillRect(x, y, 1, 1);
+  }
   const kx = 40 + ((t * 18) % 120);
   drawActor(g, CHARACTERS[save.char].look, kx, 174, 2, Math.floor(t * 6) % 4);
   drawTarget(g, 'purse', 190, 174, false);
@@ -345,6 +393,7 @@ function drawCaught() {
   play.draw(g);
   dim();
   const a = play.catcher;
+  if (a) { g.fillStyle = C.red; g.fillRect(VIEW_W / 2 - 30, 36, 60, 60); g.fillStyle = C.ink; g.fillRect(VIEW_W / 2 - 28, 38, 56, 56); drawPortrait(g, a.type, VIEW_W / 2 - 28, 38, 2); }
   if (play.reason === 'time') {
     drawText(g, 'KAIN NA!', VIEW_W / 2, 100, C.orange, { scale: 5, align: 'center', shadow: C.ink });
     drawText(g, `${a ? a.cfg.name : 'MAMA'}: "DINNER TIME! COME HERE!"`, VIEW_W / 2, 155, C.white, { align: 'center' });

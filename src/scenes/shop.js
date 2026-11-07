@@ -1,7 +1,7 @@
 // Sari-sari store (permanent upgrades) and character select. Both are simple scrolling-free lists.
 import { drawText } from '../ui/font.js';
 import { drawButton, buttonRect, hit } from '../ui/menu.js';
-import { drawCoin, drawActor } from '../render/sprites.js';
+import { drawCoin, drawActor, drawPortrait } from '../render/sprites.js';
 import { C } from '../render/palette.js';
 import { VIEW_W } from '../core/input.js';
 import { sfx } from '../core/audio.js';
@@ -90,7 +90,9 @@ export const charScreen = makeList({
   rowH: 56,
   drawRow(g, id, r, { save }) {
     const c = CHARACTERS[id], own = owns(save, id), cur = save.char === id;
-    drawActor(g, c.look, r.x + 16, r.y + 30, 0, 0);
+    g.fillStyle = C.ink; g.fillRect(r.x + 3, r.y + 5, 28, 28);
+    if (!drawPortrait(g, c.look, r.x + 3, r.y + 5)) drawActor(g, c.look, r.x + 16, r.y + 30, 0, 0);
+    if (!own) { g.globalAlpha = 0.55; g.fillStyle = C.ink; g.fillRect(r.x + 3, r.y + 5, 28, 28); g.globalAlpha = 1; }
     drawText(g, c.name, r.x + 34, r.y + 6, C.white);
     if (cur) drawText(g, 'SELECTED', r.x + r.w - 5, r.y + 6, C.green, { align: 'right' });
     else if (own) drawText(g, 'TAP TO PICK', r.x + r.w - 5, r.y + 6, C.gray, { align: 'right' });

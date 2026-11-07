@@ -3,7 +3,7 @@ import { TILE } from '../world/tilemap.js';
 import { angDiff } from '../world/los.js';
 import { World } from '../game/world.js';
 import { buildBackground } from '../render/tiles.js';
-import { drawActor, drawTarget, drawCoin, drawObj, KEY_COLORS } from '../render/sprites.js';
+import { drawActor, drawTarget, drawCoin, drawObj, drawPortrait, KEY_COLORS } from '../render/sprites.js';
 import { C, hexToRgb } from '../render/palette.js';
 import { drawText, textWidth } from '../ui/font.js';
 import { sfx } from '../core/audio.js';
@@ -47,7 +47,7 @@ export class Play {
     this.input = input;
     this.world = new World(level, loadout);
     this.level = level;
-    this.bg = buildBackground(this.world.map);
+    this.bg = buildBackground(this.world.map, { night: !!level.night });
     this.parts = [];
     this.rings = [];
     this.tickT = 0;
@@ -156,6 +156,37 @@ export class Play {
     g.drawImage(this.coneCv, cx, cy);
   }
 
+  // Night: a dark layer with pools of light cut out (kid's eyes adjusting, TV glow, moonlight, the open exit).
+  // Cones and actors are drawn on top so the game stays readable.
+  drawNight(g) {
+    if (!this.nightCv) {
+      this.nightCv = document.createElement('canvas');
+      this.nightCv.width = VIEW_W; this.nightCv.height = VIEW_H;
+      this.nightG = this.nightCv.getContext('2d');
+    }
+    const n = this.nightG, cx = this.cx, cy = this.cy, w = this.world, now = performance.now() / 1000;
+    n.globalCompositeOperation = 'source-over';
+    n.clearRect(0, 0, VIEW_W, VIEW_H);
+    n.globalAlpha = 0.68; n.fillStyle = '#0c1230'; n.fillRect(0, 0, VIEW_W, VIEW_H);
+    n.globalCompositeOperation = 'destination-out';
+    const pools = [];
+    const light = (x, y, rad, tint) => {
+      const sx = Math.round(x - cx), sy = Math.round(y - cy);
+      if (sx < -rad || sy < -rad || sx > VIEW_W + rad || sy > VIEW_H + rad) return;
+      for (const [k, a] of [[1, 0.3], [0.72, 0.55], [0.45, 0.85]]) { n.globalAlpha = a; disc(n, sx, sy, Math.max(1, Math.round(rad * k)), '#000'); }
+      if (tint) pools.push([x, y, Math.round(rad * 0.72), tint]);
+    };
+    const p = w.player;
+    light(p.x, p.y, 24);
+    for (const wi of this.bg.windows || []) light(wi.x, wi.y + 4, 15, '#9fc0ff');
+    for (const d of w.devices) if (d.on) light(d.x, d.y, 34 + (Math.floor(now * 9) % 3), '#7fd7ff');
+    if (w.open) light(w.exit.x, w.exit.y, 20, C.green);
+    n.globalCompositeOperation = 'source-over'; n.globalAlpha = 1;
+    g.drawImage(this.nightCv, cx, cy);
+    for (const [x, y, rad, tint] of pools) { g.globalAlpha = 0.09; disc(g, Math.round(x), Math.round(y), rad, tint); }
+    g.globalAlpha = 1;
+  }
+
   drawDynamicTiles(g) {
     const { map, locks } = this.world;
     for (let ty = 0; ty < map.h; ty++) for (let tx = 0; tx < map.w; tx++) {
@@ -212,7 +243,7 @@ export class Play {
       drawObj(g, d.kind, d.x, d.y);
       if (d.on) {
         g.fillStyle = Math.floor(performance.now() / 150) % 2 ? '#7fd7ff' : C.white;
-        if (d.kind === 'tv') g.fillRect(d.x - 5, d.y - 3, 8, 4);
+        if (d.kind === 'tv') g.fillRect(d.x - 4, d.y, 6, 3);
         drawText(g, Math.floor(performance.now() / 300) % 2 ? '*' : '+', d.x + 6, d.y - 12, C.pink, { shadow: C.ink });
       }
     }
@@ -221,7 +252,7 @@ export class Play {
     for (const f of w.foods) drawObj(g, 'pandesal', f.x, f.y);
     for (const h of w.hides) if (h.kind !== 'curtain') drawObj(g, h.kind, h.x, h.y + 2);
 
-    if (this.level.night) { g.globalAlpha = 0.38; g.fillStyle = '#10183a'; g.fillRect(this.cx, this.cy, VIEW_W, VIEW_H); g.globalAlpha = 1; }
+    if (this.level.night) this.drawNight(g);
     this.drawCones(g);
 
     for (const d of this.dust) { g.globalAlpha = Math.min(1, d.l * 2.2); g.fillStyle = C.white; g.fillRect(Math.round(d.x), Math.round(d.y), 2, 2); }
@@ -231,7 +262,7 @@ export class Play {
     if (!p.hidden) actors.push({ p: true, y: p.y });
     actors.sort((u, v) => u.y - v.y);
     for (const e of actors) {
-      if (e.p) drawActor(g, w.mods.look, p.x, p.y, p.dir, p.moving ? Math.floor(p.stepT * 8) % 4 : 0);
+      if (e.p) drawActor(g, w.mods.look, p.x, p.y, p.dir, w.status === 'caught' ? 'caught' : p.stealing ? 'reach' : p.moving ? Math.floor(p.stepT * 8) % 4 : 0);
       else this.drawAdult(g, e.a);
     }
     for (const h of w.hides) if (h.kind === 'curtain') drawObj(g, 'curtain', h.x, h.y - 1);
@@ -315,6 +346,8 @@ export class Play {
     if (bn) {
       g.globalAlpha = 0.8; g.fillStyle = C.ink; g.fillRect(0, 96, VIEW_W, bn.kind === 'boss' ? 46 : 22); g.globalAlpha = 1;
       if (bn.kind === 'boss') {
+        const boss = w.adults[b.index ?? 0];
+        if (boss) { g.fillStyle = C.red; g.fillRect(5, 103, 32, 32); drawPortrait(g, boss.type, 7, 105); }
         drawText(g, 'BOSS', VIEW_W / 2, 101, C.red, { scale: 3, align: 'center', shadow: C.ink });
         drawText(g, bn.text, VIEW_W / 2, 125, C.gold, { scale: 2, align: 'center', shadow: C.gold2 });
       } else {
@@ -339,8 +372,9 @@ export class Play {
 
   drawAdult(g, a) {
     const dir = Math.abs(Math.cos(a.a)) > Math.abs(Math.sin(a.a)) ? (Math.cos(a.a) < 0 ? 1 : 2) : (Math.sin(a.a) < 0 ? 3 : 0);
-    const frame = a.moving ? Math.floor(a.stepT * 6) % 4 : 0;
     const sleeping = !a.awake && (a.cfg.sleepy || a.state === 'eat');
+    const shout = this.world.catcher === a || (a.awake && !a.moving && (a.state === 'chase' || a.alert >= 0.6));
+    const frame = a.cfg.sleepy && !a.awake ? 'sleep' : shout ? 'alert' : a.moving ? Math.floor(a.stepT * 6) % 4 : 0;
     const top = drawActor(g, a.type, a.x, a.y, dir, frame, { dim: !a.awake && a.cfg.sleepy });
     const cx = Math.round(a.x);
     if (sleeping && a.state !== 'eat') {

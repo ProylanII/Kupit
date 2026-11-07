@@ -104,11 +104,14 @@ function mirror(cv) {
   return f;
 }
 
+// frame: 0..3 walk cycle, or a pose name from the sheet ('reach', 'alert', 'sleep', 'caught').
+// Poses the sheet lacks (or the code placeholders) fall back to the idle frame.
 export function getSprite(kind, dir, frame) {
   const key = `${kind}|${dir}|${frame}`;
   let s = cache.get(key);
   if (s) return s;
   const art = atlasSprite(`${kind}|${dir === 1 ? 2 : dir}|${frame}`); // real art, if a sprite sheet is installed
+  if (!art && typeof frame === 'string') { s = getSprite(kind, dir, 0); cache.set(key, s); return s; }
   if (art) {
     const cv = dir === 1 ? mirror(art) : art;
     cache.set(key, cv);
@@ -139,12 +142,22 @@ export function getSprite(kind, dir, frame) {
 export function drawActor(g, kind, x, y, dir, frame, { dim = false } = {}) {
   const s = getSprite(kind, dir, frame);
   const px = Math.round(x) - Math.floor(s.width / 2), py = Math.round(y) + 6 - s.height;
+  const sw = Math.max(8, s.width - 4); // soft oval shadow under the feet
   g.globalAlpha = 0.25; g.fillStyle = C.ink;
-  g.fillRect(Math.round(x) - 5, Math.round(y) + 4, 10, 3);
+  g.fillRect(Math.round(x) - (sw >> 1), Math.round(y) + 4, sw, 3);
+  g.fillRect(Math.round(x) - (sw >> 1) + 1, Math.round(y) + 3, sw - 2, 1);
   g.globalAlpha = 1;
   g.drawImage(s, px, py);
   if (dim) { g.globalAlpha = 0.35; g.fillStyle = C.ink; g.fillRect(px + 1, py + 1, s.width - 2, s.height - 2); g.globalAlpha = 1; }
   return py; // top of sprite, for placing icons
+}
+
+// 28x28 bust from the sprite sheet (menus, boss banners). Returns false when the sheet has none.
+export function drawPortrait(g, kind, x, y, scale = 1) {
+  const s = atlasSprite(`portrait|${kind}`);
+  if (!s) return false;
+  g.drawImage(s, Math.round(x), Math.round(y), s.width * scale, s.height * scale);
+  return true;
 }
 
 function mapSprite(name, rows, pal) {
@@ -191,23 +204,24 @@ export function drawStar(g, x, y, on) {
 
 // ---- Phase 2 objects -------------------------------------------------------
 export const OBJ = {
-  box: [ // karton box
-    'bbbbbbbbbbbb', 'bBBBBBBBBBBb', 'bBBBBttBBBBb', 'bBBBBttBBBBb', 'bBBBBBBBBBBb',
-    'bBBBBBBBBBBb', 'bBBBBBBBBBBb', 'bbbbbbbbbbbb',
+  box: [ // karton box: lit top with tape, front with a FRAGILE label
+    'LLLLLttLLLLL', 'LBBBBttBBBBL', 'LBBBBttBBBBL', 'dddddddddddd', 'bbbbbbbbbbbb',
+    'bbwwwwbbbbbb', 'bbwrrwbbbbbb', 'bbwwwwbbbbbd', 'bbbbbbbbbbdd',
   ],
-  curtain: [
-    'rrrrrrrrrrrr', 'cCcCcCcCcCcC', 'cCcCcCcCcCcC', 'cCcCcCcCcCcC', 'cCcCcCcCcCcC', 'cCcCcCcCcCcC',
-    'cCcCcCcCcCcC', 'cCcCcCcCcCcC', 'cCcCcCcCcCcC', 'cCcCcCcCcCcC', 'cCcCcCcCcCcC', 'cCcCcCcCcCcC',
+  curtain: [ // floral curtain on a rod
+    'orrrrrrrrrro', 'cCCcCCcCCcCC', 'cCfcCCcfCcCf', 'cCCcCCcCCcCC', 'cfCcCfcCCcfC', 'cCCcCCcCCcCC',
+    'cCCcfCcCfcCC', 'cCCcCCcCCcCC', 'cCfcCCcfCcCf', 'cCCcCCcCCcCC', 'hhhhhhhhhhhh', 'h.hh.hh.hh.h',
   ],
-  basket: [ // labahan
-    '.wwwwwwwwww.', 'sWsWsWsWsWsW', 'WsWsWsWsWsWs', 'sWsWsWsWsWsW', 'WsWsWsWsWsWs', '.sWsWsWsWsW.',
+  basket: [ // labahan with clothes poking out
+    '..pp.bb.yy..', '.pppbbbbyyy.', 'RRRRRRRRRRRR', 'sWsWsWsWsWsW', 'WsWsWsWsWsWs', 'sWsWsWsWsWsW', '.ssssssssss.',
   ],
   tsinelas: ['.ggg..ggg.', 'gGGGggGGGg', '.ggg..ggg.'],
   pandesal: ['.pppp.', 'pPPPPp', 'pPPPPp', '.pppp.'],
   key: ['kk.....', 'k.kkkkk', 'kk...k.'],
-  tv: [
-    'mmmmmmmmmmmm', 'msssssssssm.', 'msssssssssm.', 'msssssssssm.', 'msssssssssm.', 'mmmmmmmmmmm.', '..m......m..',
-  ].map((r) => r.padEnd(12, '.')),
+  tv: [ // CRT with rabbit ears in a wooden cabinet
+    '..a....a....', '...a..a.....', '....mm......', 'WWWWWWWWWWWW', 'WmmmmmmmmWkW', 'WmssssssmWWW',
+    'WmssssssmWkW', 'WmssssssmWWW', 'WmmmmmmmmWWW', 'wwwwwwwwwwww', '.w........w.',
+  ],
   radio: ['...a......', 'mmmmmmmmmm', 'mggmmmmggm', 'mggmsssmgm', 'mggmmmmggm', 'mmmmmmmmmm'],
   leverOff: ['.h....', '..h...', '...h..', 'bbbbbb', 'bBBBBb', 'bbbbbb'],
   leverOn: ['....h.', '...h..', '..h...', 'bbbbbb', 'bBBBBb', 'bbbbbb'],
@@ -217,12 +231,12 @@ export const OBJ = {
 };
 
 const OBJ_PAL = {
-  box: { b: '#8a5a2b', B: '#c48a4a', t: '#e8d9a8' },
-  curtain: { r: C.dgray, c: '#4a7fb5', C: '#6a9fd5' },
-  basket: { w: C.white, W: '#d9b27c', s: '#a67a42' },
+  box: { L: '#dca868', B: '#c48a4a', t: '#e8d9a8', d: '#6e4424', b: '#a8723a', w: C.white, r: C.red },
+  curtain: { r: C.dgray, o: C.gold, c: '#4a7fb5', C: '#6a9fd5', f: C.white, h: '#3a62a8' },
+  basket: { R: '#e0b070', W: '#d9b27c', s: '#a67a42', p: C.pink, b: '#4f8fff', y: C.yellow },
   tsinelas: { g: C.blue, G: '#5f8fe0' },
   pandesal: { p: '#a8642c', P: '#e0a35a' },
-  tv: { m: C.ink, s: '#3a4a6a' },
+  tv: { m: C.ink, s: '#3a4a6a', a: C.gray, W: C.table2, w: C.table, k: C.gold },
   radio: { m: C.dgray, g: C.gray, s: C.gold, a: C.gray },
   leverOff: { h: C.gray, b: C.dgray, B: C.red },
   leverOn: { h: C.gray, b: C.dgray, B: C.green },
