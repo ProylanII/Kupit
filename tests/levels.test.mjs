@@ -4,12 +4,13 @@ import { readFileSync } from 'node:fs';
 import { TileMap } from '../src/world/tilemap.js';
 import { findPath } from '../src/world/pathfind.js';
 import { ADULT_TYPES } from '../src/entities/adult.js';
+import { World } from '../src/game/world.js';
 
 const dir = new URL('../src/data/levels/', import.meta.url);
 const files = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8'));
 const KINDS = {
   items: ['tsinelas', 'pandesal', 'key'], hide: ['box', 'curtain', 'basket'],
-  devices: ['tv', 'radio'], traps: ['creak', 'lego'], targets: ['purse', 'bayong', 'wallet', 'piggy'],
+  devices: ['tv', 'radio'], traps: ['creak', 'lego'], targets: ['purse', 'bayong', 'wallet', 'piggy', 'candy'],
 };
 
 // Player reachability with keys and switch-operated gates, iterated to a fixpoint.
@@ -92,6 +93,34 @@ for (const f of files) {
         assert.ok(findPath(map, p[0], p[1], q[0], q[1], pass), `${a.type} route ${p}->${q} has no path`);
       }
       assert.notEqual(L.spawn.join(), pts[0].slice(0, 2).join(), `${a.type} starts on the spawn`);
+    }
+  });
+}
+
+const IDLE = { mv: { x: 0, y: 0, mag: 0, run: false }, action: false, actionPressed: false, throwPressed: false, abilityPressed: false };
+
+for (const f of files) {
+  test(`level ${f}: standing still at spawn for 4s is safe; boss phases are well formed`, () => {
+    const L = JSON.parse(readFileSync(new URL(f, dir), 'utf8'));
+    const w = new World(L);
+    for (let i = 0; i < 240; i++) w.update(1 / 60, IDLE);
+    assert.equal(w.status, 'play', 'caught at spawn');
+    if (!L.boss) return;
+    const map = new TileMap(L.tiles);
+    const total = L.targets.reduce((n, t) => n + t.coins, 0);
+    assert.ok(L.boss.title && L.boss.bonus > 0 && L.boss.phases.length >= 1);
+    let prev = 0;
+    for (const ph of L.boss.phases) {
+      assert.ok(ph.at > prev && ph.at <= total, `phase at ${ph.at} must rise and be reachable (max ${total})`);
+      assert.ok(ph.banner && ph.banner.length <= 30, 'banner text <= 30 chars');
+      prev = ph.at;
+      for (const m of [].concat(ph.adult || [])) assert.ok(L.adults[m.index], `phase adult index ${m.index}`);
+      for (const a of ph.spawn || []) {
+        assert.ok(ADULT_TYPES[a.type], `unknown spawn type ${a.type}`);
+        for (const p of a.route || [a.at]) assert.ok(!map.tileSolid(p[0], p[1]), `spawn point ${p} blocked`);
+      }
+      for (const m of [].concat(ph.adult || [])) for (const p of m.route || []) assert.ok(!map.tileSolid(p[0], p[1]), `phase route point ${p} blocked`);
+      for (const [x, y] of ph.open || []) assert.equal(map.ch(x, y), 'G');
     }
   });
 }

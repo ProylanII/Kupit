@@ -44,6 +44,7 @@ let scroll = 0;    // level-select scroll offset
 let prevMode = 'title'; // where BACK goes from levels/help
 let newBest = false;
 let earned = 0;
+let bossBonus = 0;
 
 const setMode = (m) => { mode = m; age = 0; sel = 0; };
 const unlockedMax = () => Math.min(save.unlocked, levels.length - 1);
@@ -150,6 +151,7 @@ function drawLevels() {
     g.fillStyle = lock ? C.dgray : C.wallD; g.fillRect(r.x, r.y, r.w, r.h);
     drawText(g, String(i + 1), r.x + 6, r.y + 6, lock ? C.gray : C.gold, { scale: 3 });
     drawText(g, lock ? 'LOCKED' : levels[i].name, r.x + 28, r.y + 6, lock ? C.gray : C.white);
+    if (levels[i].boss) drawText(g, 'BOSS', r.x + 28 + (lock ? 28 : levels[i].name.length * 4) + 5, r.y + 6, lock ? C.dgray : C.red);
     const best = save.best[levels[i].id];
     if (!lock) drawText(g, best ? `BEST ${Math.floor(best)}S  PAR ${levels[i].par}S` : `PAR ${levels[i].par}S`, r.x + 28, r.y + 18, C.gray);
     if (!lock) for (let k = 0; k < 3; k++) drawStar(g, r.x + r.w - 50 + k * 15, r.y + 6, k < (save.stars[levels[i].id] || 0));
@@ -249,12 +251,13 @@ function drawClear() {
   dim(0.75);
   const r = play.result;
   const last = idx === levels.length - 1;
-  drawText(g, last ? 'ALL DONE!' : 'NICE KUPIT!', VIEW_W / 2, 80, C.gold, { scale: 5, align: 'center', shadow: C.gold2 });
+  drawText(g, last ? 'ALL DONE!' : levels[idx].boss ? 'BOSS BEATEN!' : 'NICE KUPIT!', VIEW_W / 2, 80, C.gold, { scale: levels[idx].boss && !last ? 4 : 5, align: 'center', shadow: C.gold2 });
   for (let i = 0; i < 3; i++) drawStar(g, VIEW_W / 2 - 22 + i * 15, 130, i < r.stars);
   drawText(g, `COINS ${r.coins}   TIME ${Math.floor(r.time)}S`, VIEW_W / 2, 155, C.white, { align: 'center' });
   drawText(g, newBest ? 'NEW BEST TIME!' : `BEST ${Math.floor(save.best[levels[idx].id] || r.time)}S`, VIEW_W / 2, 167, newBest ? C.green : C.gray, { align: 'center' });
   drawText(g, `${r.fast ? 'FAST + ' : `PAR ${levels[idx].par}S  `}${r.stealth ? 'SILENT' : 'SPOTTED A BIT'}`, VIEW_W / 2, 179, C.gray, { align: 'center' });
   drawText(g, `+${earned} COINS   BANK ${save.bank}`, VIEW_W / 2, 195, C.gold, { align: 'center' });
+  if (bossBonus) drawText(g, `BOSS BONUS +${bossBonus}`, VIEW_W / 2, 207, C.green, { align: 'center' });
   if (age > 0.5) drawMenu(g, [last ? 'TITLE' : 'NEXT LEVEL', 'PLAY AGAIN', 'LEVELS', 'STORE'], sel, END_Y, 21);
 }
 
@@ -268,15 +271,17 @@ function updateClear() {
 }
 
 function afterPlay() {
+  play.banner = null;
   if (play.status === 'caught') setMode('caught');
   else if (play.status === 'clear') {
     setMode('clear');
-    const id = levels[idx].id, t = play.result.time;
+    const id = levels[idx].id, t = play.result.time, first = save.stars[id] === undefined;
     newBest = !save.best[id] || t < save.best[id];
     if (newBest) save.best[id] = t;
     save.stars[id] = Math.max(save.stars[id] || 0, play.result.stars);
     save.unlocked = Math.max(save.unlocked, Math.min(idx + 1, levels.length - 1));
-    earned = play.result.coins + play.result.stars;
+    bossBonus = levels[idx].boss && first ? levels[idx].boss.bonus : 0; // first clear only
+    earned = play.result.coins + play.result.stars + bossBonus;
     save.bank += earned;
     writeSave(save);
   }

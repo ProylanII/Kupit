@@ -45,7 +45,36 @@ Coordinates are tile `[x, y]` (0,0 = top-left). Maps are 15×22 tiles (240×352 
 }
 ```
 
+## Adult extras
+
+- `"cfg": { ... }` overrides stats for one adult: `range`, `fov`, `speed`, `rate`, `cycle`, `sleepy`,
+  `cook` (off phase = stirring a pot: blind, stands still), `ranged: { "range": 88, "cd": 3.5 }` (throws a sandok;
+  dodge by sidestepping).
+- `"sweepPhase": 3.5` offsets a sweeping adult's rotation so several cones "roll" out of sync.
+
+## Bosses
+
+Add a `boss` block to make a level a boss fight (bosses are just levels; list them in `index.json`):
+
+```jsonc
+"boss": {
+  "title": "LOLA'S SIESTA",   // intro banner
+  "bonus": 10,                // extra coins the first time it is cleared
+  "bar": 0,                   // optional: adult index whose sleep/watch cycle is shown as a bar
+  "phases": [                 // fire in order once coins >= "at" (must be reachable)
+    { "at": 2, "banner": "LOLA IS A LIGHT SLEEPER!",   // <= 30 chars
+      "adult": { "index": 0, "cycle": { "on": 9, "off": 7 } },     // retune; null removes a stat; also speed/range/fov/rate/sweep/ranged/route
+      "spawn": [ { "type": "mama", "route": [[2,15],[12,15]] } ],  // new adults join
+      "open": [[x,y]], "close": [[x,y]] }                          // gates (G/g)
+  ]
+}
+```
+
+Extra target kind `candy` (the garapon prize). Adult types `nena` (Aling Nena) and `ninang`.
+`npm test` also checks phases (thresholds reachable, spawn points on floor, gates exist) and that standing still
+at spawn for 4s is safe on every level.
+
 Adult types: `mama`, `lola` (sleeps in cycles, noise wakes her), `tita` (phone cycles), `tatay` (fast),
-`kuya` (tattletale: alerts everyone), `aso` (dog: barks instead of chasing, eats pandesal).
+`kuya` (tattletale: alerts everyone), `aso` (dog: barks instead of chasing, eats pandesal), `nena`, `ninang`.
 Routes are walked with A* (adults open closed doors, never pass gates).
 Objects must sit on plain floor and not overlap.

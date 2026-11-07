@@ -32,6 +32,8 @@ export class World {
     this.switches = (level.switches || []).map((s) => ({ ...at(s.at), gates: s.gates, time: s.time || 0, timer: 0, on: false }));
     this.locks = new Map((level.locks || []).map((l) => [l.at.join(), l.key]));
     this.projectiles = [];
+    this.hostiles = []; // things thrown at the player (sandok)
+    this.phase = 0;     // boss phases triggered so far
     this.foods = [];
     this.events = [];
     this.noises = [];
@@ -49,6 +51,7 @@ export class World {
   }
 
   get patience() { return this.level.patience ? this.level.patience + this.mods.patienceBonus : 0; }
+  get bossPhases() { return this.level.boss?.phases || []; }
   get open() { return this.coins >= this.level.quota; }
   emit(e) { this.events.push(e); }
   noise(n) { this.noises.push(n); this.emit({ type: 'ring', x: n.x, y: n.y, r: n.r, lure: !!n.lure }); }
@@ -188,6 +191,23 @@ export class World {
     return true;
   }
 
+  // A boss phase fires when enough coins are collected: retune/spawn adults, move gates, banner.
+  applyPhase(ph) {
+    for (const m of [].concat(ph.adult || [])) this.adults[m.index]?.retune(m);
+    for (const d of ph.spawn || []) this.adults.push(new Adult(d, this.map));
+    for (const [x, y] of ph.open || []) if (this.map.ch(x, y) === 'G') this.map.set(x, y, 'g');
+    for (const [x, y] of ph.close || []) if (this.map.ch(x, y) === 'g' && !this.occupied(x, y)) this.map.set(x, y, 'G');
+    this.emit({ type: 'phase', text: ph.banner || '', n: this.phase });
+  }
+
+  // Adult throws a sandok at the player's current position.
+  throwAt(adult, target) {
+    const dx = target.x - adult.x, dy = target.y - adult.y, m = Math.hypot(dx, dy) || 1;
+    this.hostiles.push({ kind: 'sandok', x: adult.x, y: adult.y - 2, vx: (dx / m) * 110, vy: (dy / m) * 110, d: 0, max: adult.cfg.ranged.range + 14 });
+    adult.talk('SANDOK!', 1);
+    this.emit({ type: 'throw' });
+  }
+
   toggleSwitch(s, byPlayer) {
     s.on = !s.on;
     s.timer = s.on && s.time ? s.time : 0;
@@ -277,6 +297,18 @@ export class World {
       if (tr?.kind === 'lego') { this.noise({ x: p.x, y: p.y, r: 80, lure: true }); p.stunT = 0.8; this.talk('ARAY!'); this.emit({ type: 'ouch' }); }
     }
 
+    // --- hostile projectiles (sandok)
+    for (const h of this.hostiles) {
+      const nx = h.x + h.vx * dt, ny = h.y + h.vy * dt;
+      h.d += Math.hypot(h.vx, h.vy) * dt;
+      if (!p.hidden && Math.hypot(nx - p.x, ny - p.y) < 6) {
+        h.done = true; p.stunT = 1.3; this.talk('ARAY!');
+        this.noise({ x: p.x, y: p.y, r: 70, lure: true });
+        this.emit({ type: 'ouch' });
+      } else if (map.isSolidAt(nx, ny) || h.d >= h.max) { h.done = true; this.emit({ type: 'land', x: h.x, y: h.y }); } else { h.x = nx; h.y = ny; }
+    }
+    this.hostiles = this.hostiles.filter((h) => !h.done);
+
     // --- projectiles
     for (const pr of this.projectiles) {
       const nx = pr.x + pr.vx * dt, ny = pr.y + pr.vy * dt;
@@ -303,6 +335,8 @@ export class World {
     for (const nz of this.noises) {
       for (const a of this.adults) if (a !== nz.from && dist(a, nz) < nz.r) a.hear(nz);
     }
+    // --- boss phases
+    while (this.bossPhases[this.phase] && this.coins >= this.bossPhases[this.phase].at) this.applyPhase(this.bossPhases[this.phase++]);
     if (this.status !== 'play') return;
 
     if (this.patience && this.time >= this.patience) {

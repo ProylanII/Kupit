@@ -1,0 +1,234 @@
+{
+  "id": "boss5-sarisari",
+  "name": "SARI-SARI STORE",
+  "hint": "THE KEY IS ON THE SHELVES. THE CANDY IS IN THE STOREROOM",
+  "boss": {
+    "title": "ALING NENA'S STORE",
+    "bonus": 25,
+    "phases": [
+      {
+        "at": 2,
+        "banner": "ALING NENA IS WATCHING!",
+        "adult": {
+          "index": 0,
+          "speed": 30,
+          "range": 84
+        }
+      },
+      {
+        "at": 8,
+        "banner": "SINO ANG KUMUHA NG CANDY?!",
+        "adult": {
+          "index": 0,
+          "speed": 42,
+          "route": [
+            [
+              6,
+              8
+            ],
+            [
+              2,
+              12
+            ],
+            [
+              12,
+              12
+            ],
+            [
+              6,
+              15
+            ]
+          ]
+        }
+      }
+    ]
+  },
+  "tiles": [
+    "###############",
+    "#CCCCCCC#.....#",
+    "#,,,,,,,#.....#",
+    "#,,,,,,,D.....#",
+    "#,,,,,,,#.....#",
+    "#,,,,,,,#.....#",
+    "#,,,,,,,#######",
+    "#CCCCC,CCCCCCC#",
+    "#.............#",
+    "#.CCCC..CCCC..#",
+    "#.............#",
+    "#.CCCC..CCCC..#",
+    "#.............#",
+    "#.............#",
+    "#.............#",
+    "#.............#",
+    "#.PP.......PP.#",
+    "#.............#",
+    "#.............#",
+    "#.............#",
+    "#.............#",
+    "###############"
+  ],
+  "spawn": [
+    2,
+    19
+  ],
+  "exit": [
+    12,
+    20
+  ],
+  "quota": 8,
+  "par": 170,
+  "targets": [
+    {
+      "kind": "candy",
+      "at": [
+        12,
+        2
+      ],
+      "coins": 5,
+      "time": 3.0
+    },
+    {
+      "kind": "wallet",
+      "at": [
+        1,
+        5
+      ],
+      "coins": 3,
+      "time": 1.6
+    },
+    {
+      "kind": "purse",
+      "at": [
+        13,
+        12
+      ],
+      "coins": 2,
+      "time": 1.4
+    }
+  ],
+  "locks": [
+    {
+      "at": [
+        8,
+        3
+      ],
+      "key": "red"
+    }
+  ],
+  "items": [
+    {
+      "kind": "key",
+      "color": "red",
+      "at": [
+        13,
+        10
+      ]
+    },
+    {
+      "kind": "tsinelas",
+      "at": [
+        1,
+        8
+      ]
+    },
+    {
+      "kind": "tsinelas",
+      "at": [
+        13,
+        19
+      ]
+    }
+  ],
+  "devices": [
+    {
+      "kind": "radio",
+      "at": [
+        13,
+        8
+      ],
+      "dur": 9
+    }
+  ],
+  "hide": [
+    {
+      "kind": "box",
+      "at": [
+        1,
+        19
+      ]
+    },
+    {
+      "kind": "basket",
+      "at": [
+        13,
+        14
+      ]
+    },
+    {
+      "kind": "box",
+      "at": [
+        7,
+        12
+      ]
+    }
+  ],
+  "traps": [
+    {
+      "kind": "creak",
+      "at": [
+        6,
+        8
+      ]
+    },
+    {
+      "kind": "lego",
+      "at": [
+        6,
+        12
+      ]
+    },
+    {
+      "kind": "creak",
+      "at": [
+        3,
+        10
+      ]
+    }
+  ],
+  "adults": [
+    {
+      "type": "nena",
+      "route": [
+        [
+          3,
+          2,
+          2
+        ],
+        [
+          6,
+          2,
+          1
+        ],
+        [
+          6,
+          6,
+          1.5
+        ],
+        [
+          3,
+          5,
+          1
+        ]
+      ]
+    },
+    {
+      "type": "tita",
+      "at": [
+        12,
+        15
+      ],
+      "face": 3.14159,
+      "sweep": 0.5
+    }
+  ]
+}

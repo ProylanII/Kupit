@@ -1,0 +1,196 @@
+{
+  "id": "boss2-mama",
+  "name": "MAMA SA KUSINA",
+  "hint": "MAMA STIRS THE POT, THEN WATCHES. DODGE THE SANDOK!",
+  "boss": {
+    "title": "MAMA SA KUSINA",
+    "bonus": 12,
+    "phases": [
+      {
+        "at": 3,
+        "banner": "MAMA GRABBED THE SANDOK!",
+        "adult": {
+          "index": 0,
+          "ranged": {
+            "range": 88,
+            "cd": 3.5
+          }
+        }
+      },
+      {
+        "at": 5,
+        "banner": "KAIN NA! MAMA IS FASTER!",
+        "adult": {
+          "index": 0,
+          "speed": 38,
+          "cycle": {
+            "on": 9,
+            "off": 3
+          }
+        }
+      }
+    ]
+  },
+  "tiles": [
+    "###############",
+    "#CCCC,,FF,CCC,#",
+    "#,,,,,,,,,,,,,#",
+    "#,,,,,,,,,,,,,#",
+    "#,,TTTT,,,,,,,#",
+    "#,,TTTT,,,,,,,#",
+    "#,,,,,,,,,,,,,#",
+    "#,,,,,,,,,,,,,#",
+    "#,,,,CC,,,,,,,#",
+    "#,,,,,,,,,,,,,#",
+    "#,,,,,,,,,,,,,#",
+    "####.......####",
+    "#.............#",
+    "#.............#",
+    "#.............#",
+    "#.............#",
+    "#.PP.......PP.#",
+    "#.............#",
+    "#.............#",
+    "#.............#",
+    "#.............#",
+    "###############"
+  ],
+  "spawn": [
+    2,
+    19
+  ],
+  "exit": [
+    12,
+    20
+  ],
+  "quota": 7,
+  "par": 120,
+  "targets": [
+    {
+      "kind": "purse",
+      "at": [
+        10,
+        2
+      ],
+      "coins": 3,
+      "time": 1.6
+    },
+    {
+      "kind": "wallet",
+      "at": [
+        2,
+        7
+      ],
+      "coins": 2,
+      "time": 1.2
+    },
+    {
+      "kind": "piggy",
+      "at": [
+        12,
+        8
+      ],
+      "coins": 2,
+      "time": 1.4
+    }
+  ],
+  "items": [
+    {
+      "kind": "tsinelas",
+      "at": [
+        3,
+        13
+      ]
+    },
+    {
+      "kind": "tsinelas",
+      "at": [
+        13,
+        13
+      ]
+    }
+  ],
+  "devices": [
+    {
+      "kind": "radio",
+      "at": [
+        1,
+        3
+      ],
+      "dur": 9
+    }
+  ],
+  "hide": [
+    {
+      "kind": "box",
+      "at": [
+        1,
+        6
+      ]
+    },
+    {
+      "kind": "basket",
+      "at": [
+        13,
+        10
+      ]
+    },
+    {
+      "kind": "curtain",
+      "at": [
+        13,
+        5
+      ]
+    }
+  ],
+  "traps": [
+    {
+      "kind": "creak",
+      "at": [
+        7,
+        7
+      ]
+    },
+    {
+      "kind": "lego",
+      "at": [
+        9,
+        10
+      ]
+    }
+  ],
+  "adults": [
+    {
+      "type": "mama",
+      "route": [
+        [
+          3,
+          3,
+          1
+        ],
+        [
+          11,
+          3,
+          1
+        ],
+        [
+          11,
+          9,
+          1
+        ],
+        [
+          3,
+          9,
+          1
+        ]
+      ],
+      "cfg": {
+        "cycle": {
+          "on": 7,
+          "off": 5
+        },
+        "cook": true
+      }
+    }
+  ]
+}

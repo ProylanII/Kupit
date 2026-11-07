@@ -11,8 +11,14 @@ export const ADULT_TYPES = {
   tita:  { name: 'TITA',  speed: 22, range: 80, fov: 0.7,  rate: 2.0, cycle: { on: 7, off: 3 }, phone: true, shout: 'HOY!' },
   tatay: { name: 'TATAY', speed: 34, range: 60, fov: 0.75, rate: 2.2, shout: 'HOY BATA!' },
   kuya:  { name: 'KUYA',  speed: 30, range: 68, fov: 0.8,  rate: 1.6, tattle: true, shout: 'SUSUMBONG KITA!' },
+  nena:  { name: 'ALING NENA', speed: 22, range: 76, fov: 0.9, rate: 1.8, shout: 'BAYAD MUNA!' },
+  ninang: { name: 'NINANG', speed: 18, range: 70, fov: 0.9, rate: 1.6, shout: 'IJO! ANO YAN?!' },
   aso:   { name: 'ASO',   speed: 40, range: 44, fov: 1.4,  rate: 2.5, dog: true, shout: 'AW AW!' },
 };
+
+const mapPts = (route) => route.map((p) => ({
+  x: p[0] * TILE + TILE / 2, y: p[1] * TILE + TILE / 2, tx: p[0], ty: p[1], wait: p[2], face: p[3],
+}));
 
 const RAYS = 32;
 const SEARCH_TIME = 2.5;
@@ -26,11 +32,9 @@ export class Adult {
     this.cfg = { ...ADULT_TYPES[def.type] };
     if (def.cycle) this.cfg.cycle = def.cycle;
     if (def.sleepy) this.cfg.sleepy = true;
+    Object.assign(this.cfg, def.cfg || {}); // per-adult overrides: range, ranged, cook, ...
     // route points: [x, y, waitSeconds?, faceRadians?]
-    this.pts = (def.route || [def.at]).map((p) => ({
-      x: p[0] * TILE + TILE / 2, y: p[1] * TILE + TILE / 2, tx: p[0], ty: p[1],
-      wait: p[2], face: p[3],
-    }));
+    this.pts = mapPts(def.route || [def.at]);
     this.x = this.pts[0].x;
     this.y = this.pts[0].y;
     this.i = 1 % this.pts.length;
@@ -38,7 +42,7 @@ export class Adult {
     this.baseA = def.face ?? (this.pts.length > 1 ? Math.atan2(this.pts[1].y - this.y, this.pts[1].x - this.x) : Math.PI / 2);
     this.a = this.baseA;
     this.sweep = def.sweep ?? 0;
-    this.sweepT = 0;
+    this.sweepT = def.sweepPhase ?? 0;
     this.t = def.phase ?? 0;
     this.state = 'patrol'; // patrol | investigate | chase | search | return | eat
     this.alert = 0;
@@ -62,6 +66,21 @@ export class Adult {
     this.say = null;
     this.food = null;
     this.freezeT = 0; // charmed: sees nothing, forgets the player
+    this.rangedT = 1; // ladle cooldown
+  }
+
+  // Boss phases change an adult mid-level: new stats, cycle, sweep or patrol route.
+  // null removes a stat (e.g. cycle: null = never sleeps again).
+  retune(m) {
+    const { index, route, sweep, ...stats } = m;
+    if (sweep !== undefined) this.sweep = sweep;
+    for (const [k, v] of Object.entries(stats)) { if (v === null) delete this.cfg[k]; else this.cfg[k] = v; }
+    if ('cycle' in stats && !this.cfg.cycle) this.awake = true;
+    if (route) {
+      this.pts = mapPts(route);
+      this.i = 0; this.pathFor = null; this.path = []; this.wait = 0;
+      if (this.state === 'patrol') this.pathFor = null;
+    }
   }
 
   // Adults walk through closed doors (they open them), never through gates.
@@ -204,6 +223,16 @@ export class Adult {
       }
     } else if (this.state !== 'chase') {
       this.alert = Math.max(0, this.alert - dt * (this.state === 'patrol' ? 0.9 : 0.4));
+    }
+
+    // --- ranged (Mama's sandok): throws at what she sees, dodgeable by moving sideways
+    if (c.ranged) {
+      this.rangedT = Math.max(0, this.rangedT - dt);
+      const d = Math.hypot(player.x - this.x, player.y - this.y);
+      if (this.seen && this.rangedT <= 0 && d > 20 && d < c.ranged.range && (this.alert > 0.3 || this.state === 'chase')) {
+        world.throwAt(this, player);
+        this.rangedT = c.ranged.cd;
+      }
     }
 
     // --- behaviour

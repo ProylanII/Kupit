@@ -1,0 +1,210 @@
+{
+  "id": "boss1-lola",
+  "name": "LOLA'S SIESTA",
+  "hint": "LOLA SLEEPS IN CYCLES. WATCH THE BAR! NOISE WAKES HER",
+  "boss": {
+    "title": "LOLA'S SIESTA",
+    "bonus": 10,
+    "bar": 0,
+    "phases": [
+      {
+        "at": 2,
+        "banner": "LOLA IS A LIGHT SLEEPER!",
+        "adult": {
+          "index": 0,
+          "cycle": {
+            "on": 9,
+            "off": 7
+          }
+        }
+      },
+      {
+        "at": 4,
+        "banner": "LOLA WOKE UP! MAMA IS COMING",
+        "adult": {
+          "index": 0,
+          "cycle": null,
+          "sleepy": false,
+          "sweep": 1.8
+        },
+        "spawn": [
+          {
+            "type": "mama",
+            "route": [
+              [
+                2,
+                15
+              ],
+              [
+                12,
+                15
+              ],
+              [
+                12,
+                18
+              ],
+              [
+                2,
+                18
+              ]
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "tiles": [
+    "###############",
+    "#.............#",
+    "#.BB.......BB.#",
+    "#.BB.......BB.#",
+    "#.............#",
+    "#.............#",
+    "#.............#",
+    "#.....P.P.....#",
+    "#.............#",
+    "#.............#",
+    "#..TT.....TT..#",
+    "#.............#",
+    "#.............#",
+    "#######D#######",
+    "#.............#",
+    "#.............#",
+    "#..PP.....PP..#",
+    "#.............#",
+    "#.............#",
+    "#.............#",
+    "#.............#",
+    "###############"
+  ],
+  "spawn": [
+    7,
+    19
+  ],
+  "exit": [
+    13,
+    19
+  ],
+  "quota": 6,
+  "par": 100,
+  "targets": [
+    {
+      "kind": "bayong",
+      "at": [
+        11,
+        5
+      ],
+      "coins": 2,
+      "time": 1.8
+    },
+    {
+      "kind": "bayong",
+      "at": [
+        3,
+        8
+      ],
+      "coins": 2,
+      "time": 1.8
+    },
+    {
+      "kind": "bayong",
+      "at": [
+        7,
+        2
+      ],
+      "coins": 2,
+      "time": 1.8
+    }
+  ],
+  "items": [
+    {
+      "kind": "tsinelas",
+      "at": [
+        1,
+        12
+      ]
+    },
+    {
+      "kind": "tsinelas",
+      "at": [
+        13,
+        12
+      ]
+    }
+  ],
+  "devices": [
+    {
+      "kind": "radio",
+      "at": [
+        13,
+        6
+      ],
+      "dur": 9
+    }
+  ],
+  "hide": [
+    {
+      "kind": "box",
+      "at": [
+        1,
+        5
+      ]
+    },
+    {
+      "kind": "curtain",
+      "at": [
+        13,
+        9
+      ]
+    },
+    {
+      "kind": "basket",
+      "at": [
+        6,
+        11
+      ]
+    }
+  ],
+  "traps": [
+    {
+      "kind": "creak",
+      "at": [
+        9,
+        6
+      ]
+    },
+    {
+      "kind": "creak",
+      "at": [
+        5,
+        6
+      ]
+    },
+    {
+      "kind": "lego",
+      "at": [
+        7,
+        9
+      ]
+    }
+  ],
+  "adults": [
+    {
+      "type": "lola",
+      "at": [
+        7,
+        5
+      ],
+      "face": 1.5708,
+      "sweep": 0.5,
+      "phase": 6,
+      "cfg": {
+        "range": 84,
+        "cycle": {
+          "on": 6,
+          "off": 12
+        }
+      }
+    }
+  ]
+}

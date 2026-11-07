@@ -73,6 +73,8 @@ export const LOOKS = {
   lola: { H: C.white,  S: C.skin, T: C.purple, B: '#6b4a8c', F: C.skin2, E: C.ink, legsN: 4, skirt: true },
   tita: { H: C.pink,   S: C.skin, T: C.teal,   B: C.white,  F: C.skin2, E: C.ink, legsN: 4, longHair: true },
   tatay: { H: C.ink,   S: C.skin2, T: C.white, B: '#3a4f8a', F: C.skin2, E: C.ink, legsN: 4 },
+  nena: { H: C.gray,   S: C.skin, T: C.blue,   B: '#3a4f8a', F: C.skin2, E: C.ink, legsN: 4, longHair: true },
+  ninang: { H: '#6b4a8c', S: C.skin, T: '#c0306a', B: '#8a2050', F: C.skin2, E: C.ink, legsN: 4, skirt: true },
   kuya: { H: '#3a2418', S: C.skin, T: '#46a0e0', B: C.dgray, F: C.skin2, E: C.ink, legsN: 3 },
 };
 
@@ -157,11 +159,16 @@ const PIGGY = [
   '..i..i....', '.iiiiiiii.', 'iiiiiiiiie', 'iiiiiiiiii', '.iiiiiiii.', '..i..i....',
 ];
 
+const CANDY = [ // garapon of candy: the real prize
+  '..llll..', '.gggggg.', 'gGrGyGbg', 'gyGbGrGg', 'gGgGgyGg', 'gbGrGyGg', '.gggggg.',
+];
+
 export function drawTarget(g, kind, x, y, done) {
   const pal = done
-    ? { g: C.dgray, p: C.dgray, P: C.gray, c: C.gray, w: C.gray, W: C.dgray, i: C.gray, e: C.dgray }
-    : { g: C.purse, p: C.purse, P: C.purse2, c: C.gold, w: '#d9c27a', W: '#b99a4a', i: C.pink, e: C.ink };
-  const rows = { purse: PURSE, bayong: BAYONG, wallet: WALLET, piggy: PIGGY }[kind] || PURSE;
+    ? { g: C.dgray, p: C.dgray, P: C.gray, c: C.gray, w: C.gray, W: C.dgray, i: C.gray, e: C.dgray, l: C.dgray, G: C.gray, r: C.gray, y: C.gray, b: C.gray }
+    : { g: C.purse, p: C.purse, P: C.purse2, c: C.gold, w: '#d9c27a', W: '#b99a4a', i: C.pink, e: C.ink, l: C.red, G: '#9fd8e8', r: C.red, y: C.gold, b: '#4f8fff' };
+  const rows = { purse: PURSE, bayong: BAYONG, wallet: WALLET, piggy: PIGGY, candy: CANDY }[kind] || PURSE;
+  if (kind === 'candy') pal.g = done ? C.dgray : '#cfe9f2';
   const s = mapSprite(`${kind}|${done}`, rows, pal);
   g.drawImage(s, Math.round(x) - Math.floor(s.width / 2), Math.round(y) - Math.floor(s.height / 2) + 1);
 }
@@ -197,6 +204,8 @@ export const OBJ = {
   radio: ['...a......', 'mmmmmmmmmm', 'mggmmmmggm', 'mggmsssmgm', 'mggmmmmggm', 'mmmmmmmmmm'],
   leverOff: ['.h....', '..h...', '...h..', 'bbbbbb', 'bBBBBb', 'bbbbbb'],
   leverOn: ['....h.', '...h..', '..h...', 'bbbbbb', 'bBBBBb', 'bbbbbb'],
+  sandok: ['..ss..', '.ssss.', '.ssss.', '..hh..', '..hh..', '..hh..'],
+  pot: ['.s.s..', '..s.s.', 'pppppp', 'pBBBBp', '.pppp.'],
   lego: ['rr..bb', 'rr..bb', '..yy..', 'gg.yy.', 'gg....'],
 };
 
@@ -210,6 +219,8 @@ const OBJ_PAL = {
   radio: { m: C.dgray, g: C.gray, s: C.gold, a: C.gray },
   leverOff: { h: C.gray, b: C.dgray, B: C.red },
   leverOn: { h: C.gray, b: C.dgray, B: C.green },
+  sandok: { s: C.gray, h: C.table2 },
+  pot: { s: C.white, p: C.dgray, B: '#b8423a' },
   lego: { r: C.red, b: C.blue, y: C.gold, g: C.green },
 };
 

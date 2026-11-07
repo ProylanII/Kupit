@@ -49,6 +49,7 @@ export class Play {
     this.parts = [];
     this.rings = [];
     this.tickT = 0;
+    this.banner = level.boss ? { kind: 'boss', text: level.boss.title || level.name, t: 3 } : null;
     this.coneData = new ImageData(VIEW_W, VIEW_H);
     this.coneCv = document.createElement('canvas');
     this.coneCv.width = VIEW_W; this.coneCv.height = VIEW_H;
@@ -70,6 +71,7 @@ export class Play {
     w.events.length = 0;
     for (const p of this.parts) { p.y += p.vy * dt; p.vy += 90 * dt; p.l -= dt * 1.6; }
     this.parts = this.parts.filter((p) => p.l > 0);
+    if (this.banner && (this.banner.t -= dt) <= 0) this.banner = null;
     for (const r of this.rings) r.age += dt;
     this.rings = this.rings.filter((r) => r.age < 0.5);
   }
@@ -93,6 +95,7 @@ export class Play {
       case 'pickup': case 'unlock': sfx.pickup(); break;
       case 'throw': sfx.whoosh(); break;
       case 'ability': sfx.skill(); break;
+      case 'phase': sfx.phase(); this.banner = { kind: 'phase', text: e.text, t: 3 }; break;
       case 'land': sfx.thud(); break;
       case 'hide': case 'unhide': sfx.hide(); break;
       case 'device': sfx.music(); break;
@@ -202,6 +205,7 @@ export class Play {
       if (!b) { g.fillStyle = C.white; g.fillRect(p.x - 3, p.y - 3, 2, 2); g.fillRect(p.x + 1, p.y - 3, 2, 2); g.fillStyle = C.ink; g.fillRect(p.x - 2, p.y - 2, 1, 1); g.fillRect(p.x + 2, p.y - 2, 1, 1); }
     }
     for (const pr of w.projectiles) drawObj(g, pr.kind, pr.x, pr.y);
+    for (const h of w.hostiles) drawObj(g, h.kind, h.x, h.y);
 
     for (const r of this.rings) ring(g, Math.round(r.x), Math.round(r.y), Math.max(2, Math.round(r.r * (r.age / 0.5))), r.lure ? C.yellow : C.white);
 
@@ -218,6 +222,36 @@ export class Play {
     if (w.say) bubble(g, w.say.text, p.x, Math.round(p.y) - 30);
     for (const a of w.adults) if (a.say) bubble(g, a.say.text, a.x, Math.round(a.y) - 34, C.ink, a.state === 'chase' ? C.red : C.white);
     this.drawHud(g);
+  }
+
+  // Boss HUD: phase pips, the boss's sleep/watch bar, and big banners.
+  drawBoss(g) {
+    const b = this.level.boss, w = this.world;
+    if (!b) return;
+    const total = (b.phases || []).length + 1;
+    for (let i = 0; i < total; i++) {
+      g.fillStyle = C.ink; g.fillRect(4 + i * 8, 12, 7, 5);
+      g.fillStyle = i <= w.phase ? C.red : C.dgray; g.fillRect(5 + i * 8, 13, 5, 3);
+    }
+    const a = b.bar !== undefined ? w.adults[b.bar] : null, cy = a?.cfg.cycle;
+    if (a && cy && a.state === 'patrol') {
+      const len = cy.on + cy.off, t = a.t % len, awake = t < cy.on;
+      const left = awake ? cy.on - t : len - t, full = awake ? cy.on : cy.off;
+      drawText(g, awake ? 'WATCH' : 'SLEEP', VIEW_W - 62, 12, awake ? C.red : C.green, { align: 'right' });
+      g.fillStyle = C.ink; g.fillRect(VIEW_W - 60, 12, 56, 5);
+      g.fillStyle = awake ? C.red : C.green; g.fillRect(VIEW_W - 59, 13, Math.round(54 * left / full), 3);
+    }
+    const bn = this.banner;
+    if (bn) {
+      g.globalAlpha = 0.8; g.fillStyle = C.ink; g.fillRect(0, 96, VIEW_W, bn.kind === 'boss' ? 46 : 22); g.globalAlpha = 1;
+      if (bn.kind === 'boss') {
+        drawText(g, 'BOSS', VIEW_W / 2, 101, C.red, { scale: 3, align: 'center', shadow: C.ink });
+        drawText(g, bn.text, VIEW_W / 2, 125, C.gold, { scale: 2, align: 'center', shadow: C.gold2 });
+      } else {
+        drawText(g, '!', VIEW_W / 2, 100, C.red, { scale: 2, align: 'center' });
+        drawText(g, bn.text, VIEW_W / 2, 114, C.white, { align: 'center' });
+      }
+    }
   }
 
   // Step-by-step coaching for the tutorial level, driven by what the player is doing.
@@ -242,6 +276,9 @@ export class Play {
     if (sleeping && a.state !== 'eat') {
       const b = Math.floor(performance.now() / 500) % 2;
       drawText(g, 'ZZ', cx + 4, top - 6 - b, C.white, { shadow: C.ink });
+    } else if (!a.awake && a.cfg.cook) { // stirring the pot: back turned
+      drawObj(g, 'pot', cx + (dir === 1 ? -9 : 9), Math.round(a.y) - 1);
+      if (Math.floor(performance.now() / 400) % 2) drawText(g, '~', cx + (dir === 1 ? -10 : 8), Math.round(a.y) - 11, C.white);
     } else if (!a.awake && a.cfg.phone) {
       g.fillStyle = C.ink; g.fillRect(cx + (dir === 1 ? -7 : 5), Math.round(a.y) - 4, 4, 6);
       g.fillStyle = C.pink; g.fillRect(cx + (dir === 1 ? -6 : 6), Math.round(a.y) - 3, 2, 4);
@@ -267,6 +304,7 @@ export class Play {
       g.fillStyle = C.ink; g.fillRect(4, 13, VIEW_W - 8, 3);
       g.fillStyle = left < 0.25 ? C.red : C.orange; g.fillRect(5, 14, Math.round((VIEW_W - 10) * left), 1);
     }
+    this.drawBoss(g);
     // control strip
     g.fillStyle = C.ink; g.fillRect(0, MAP_H, VIEW_W, VIEW_H - MAP_H);
     g.fillStyle = C.wallD; g.fillRect(0, MAP_H, VIEW_W, 1);
