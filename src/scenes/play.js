@@ -1,16 +1,14 @@
-import { TileMap, TILE } from '../world/tilemap.js';
+// Draws a World and turns its events into sound/particles. All rules live in game/world.js.
+import { TILE } from '../world/tilemap.js';
 import { angDiff } from '../world/los.js';
-import { Player } from '../entities/player.js';
-import { Adult } from '../entities/adult.js';
-import { Target } from '../entities/target.js';
+import { World } from '../game/world.js';
 import { buildBackground } from '../render/tiles.js';
-import { drawActor, drawTarget, drawCoin } from '../render/sprites.js';
+import { drawActor, drawTarget, drawCoin, drawObj, KEY_COLORS } from '../render/sprites.js';
 import { C, hexToRgb } from '../render/palette.js';
-import { drawText } from '../ui/font.js';
+import { drawText, textWidth } from '../ui/font.js';
 import { sfx } from '../core/audio.js';
-import { VIEW_W, VIEW_H, BUTTON } from '../core/input.js';
+import { VIEW_W, VIEW_H, MAP_H, BUTTON, BUTTON2 } from '../core/input.js';
 
-const REACH = 18;
 const YELLOW = hexToRgb(C.yellow), RED = hexToRgb(C.red);
 
 function disc(g, cx, cy, r, color) {
@@ -21,23 +19,35 @@ function disc(g, cx, cy, r, color) {
   }
 }
 
+// Midpoint circle outline, dashed for pixel-art "sound ring".
+function ring(g, cx, cy, r, color) {
+  g.fillStyle = color;
+  let x = r, y = 0, err = 1 - r, i = 0;
+  while (x >= y) {
+    if ((i++ & 1) === 0) {
+      for (const [px, py] of [[x, y], [y, x], [-y, x], [-x, y], [-x, -y], [-y, -x], [y, -x], [x, -y]]) g.fillRect(cx + px, cy + py, 1, 1);
+    }
+    y++;
+    if (err < 0) err += 2 * y + 1; else { x--; err += 2 * (y - x) + 1; }
+  }
+}
+
+function bubble(g, text, cx, y, fg = C.ink, bg = C.white) {
+  const w = textWidth(text) + 4;
+  const x = Math.max(1, Math.min(VIEW_W - w - 1, Math.round(cx - w / 2)));
+  g.fillStyle = C.ink; g.fillRect(x - 1, y - 1, w + 2, 9);
+  g.fillStyle = bg; g.fillRect(x, y, w, 7);
+  drawText(g, text, x + 2, y + 1, fg);
+}
+
 export class Play {
   constructor(level, input) {
-    this.level = level;
     this.input = input;
-    this.map = new TileMap(level.tiles);
-    this.bg = buildBackground(this.map);
-    this.player = new Player(level.spawn[0], level.spawn[1]);
-    this.adults = level.adults.map((d) => new Adult(d, this.map));
-    this.targets = level.targets.map((t) => new Target(t));
-    this.exit = { x: level.exit[0] * TILE + TILE / 2, y: level.exit[1] * TILE + TILE / 2 };
-    this.coins = 0;
-    this.time = 0;
-    this.maxAlert = 0;
+    this.world = new World(level);
+    this.level = level;
+    this.bg = buildBackground(this.world.map);
     this.parts = [];
-    this.status = 'play';
-    this.catcher = null;
-    this.result = null;
+    this.rings = [];
     this.tickT = 0;
     this.coneData = new ImageData(VIEW_W, VIEW_H);
     this.coneCv = document.createElement('canvas');
@@ -46,63 +56,52 @@ export class Play {
     input.buttonEnabled = true;
   }
 
-  get open() { return this.coins >= this.level.quota; }
+  get status() { return this.world.status; }
+  get result() { return this.world.result; }
+  get catcher() { return this.world.catcher; }
+  get reason() { return this.world.reason; }
 
   update(dt) {
-    if (this.status !== 'play') return;
-    const { input, player, map } = this;
-    this.time += dt;
-
-    const near = this.targets.find((t) => !t.done && Math.hypot(t.x - player.x, t.y - player.y) <= REACH);
-    const frozen = input.action() && !!near;
-    const noise = player.update(dt, map, input.move(), frozen);
-
-    for (const t of this.targets) {
-      if (t === near && frozen) {
-        t.progress += dt / t.time;
-        this.tickT -= dt;
-        if (this.tickT <= 0) { sfx.steal(); this.tickT = 0.22; }
-        if (t.progress >= 1) this.collect(t);
-      } else if (!t.done) t.progress = Math.max(0, t.progress - dt * 0.8);
-    }
-
-    for (const a of this.adults) {
-      const before = a.alert;
-      a.update(dt, player, noise);
-      this.maxAlert = Math.max(this.maxAlert, a.alert);
-      if (before < 0.5 && a.alert >= 0.5) sfx.alert();
-      if (a.caught && this.status === 'play') {
-        this.status = 'caught';
-        this.catcher = a;
-        sfx.caught();
-      }
-    }
-
+    const w = this.world;
+    this.input.button2Enabled = w.player.items.length > 0;
+    w.update(dt, this.input.poll());
+    for (const e of w.events) this.onEvent(e, dt);
+    w.events.length = 0;
     for (const p of this.parts) { p.y += p.vy * dt; p.vy += 90 * dt; p.l -= dt * 1.6; }
     this.parts = this.parts.filter((p) => p.l > 0);
+    for (const r of this.rings) r.age += dt;
+    this.rings = this.rings.filter((r) => r.age < 0.5);
+  }
 
-    if (this.status === 'play' && this.open && Math.hypot(player.x - this.exit.x, player.y - this.exit.y) < 10) {
-      this.status = 'clear';
-      const stars = 1 + (this.time <= this.level.par ? 1 : 0) + (this.maxAlert < 0.3 ? 1 : 0);
-      this.result = { coins: this.coins, time: this.time, stars, stealth: this.maxAlert < 0.3, fast: this.time <= this.level.par };
-      sfx.clear();
+  onEvent(e, dt) {
+    switch (e.type) {
+      case 'ring': this.rings.push({ ...e, age: 0 }); break;
+      case 'stealTick':
+        if ((this.tickT -= dt) <= 0) { sfx.steal(); this.tickT = 0.22; }
+        break;
+      case 'coin':
+        sfx.coin();
+        for (let i = 0; i < e.n * 2; i++) this.parts.push({ x: e.x + (Math.random() * 14 - 7), y: e.y - 4, vy: -50 - Math.random() * 40, l: 1 });
+        break;
+      case 'spotted': case 'bark': sfx.alert(); break;
+      case 'caught': sfx.caught(); break;
+      case 'clear': sfx.clear(); break;
+      case 'door': case 'switch': sfx.click(); break;
+      case 'creak': case 'locked': sfx.creak(); break;
+      case 'ouch': sfx.ouch(); break;
+      case 'pickup': case 'unlock': sfx.pickup(); break;
+      case 'throw': sfx.whoosh(); break;
+      case 'land': sfx.thud(); break;
+      case 'hide': case 'unhide': sfx.hide(); break;
+      case 'device': sfx.music(); break;
     }
   }
 
-  collect(t) {
-    t.done = true;
-    t.progress = 1;
-    this.coins += t.coins;
-    sfx.coin();
-    for (let i = 0; i < t.coins * 2; i++) {
-      this.parts.push({ x: t.x + (Math.random() * 14 - 7), y: t.y - 4, vy: -50 - Math.random() * 40, l: 1 });
-    }
-  }
-
+  // ---------------------------------------------------------------- drawing
   drawCones(g) {
     const d = this.coneData.data;
     d.fill(0);
-    for (const a of this.adults) {
+    for (const a of this.world.adults) {
       if (!a.awake) continue;
       const { range, fov } = a.cfg;
       const N = a.rays.length - 1;
@@ -128,80 +127,163 @@ export class Play {
     g.drawImage(this.coneCv, 0, 0);
   }
 
+  drawDynamicTiles(g) {
+    const { map, locks } = this.world;
+    for (let ty = 0; ty < map.h; ty++) for (let tx = 0; tx < map.w; tx++) {
+      const c = map.ch(tx, ty), x = tx * TILE, y = ty * TILE;
+      if (c === 'D') {
+        g.fillStyle = C.table; g.fillRect(x, y, TILE, TILE);
+        g.fillStyle = C.table2; g.fillRect(x + 2, y + 1, 12, 14);
+        g.fillStyle = C.table; g.fillRect(x + 4, y + 3, 8, 4); g.fillRect(x + 4, y + 9, 8, 4);
+        g.fillStyle = C.gold; g.fillRect(x + 11, y + 8, 2, 2);
+        const lock = locks.get(tx + ',' + ty);
+        if (lock) { g.fillStyle = C.ink; g.fillRect(x + 6, y + 6, 4, 5); g.fillStyle = KEY_COLORS[lock]; g.fillRect(x + 7, y + 7, 2, 3); }
+      } else if (c === 'd') {
+        g.fillStyle = C.table; g.fillRect(x, y, 3, TILE);
+        g.fillStyle = C.table2; g.fillRect(x + 1, y + 1, 1, 14);
+      } else if (c === 'G' || c === 'g') {
+        g.fillStyle = C.dgray; g.fillRect(x, y, TILE, 2);
+        if (c === 'G') for (let i = 1; i < TILE; i += 3) { g.fillStyle = C.ink; g.fillRect(x + i, y + 2, 2, 14); g.fillStyle = C.gray; g.fillRect(x + i, y + 2, 1, 14); }
+      }
+    }
+  }
+
   drawExit(g) {
-    const x = this.exit.x - 8, y = this.exit.y - 8;
-    const pulse = this.open && Math.floor(performance.now() / 250) % 2;
+    const w = this.world, x = w.exit.x - 8, y = w.exit.y - 8;
+    const pulse = w.open && Math.floor(performance.now() / 250) % 2;
     g.fillStyle = C.table; g.fillRect(x + 1, y, 14, 16);
-    g.fillStyle = this.open ? (pulse ? C.green : '#2fb56b') : C.dgray; g.fillRect(x + 3, y + 2, 10, 14);
+    g.fillStyle = w.open ? (pulse ? C.green : '#2fb56b') : C.dgray; g.fillRect(x + 3, y + 2, 10, 14);
     g.fillStyle = C.gold; g.fillRect(x + 10, y + 9, 2, 2);
-    drawText(g, this.open ? 'EXIT' : 'LOCKED', this.exit.x, y - 7, this.open ? C.green : C.gray, { align: 'center', shadow: C.ink });
+    drawText(g, w.open ? 'EXIT' : 'LOCKED', w.exit.x, y - 7, w.open ? C.green : C.gray, { align: 'center', shadow: C.ink });
   }
 
   draw(g) {
+    const w = this.world, p = w.player;
     g.drawImage(this.bg, 0, 0);
+    // floor-level stuff
+    for (const t of w.traps) {
+      if (t.kind === 'lego') drawObj(g, 'lego', t.x, t.y);
+      else { g.fillStyle = C.woodLine; g.fillRect(t.x - 6, t.y - 1, 12, 1); g.fillRect(t.x - 3, t.y + 3, 8, 1); }
+    }
+    this.drawDynamicTiles(g);
     this.drawExit(g);
-    for (const t of this.targets) drawTarget(g, t.kind, t.x, t.y, t.done);
+    for (const s of w.switches) {
+      drawObj(g, s.on ? 'leverOn' : 'leverOff', s.x, s.y + 2);
+      if (s.timer > 0) drawText(g, String(Math.ceil(s.timer)), s.x, s.y - 12, C.yellow, { align: 'center', shadow: C.ink });
+    }
+    for (const d of w.devices) {
+      drawObj(g, d.kind, d.x, d.y);
+      if (d.on) {
+        g.fillStyle = Math.floor(performance.now() / 150) % 2 ? '#7fd7ff' : C.white;
+        if (d.kind === 'tv') g.fillRect(d.x - 5, d.y - 3, 8, 4);
+        drawText(g, Math.floor(performance.now() / 300) % 2 ? '*' : '+', d.x + 6, d.y - 12, C.pink, { shadow: C.ink });
+      }
+    }
+    for (const t of w.targets) drawTarget(g, t.kind, t.x, t.y, t.done);
+    for (const it of w.items) drawObj(g, it.kind, it.x, it.y + (it.kind === 'key' ? Math.floor(performance.now() / 300) % 2 : 0), it.color);
+    for (const f of w.foods) drawObj(g, 'pandesal', f.x, f.y);
+    for (const h of w.hides) if (h.kind !== 'curtain') drawObj(g, h.kind, h.x, h.y + 2);
+
+    if (this.level.night) { g.globalAlpha = 0.38; g.fillStyle = '#10183a'; g.fillRect(0, 0, VIEW_W, VIEW_H); g.globalAlpha = 1; }
     this.drawCones(g);
 
-    // actors, back to front
-    const actors = [{ k: 'p', y: this.player.y }, ...this.adults.map((a) => ({ k: 'a', a, y: a.y }))];
+    const actors = [...w.adults.map((a) => ({ a, y: a.y }))];
+    if (!p.hidden) actors.push({ p: true, y: p.y });
     actors.sort((u, v) => u.y - v.y);
     for (const e of actors) {
-      if (e.k === 'p') {
-        const p = this.player;
-        drawActor(g, 'kid', p.x, p.y, p.dir, p.moving ? Math.floor(p.stepT * 8) % 4 : 0);
-      } else this.drawAdult(g, e.a);
+      if (e.p) drawActor(g, 'kid', p.x, p.y, p.dir, p.moving ? Math.floor(p.stepT * 8) % 4 : 0);
+      else this.drawAdult(g, e.a);
     }
+    for (const h of w.hides) if (h.kind === 'curtain') drawObj(g, 'curtain', h.x, h.y - 1);
+    if (p.hidden) { // peeking eyes
+      const b = Math.floor(performance.now() / 700) % 4 === 0;
+      if (!b) { g.fillStyle = C.white; g.fillRect(p.x - 3, p.y - 3, 2, 2); g.fillRect(p.x + 1, p.y - 3, 2, 2); g.fillStyle = C.ink; g.fillRect(p.x - 2, p.y - 2, 1, 1); g.fillRect(p.x + 2, p.y - 2, 1, 1); }
+    }
+    for (const pr of w.projectiles) drawObj(g, pr.kind, pr.x, pr.y);
+
+    for (const r of this.rings) ring(g, Math.round(r.x), Math.round(r.y), Math.max(2, Math.round(r.r * (r.age / 0.5))), r.lure ? C.yellow : C.white);
 
     // steal bar
-    const hot = this.targets.find((t) => t.progress > 0 && !t.done);
+    const hot = w.targets.find((t) => t.progress > 0 && !t.done);
     if (hot) {
-      const px = Math.round(this.player.x) - 9, py = Math.round(this.player.y) - 20;
+      const px = Math.round(p.x) - 9, py = Math.round(p.y) - 20;
       g.fillStyle = C.ink; g.fillRect(px - 1, py - 1, 20, 5);
       g.fillStyle = C.dgray; g.fillRect(px, py, 18, 3);
       g.fillStyle = C.gold; g.fillRect(px, py, Math.round(18 * Math.min(1, hot.progress)), 3);
     }
-    for (const p of this.parts) { g.globalAlpha = Math.min(1, p.l * 2); drawCoin(g, p.x, p.y); }
+    for (const q of this.parts) { g.globalAlpha = Math.min(1, q.l * 2); drawCoin(g, q.x, q.y); }
     g.globalAlpha = 1;
+    if (w.say) bubble(g, w.say.text, p.x, Math.round(p.y) - 30);
+    for (const a of w.adults) if (a.say) bubble(g, a.say.text, a.x, Math.round(a.y) - 34, C.ink, a.state === 'chase' ? C.red : C.white);
     this.drawHud(g);
   }
 
   drawAdult(g, a) {
     const dir = Math.abs(Math.cos(a.a)) > Math.abs(Math.sin(a.a)) ? (Math.cos(a.a) < 0 ? 1 : 2) : (Math.sin(a.a) < 0 ? 3 : 0);
     const frame = a.moving ? Math.floor(a.stepT * 6) % 4 : 0;
+    const sleeping = !a.awake && (a.cfg.sleepy || a.state === 'eat');
     const top = drawActor(g, a.type, a.x, a.y, dir, frame, { dim: !a.awake && a.cfg.sleepy });
     const cx = Math.round(a.x);
-    if (!a.awake && a.cfg.sleepy) {
+    if (sleeping && a.state !== 'eat') {
       const b = Math.floor(performance.now() / 500) % 2;
       drawText(g, 'ZZ', cx + 4, top - 6 - b, C.white, { shadow: C.ink });
     } else if (!a.awake && a.cfg.phone) {
       g.fillStyle = C.ink; g.fillRect(cx + (dir === 1 ? -7 : 5), Math.round(a.y) - 4, 4, 6);
       g.fillStyle = C.pink; g.fillRect(cx + (dir === 1 ? -6 : 6), Math.round(a.y) - 3, 2, 4);
     }
-    if (a.alert > 0.12 && a.awake) {
+    if (a.alert > 0.12 && a.awake && !a.say) {
       const danger = a.alert >= 0.6;
       drawText(g, danger ? '!' : '?', cx - 1, top - 8, danger ? C.red : C.yellow, { scale: 2, shadow: C.ink });
-      g.fillStyle = C.ink; g.fillRect(cx - 7, top - 11, 14, 3);
-      g.fillStyle = danger ? C.red : C.yellow; g.fillRect(cx - 6, top - 10, Math.round(12 * Math.min(1, a.alert)), 1);
+    }
+    if (a.alert > 0.05 && a.awake) {
+      g.fillStyle = C.ink; g.fillRect(cx - 7, top - 3, 14, 3);
+      g.fillStyle = a.alert >= 0.6 ? C.red : C.yellow; g.fillRect(cx - 6, top - 2, Math.round(12 * Math.min(1, a.alert)), 1);
     }
   }
 
   drawHud(g) {
-    const sh = { shadow: C.ink };
+    const w = this.world, sh = { shadow: C.ink };
     drawCoin(g, 5, 5);
-    drawText(g, `${this.coins}/${this.level.quota}`, 13, 6, C.white, sh);
+    drawText(g, `${w.coins}/${this.level.quota}`, 13, 6, C.white, sh);
     drawText(g, this.level.name, VIEW_W / 2, 6, C.white, { ...sh, align: 'center' });
-    drawText(g, `${Math.floor(this.time)}S`, VIEW_W - 5, 6, this.time > this.level.par ? C.orange : C.white, { ...sh, align: 'right' });
-
-    if (this.time < 7) {
-      drawText(g, 'DRAG OR WASD TO MOVE. PUSH FAR OR SHIFT TO RUN', VIEW_W / 2, 20, C.white, { ...sh, align: 'center' });
-      drawText(g, 'HOLD KUPIT OR SPACE BY A BAG. RUNNING IS LOUD!', VIEW_W / 2, 29, C.yellow, { ...sh, align: 'center' });
+    drawText(g, `${Math.floor(w.time)}S`, VIEW_W - 5, 6, w.time > this.level.par ? C.orange : C.white, { ...sh, align: 'right' });
+    if (this.level.patience) { // "KAIN NA!" meter: Mama calls you for dinner when it runs out
+      const left = Math.max(0, 1 - w.time / this.level.patience);
+      g.fillStyle = C.ink; g.fillRect(4, 13, VIEW_W - 8, 3);
+      g.fillStyle = left < 0.25 ? C.red : C.orange; g.fillRect(5, 14, Math.round((VIEW_W - 10) * left), 1);
     }
-    // touch controls
+    // control strip
+    g.fillStyle = C.ink; g.fillRect(0, MAP_H, VIEW_W, VIEW_H - MAP_H);
+    g.fillStyle = C.wallD; g.fillRect(0, MAP_H, VIEW_W, 1);
+    const pr = w.prompt;
+    drawText(g, pr ? pr.label : w.open ? 'GO TO THE EXIT!' : `NEED ${this.level.quota - w.coins} MORE`, 6, MAP_H + 8, pr ? C.gold : w.open ? C.green : C.gray);
+    let kx = 6;
+    for (const k of w.player.keys) { drawObj(g, 'key', kx + 3, MAP_H + 24, k); kx += 10; }
+    drawText(g, 'SHIFT RUN  E/SPACE ACT  Q THROW', 6, MAP_H + 32, C.dgray);
+
+    if (this.level.hint && w.time < 6) {
+      drawText(g, this.level.hint, VIEW_W / 2, 29, C.yellow, { ...sh, align: 'center' });
+    }
+    if (w.time < 6 && this.level.tutorial) {
+      drawText(g, 'DRAG OR WASD TO MOVE. PUSH FAR OR SHIFT TO RUN', VIEW_W / 2, 20, C.white, { ...sh, align: 'center' });
+    }
+
+    // action button with context label
     const down = this.input.action();
     disc(g, BUTTON.x, BUTTON.y, BUTTON.r, C.ink);
-    disc(g, BUTTON.x, BUTTON.y, BUTTON.r - 2, down ? C.gold : C.gold2);
-    drawText(g, 'KUPIT', BUTTON.x, BUTTON.y - 2, C.ink, { align: 'center' });
+    disc(g, BUTTON.x, BUTTON.y, BUTTON.r - 2, pr ? (down ? C.gold : C.gold2) : C.dgray);
+    const label = pr ? pr.label : 'KUPIT';
+    drawText(g, label.length > 6 ? label.slice(0, 6) : label, BUTTON.x, BUTTON.y - 2, pr ? C.ink : C.gray, { align: 'center' });
+
+    // throw button
+    const items = w.player.items;
+    if (items.length) {
+      disc(g, BUTTON2.x, BUTTON2.y, BUTTON2.r, C.ink);
+      disc(g, BUTTON2.x, BUTTON2.y, BUTTON2.r - 2, this.input.throwHeld() ? C.sofa2 : C.sofa);
+      drawObj(g, items[items.length - 1], BUTTON2.x, BUTTON2.y - 2);
+      drawText(g, `x${items.length}`, BUTTON2.x, BUTTON2.y + 5, C.white, { align: 'center' });
+    }
+
     const s = this.input.stick();
     if (s) {
       g.globalAlpha = 0.35; disc(g, Math.round(s.sx), Math.round(s.sy), 22, C.white);

@@ -1,7 +1,9 @@
 // Keyboard + touch/mouse. Pointer positions are converted to game pixels.
 export const VIEW_W = 240;
-export const VIEW_H = 352;
-export const BUTTON = { x: 200, y: 318, r: 20 }; // on-screen KUPIT button
+export const MAP_H = 352;  // 22 tiles; below it is the control strip
+export const VIEW_H = 392;
+export const BUTTON = { x: 214, y: 372, r: 18 };  // on-screen action button
+export const BUTTON2 = { x: 176, y: 372, r: 14 }; // throw item
 const STICK_R = 22;
 
 export class Input {
@@ -11,6 +13,9 @@ export class Input {
     this.pointers = new Map(); // id -> {role, sx, sy, x, y}
     this.tapped = false;
     this.buttonEnabled = false;
+    this.button2Enabled = false;
+    this.prevA = false;
+    this.prevT = false;
     this.touchUsed = false;
 
     addEventListener('keydown', (e) => {
@@ -27,7 +32,9 @@ export class Input {
       if (e.pointerType !== 'mouse') this.touchUsed = true;
       this.tapped = true;
       const onBtn = this.buttonEnabled && Math.hypot(p.x - BUTTON.x, p.y - BUTTON.y) <= BUTTON.r + 6;
-      this.pointers.set(e.pointerId, { role: onBtn ? 'btn' : 'stick', sx: p.x, sy: p.y, x: p.x, y: p.y });
+      const onBtn2 = !onBtn && this.button2Enabled && Math.hypot(p.x - BUTTON2.x, p.y - BUTTON2.y) <= BUTTON2.r + 5;
+      const role = onBtn ? 'btn' : onBtn2 ? 'btn2' : 'stick';
+      this.pointers.set(e.pointerId, { role, sx: p.x, sy: p.y, x: p.x, y: p.y });
       canvas.setPointerCapture(e.pointerId);
     });
     canvas.addEventListener('pointermove', (e) => {
@@ -73,6 +80,20 @@ export class Input {
     if (this.keys.has(' ') || this.keys.has('e') || this.keys.has('j')) return true;
     for (const q of this.pointers.values()) if (q.role === 'btn') return true;
     return false;
+  }
+
+  throwHeld() {
+    if (this.keys.has('q') || this.keys.has('k')) return true;
+    for (const q of this.pointers.values()) if (q.role === 'btn2') return true;
+    return false;
+  }
+
+  // One snapshot per frame with press edges, for the game world.
+  poll() {
+    const a = this.action(), t = this.throwHeld();
+    const r = { mv: this.move(), action: a, actionPressed: a && !this.prevA, throwPressed: t && !this.prevT };
+    this.prevA = a; this.prevT = t;
+    return r;
   }
 
   consumeTap() { const t = this.tapped; this.tapped = false; return t; }

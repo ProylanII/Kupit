@@ -68,8 +68,13 @@ function drawCaught() {
   play.draw(g);
   dim();
   const a = play.catcher;
-  drawText(g, 'CAUGHT!', VIEW_W / 2, 120, C.red, { scale: 6, align: 'center', shadow: C.ink });
-  drawText(g, `${a.cfg.name}: "ANO 'YAN?!"`, VIEW_W / 2, 175, C.white, { align: 'center' });
+  if (play.reason === 'time') {
+    drawText(g, 'KAIN NA!', VIEW_W / 2, 120, C.orange, { scale: 5, align: 'center', shadow: C.ink });
+    drawText(g, `${a ? a.cfg.name : 'MAMA'}: "DINNER TIME! COME HERE!"`, VIEW_W / 2, 175, C.white, { align: 'center' });
+  } else {
+    drawText(g, 'CAUGHT!', VIEW_W / 2, 120, C.red, { scale: 6, align: 'center', shadow: C.ink });
+    drawText(g, `${a.cfg.name}: "${a.cfg.shout}"`, VIEW_W / 2, 175, C.white, { align: 'center' });
+  }
   if (age > 0.6) drawText(g, 'TAP TO TRY AGAIN', VIEW_W / 2, 230, C.yellow, { align: 'center' });
 }
 
@@ -89,7 +94,7 @@ function onTap() {
   if (mode === 'title') { sfx.unlock(); start(Math.min(save.unlocked, levels.length - 1)); }
   else if (mode === 'caught' && age > 0.6) start(idx);
   else if (mode === 'clear' && age > 0.6) {
-    if (idx === levels.length - 1) { mode = 'title'; save.unlocked = 0; writeSave(save); }
+    if (idx === levels.length - 1) mode = 'title';
     else start(idx + 1);
   }
 }

@@ -30,6 +30,14 @@ export const sfx = {
   alert: () => beep(300, 0.2, { slide: 300, type: 'sawtooth', vol: 0.05 }),
   caught: () => { beep(400, 0.15, { type: 'sawtooth' }); beep(250, 0.3, { at: 0.15, type: 'sawtooth' }); },
   clear: () => [523, 659, 784, 1047].forEach((f, i) => beep(f, 0.14, { at: i * 0.1 })),
+  click: () => beep(180, 0.05, { vol: 0.05 }),
+  creak: () => beep(140, 0.25, { slide: 60, type: 'sawtooth', vol: 0.04 }),
+  ouch: () => { beep(700, 0.08, { type: 'sawtooth' }); beep(500, 0.15, { at: 0.08, type: 'sawtooth' }); },
+  pickup: () => { beep(520, 0.06); beep(780, 0.08, { at: 0.06 }); },
+  whoosh: () => beep(900, 0.12, { slide: -600, type: 'triangle', vol: 0.05 }),
+  thud: () => beep(90, 0.12, { type: 'triangle', vol: 0.12 }),
+  hide: () => beep(300, 0.08, { slide: -120, type: 'triangle', vol: 0.06 }),
+  music: () => [392, 494, 587, 494].forEach((f, i) => beep(f, 0.12, { at: i * 0.13, type: 'triangle' })),
   unlock: () => ac(),
 };
 

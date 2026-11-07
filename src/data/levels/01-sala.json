@@ -1,6 +1,8 @@
 {
   "id": "01-sala",
   "name": "SALA",
+  "tutorial": true,
+  "hint": "HOLD KUPIT NEAR MAMA'S PURSE. HIDE IF SEEN!",
   "tiles": [
     "###############",
     "#.............#",
@@ -31,6 +33,10 @@
   "par": 60,
   "targets": [
     { "kind": "purse", "at": [8, 4], "coins": 3, "time": 1.4 }
+  ],
+  "hide": [
+    { "kind": "curtain", "at": [12, 2] },
+    { "kind": "box", "at": [8, 9] }
   ],
   "adults": [
     { "type": "mama", "route": [[1,1],[13,1],[13,6],[1,6]] },

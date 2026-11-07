@@ -68,12 +68,45 @@ export const LOOKS = {
   mama: { H: '#3a2418', S: C.skin, T: C.red,   B: C.dgray,  F: C.skin2, E: C.ink, legsN: 4, longHair: true },
   lola: { H: C.white,  S: C.skin, T: C.purple, B: '#6b4a8c', F: C.skin2, E: C.ink, legsN: 4, skirt: true },
   tita: { H: C.pink,   S: C.skin, T: C.teal,   B: C.white,  F: C.skin2, E: C.ink, legsN: 4, longHair: true },
+  tatay: { H: C.ink,   S: C.skin2, T: C.white, B: '#3a4f8a', F: C.skin2, E: C.ink, legsN: 4 },
+  kuya: { H: '#3a2418', S: C.skin, T: '#46a0e0', B: C.dgray, F: C.skin2, E: C.ink, legsN: 3 },
 };
+
+// Aso (askal dog): own maps, H fur, D dark fur, E eye, N nose
+const DOG_PAL = { H: '#c98a4a', D: '#8a5a2b', E: C.ink, N: C.ink };
+const DOG_SIDE = [
+  '.........DD.', '........HHHN', 'D.......HEHH', '.DHHHHHHHHH.', '..HHHHHHHH..', '..HHHHHHHH..',
+];
+const DOG_LEGS = [['..H.H..H.H..', '..D.D..D.D..'], ['.H...H.H...H', '.D...D.D...D']];
+const DOG_FRONT = ['.DD..DD.', '.HHHHHH.', '.HEHHEH.', '.HHNNHH.', '..HHHH..', '.HHHHHH.', '.HHHHHH.'];
+const DOG_BACK = ['.DD..DD.', '.HHHHHH.', '.HHHHHH.', '.HHHHHH.', '..HHHH..', '.HHHHHH.', '.HHDDHH.'];
+const DOG_FB_LEGS = [['.H.HH.H.', '.D.DD.D.'], ['.H.HH.H.', '.D....D.']];
+
+function dogRows(dir, frame) {
+  const f = frame % 2;
+  if (dir === 0) return DOG_FRONT.concat(DOG_FB_LEGS[f]);
+  if (dir === 3) return DOG_BACK.concat(DOG_FB_LEGS[f]);
+  return DOG_SIDE.concat(DOG_LEGS[f]);
+}
+
+function mirror(cv) {
+  const f = document.createElement('canvas');
+  f.width = cv.width; f.height = cv.height;
+  const g = f.getContext('2d');
+  g.translate(cv.width, 0); g.scale(-1, 1); g.drawImage(cv, 0, 0);
+  return f;
+}
 
 export function getSprite(kind, dir, frame) {
   const key = `${kind}|${dir}|${frame}`;
   let s = cache.get(key);
   if (s) return s;
+  if (kind === 'aso') {
+    let cv = build(dogRows(dir, frame), DOG_PAL);
+    if (dir === 1) cv = mirror(cv);
+    cache.set(key, cv);
+    return cv;
+  }
   const look = LOOKS[kind];
   const view = dir === 3 ? 'back' : dir === 0 ? 'front' : 'side';
   let body = (view === 'back' ? BACK : view === 'front' ? FRONT : SIDE).slice();
@@ -84,13 +117,7 @@ export function getSprite(kind, dir, frame) {
   }
   const rows = body.concat(legs(view, frame, look.legsN, look.skirt));
   let cv = build(rows, look);
-  if (dir === 1) { // left = mirrored right
-    const f = document.createElement('canvas');
-    f.width = cv.width; f.height = cv.height;
-    const g = f.getContext('2d');
-    g.translate(cv.width, 0); g.scale(-1, 1); g.drawImage(cv, 0, 0);
-    cv = f;
-  }
+  if (dir === 1) cv = mirror(cv); // left = mirrored right
   cache.set(key, cv);
   return cv;
 }
@@ -142,4 +169,56 @@ export function drawCoin(g, x, y) {
 const STAR = ['..y..', 'yyyyy', '.yyy.', '.y.y.', 'y...y'];
 export function drawStar(g, x, y, on) {
   g.drawImage(mapSprite(`star${on}`, STAR, { y: on ? C.gold : C.dgray }), Math.round(x), Math.round(y));
+}
+
+// ---- Phase 2 objects -------------------------------------------------------
+export const OBJ = {
+  box: [ // karton box
+    'bbbbbbbbbbbb', 'bBBBBBBBBBBb', 'bBBBBttBBBBb', 'bBBBBttBBBBb', 'bBBBBBBBBBBb',
+    'bBBBBBBBBBBb', 'bBBBBBBBBBBb', 'bbbbbbbbbbbb',
+  ],
+  curtain: [
+    'rrrrrrrrrrrr', 'cCcCcCcCcCcC', 'cCcCcCcCcCcC', 'cCcCcCcCcCcC', 'cCcCcCcCcCcC', 'cCcCcCcCcCcC',
+    'cCcCcCcCcCcC', 'cCcCcCcCcCcC', 'cCcCcCcCcCcC', 'cCcCcCcCcCcC', 'cCcCcCcCcCcC', 'cCcCcCcCcCcC',
+  ],
+  basket: [ // labahan
+    '.wwwwwwwwww.', 'sWsWsWsWsWsW', 'WsWsWsWsWsWs', 'sWsWsWsWsWsW', 'WsWsWsWsWsWs', '.sWsWsWsWsW.',
+  ],
+  tsinelas: ['.ggg..ggg.', 'gGGGggGGGg', '.ggg..ggg.'],
+  pandesal: ['.pppp.', 'pPPPPp', 'pPPPPp', '.pppp.'],
+  key: ['kk.....', 'k.kkkkk', 'kk...k.'],
+  tv: [
+    'mmmmmmmmmmmm', 'msssssssssm.', 'msssssssssm.', 'msssssssssm.', 'msssssssssm.', 'mmmmmmmmmmm.', '..m......m..',
+  ].map((r) => r.padEnd(12, '.')),
+  radio: ['...a......', 'mmmmmmmmmm', 'mggmmmmggm', 'mggmsssmgm', 'mggmmmmggm', 'mmmmmmmmmm'],
+  leverOff: ['.h....', '..h...', '...h..', 'bbbbbb', 'bBBBBb', 'bbbbbb'],
+  leverOn: ['....h.', '...h..', '..h...', 'bbbbbb', 'bBBBBb', 'bbbbbb'],
+  lego: ['rr..bb', 'rr..bb', '..yy..', 'gg.yy.', 'gg....'],
+};
+
+const OBJ_PAL = {
+  box: { b: '#8a5a2b', B: '#c48a4a', t: '#e8d9a8' },
+  curtain: { r: C.dgray, c: '#4a7fb5', C: '#6a9fd5' },
+  basket: { w: C.white, W: '#d9b27c', s: '#a67a42' },
+  tsinelas: { g: C.blue, G: '#5f8fe0' },
+  pandesal: { p: '#a8642c', P: '#e0a35a' },
+  tv: { m: C.ink, s: '#3a4a6a' },
+  radio: { m: C.dgray, g: C.gray, s: C.gold, a: C.gray },
+  leverOff: { h: C.gray, b: C.dgray, B: C.red },
+  leverOn: { h: C.gray, b: C.dgray, B: C.green },
+  lego: { r: C.red, b: C.blue, y: C.gold, g: C.green },
+};
+
+export const KEY_COLORS = { red: C.red, blue: '#4f8fff', green: C.green, gold: C.gold };
+
+export function objSprite(name, variant = '') {
+  let pal = OBJ_PAL[name];
+  if (name === 'key') pal = { k: KEY_COLORS[variant] || C.gold };
+  return mapSprite(`o|${name}|${variant}`, OBJ[name], pal);
+}
+
+// centred on (x,y)
+export function drawObj(g, name, x, y, variant) {
+  const s = objSprite(name, variant);
+  g.drawImage(s, Math.round(x) - Math.floor(s.width / 2), Math.round(y) - Math.floor(s.height / 2));
 }

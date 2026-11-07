@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { TileMap, TILE } from '../src/world/tilemap.js';
 import { hasLos, castCone, angDiff } from '../src/world/los.js';
 import { Adult } from '../src/entities/adult.js';
+import { World } from '../src/game/world.js';
 
 const map = new TileMap([
   '#########',
@@ -33,19 +34,22 @@ test('angDiff wraps', () => {
 });
 
 test('adult catches player in cone, not when facing away', () => {
-  const p = { x: c(4), y: c(1) };
-  const a = new Adult({ type: 'mama', at: [1, 1], face: 0 }, map);
-  for (let i = 0; i < 120 && !a.caught; i++) a.update(1 / 60, p, null);
-  assert.equal(a.caught, true);
-  const b = new Adult({ type: 'mama', at: [1, 1], face: Math.PI }, map);
-  for (let i = 0; i < 20; i++) b.update(1 / 60, p, null);
-  assert.equal(b.caught, false);
+  const lvl = (face) => ({ id: 't', name: 'T', quota: 0, par: 9, tiles: map.grid.map((r) => r.join('')),
+    spawn: [4, 1], exit: [7, 3], targets: [], adults: [{ type: 'mama', at: [1, 1], face }] });
+  const idle = { mv: { x: 0, y: 0, mag: 0, run: false }, action: false, actionPressed: false, throwPressed: false };
+  const a = new World(lvl(0));
+  for (let i = 0; i < 300 && a.status === 'play'; i++) a.update(1 / 60, idle);
+  assert.equal(a.status, 'caught');
+  const b = new World(lvl(Math.PI));
+  for (let i = 0; i < 20; i++) b.update(1 / 60, idle);
+  assert.equal(b.status, 'play');
 });
 
 test('sleeping lola is woken by running noise', () => {
   const lola = new Adult({ type: 'lola', at: [1, 1], face: 0, phase: 10 }, map); // off phase
-  lola.update(1 / 60, { x: c(7), y: c(3) }, null);
+  const world = { player: { x: c(7), y: c(3) }, emit() {}, noise() {} };
+  lola.update(1 / 60, world);
   assert.equal(lola.awake, false);
-  lola.update(1 / 60, { x: c(7), y: c(3) }, { x: c(2), y: c(1), r: 48 });
+  lola.hear({ x: c(2), y: c(1), r: 48 });
   assert.equal(lola.awake, true);
 });

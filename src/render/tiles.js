@@ -4,7 +4,11 @@ import { C } from './palette.js';
 const r = (g, c, x, y, w, h) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
 
 function floor(g, ch, tx, ty, x, y) {
-  if (ch === ',') { // kitchen tile
+  if (ch === ';') { // grass (yard)
+    r(g, (tx * 7 + ty * 3) % 3 ? C.leaf : '#4a9a52', x, y, TILE, TILE);
+    r(g, C.leaf2, x + ((tx * 5 + ty) % 12) + 1, y + ((ty * 7 + tx) % 10) + 2, 1, 3);
+    r(g, C.leaf2, x + ((tx * 3 + ty * 11) % 12) + 2, y + ((tx * 9) % 9) + 3, 1, 2);
+  } else if (ch === ',') { // kitchen tile
     r(g, C.tile, x, y, TILE, TILE);
     r(g, C.tile2, x, y, 8, 8);
     r(g, C.tile2, x + 8, y + 8, 8, 8);
@@ -28,7 +32,7 @@ function wall(g, map, tx, ty, x, y) {
 }
 
 function furniture(g, map, ch, tx, ty, x, y) {
-  floor(g, '.', tx, ty, x, y);
+  floor(g, map.ch(tx, ty + 1) === ';' || map.ch(tx - 1, ty) === ';' ? ';' : '.', tx, ty, x, y);
   switch (ch) {
     case 'T':
       r(g, C.table2, x, y, TILE, 12); r(g, C.table, x, y + 12, TILE, 4);
