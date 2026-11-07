@@ -8,6 +8,7 @@ import { CHARACTERS, CHAR_ORDER } from './game/progression.js';
 import { generateHouse, dailySeed, dailyId } from './game/house.js';
 import { C } from './render/palette.js';
 import { shopScreen, charScreen } from './scenes/shop.js';
+import { dev, initDev, setDev, SPEEDS } from './core/dev.js';
 import { drawMenu, drawButton, buttonRect, menuHit, hit } from './ui/menu.js';
 
 const canvas = document.getElementById('game');
@@ -16,6 +17,7 @@ g.imageSmoothingEnabled = false;
 const input = new Input(canvas);
 const save = loadSave();
 setMuted(save.muted);
+initDev();
 
 // ---- integer-ish pixel scaling ------------------------------------------
 function resize() {
@@ -39,7 +41,7 @@ let levels = [];
 let idx = 0;
 let cur = null;   // the level being played (handmade or generated)
 let run = null;   // null for campaign, { seed, diff, daily } for Random House
-let mode = 'loading'; // loading | title | levels | help | house | store | chars | play | paused | caught | clear
+let mode = 'loading'; // loading | title | levels | help | house | dev | store | chars | play | paused | caught | clear
 let play = null;
 let age = 0;
 let sel = 0;       // highlighted menu item
@@ -151,16 +153,17 @@ function updateLevels() {
   if (pick < 0) return;
   sfx.unlock();
   if (pick === n) setMode(prevMode);
-  else if (pick <= save.unlocked) start(pick);
+  else if (pick <= save.unlocked || dev.on) start(pick);
   else sfx.creak();
 }
 
 function drawLevels() {
   g.fillStyle = C.ink; g.fillRect(0, 0, VIEW_W, VIEW_H);
   drawText(g, 'CHOOSE A LEVEL', VIEW_W / 2, 14, C.gold, { scale: 2, align: 'center', shadow: C.gold2 });
+  if (dev.on) drawText(g, 'DEV: ALL UNLOCKED', VIEW_W / 2, 28, C.red, { align: 'center' });
   const n = levels.length;
   for (let i = scroll; i < Math.min(n, scroll + VISIBLE); i++) {
-    const r = rowRect(i), lock = i > save.unlocked, on = sel === i;
+    const r = rowRect(i), lock = i > save.unlocked && !dev.on, on = sel === i;
     g.fillStyle = on ? C.gold : C.ink; g.fillRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4);
     g.fillStyle = lock ? C.dgray : C.wallD; g.fillRect(r.x, r.y, r.w, r.h);
     drawText(g, String(i + 1), r.x + 6, r.y + 6, lock ? C.gray : C.gold, { scale: 3 });
@@ -246,23 +249,74 @@ function updateHouse() {
   else if (pick === 3) setMode('title');
 }
 
+// ---- dev tools (opened from the pause menu while dev mode is on) ---------------------
+const DEV_Y = 62, DEV_GAP = 20;
+const devItems = () => [
+  `GOD MODE: ${dev.god ? 'ON' : 'OFF'}`, 'FILL QUOTA (OPEN EXIT)', 'GO TO EXIT', 'CLEAR LEVEL', 'NEXT BOSS PHASE',
+  'PREVIOUS LEVEL', 'NEXT LEVEL', `INFO OVERLAY: ${dev.info ? 'ON' : 'OFF'}`, `GAME SPEED: ${dev.speed}X`, '+50 COINS', 'DEV MODE OFF', 'BACK',
+];
+
+function drawDevMenu() {
+  play.draw(g);
+  dim(0.82);
+  drawText(g, 'DEV TOOLS', VIEW_W / 2, 18, C.red, { scale: 3, align: 'center', shadow: C.ink });
+  drawText(g, `${cur.name}  (${run ? 'HOUSE' : `${idx + 1}/${levels.length}`})`, VIEW_W / 2, 46, C.white, { align: 'center' });
+  drawMenu(g, devItems(), sel, DEV_Y, DEV_GAP);
+  drawText(g, 'N NEXT B PREV C CLEAR G GOD K QUOTA X EXIT I INFO', VIEW_W / 2, 336, C.dgray, { align: 'center' });
+}
+
+const goLevel = (i) => { if (levels.length) start(((i % levels.length) + levels.length) % levels.length); };
+
+function updateDevMenu() {
+  if (input.pressed('Escape')) { setMode('paused'); return; }
+  const pick = menuPick(devItems().length, DEV_Y, DEV_GAP);
+  const w = play.world;
+  if (pick === 0) dev.god = !dev.god;
+  else if (pick === 1) { w.devFillQuota(); setMode('play'); input.reset(); }
+  else if (pick === 2) { w.devGoToExit(); setMode('play'); input.reset(); }
+  else if (pick === 3) { w.devClear(); setMode('play'); input.reset(); }
+  else if (pick === 4) { if (w.devNextPhase()) { setMode('play'); input.reset(); } else sfx.creak(); }
+  else if (pick === 5) { if (!run) goLevel(idx - 1); else sfx.creak(); }
+  else if (pick === 6) { if (!run) goLevel(idx + 1); else sfx.creak(); }
+  else if (pick === 7) dev.info = !dev.info;
+  else if (pick === 8) dev.speed = SPEEDS[(SPEEDS.indexOf(dev.speed) + 1) % SPEEDS.length];
+  else if (pick === 9) { save.bank += 50; writeSave(save); sfx.coin(); }
+  else if (pick === 10) { setDev(false); setMode('paused'); }
+  else if (pick === 11) setMode('paused');
+  if (pick >= 0 && pick <= 8) sfx.click();
+}
+
+// Hotkeys while playing in dev mode.
+function devKeys() {
+  const w = play.world;
+  if (input.pressed('g')) dev.god = !dev.god;
+  if (input.pressed('i')) dev.info = !dev.info;
+  if (input.pressed('k')) w.devFillQuota();
+  if (input.pressed('x')) w.devGoToExit();
+  if (input.pressed('c')) w.devClear();
+  if (input.pressed('n') && !run) goLevel(idx + 1);
+  if (input.pressed('b') && !run) goLevel(idx - 1);
+}
+
 // ---- pause ------------------------------------------------------------------------
 const PAUSE_Y = 150;
+const pauseItems = () => ['RESUME', 'RESTART', 'LEVELS', soundLabel(), 'TITLE', ...(dev.on ? ['DEV TOOLS'] : [])];
 function drawPaused() {
   play.draw(g);
   dim(0.75);
   drawText(g, 'PAUSED', VIEW_W / 2, 100, C.gold, { scale: 5, align: 'center', shadow: C.gold2 });
-  drawMenu(g, ['RESUME', 'RESTART', 'LEVELS', soundLabel(), 'TITLE'], sel, PAUSE_Y);
+  drawMenu(g, pauseItems(), sel, PAUSE_Y);
 }
 
 function updatePaused() {
   if (input.pressed('Escape') || input.pressed('p')) { input.reset(); setMode('play'); return; }
-  const pick = menuPick(5, PAUSE_Y);
+  const pick = menuPick(pauseItems().length, PAUSE_Y);
   if (pick === 0) { input.reset(); setMode('play'); }
   else if (pick === 1) restart();
   else if (pick === 2) { prevMode = 'paused'; setMode('levels'); sel = idx; }
   else if (pick === 3) toggleSound();
   else if (pick === 4) setMode('title');
+  else if (pick === 5) setMode('dev');
 }
 
 // ---- caught / clear -----------------------------------------------------------------
@@ -347,17 +401,23 @@ function frame(now) {
   age += dt;
   input.buttonEnabled = mode === 'play';
   if (input.pressed('m')) toggleSound();
+  if (input.pressed('`')) { setDev(!dev.on); sfx.click(); }
+  dev.fps += ((dt > 0 ? 1 / dt : 60) - dev.fps) * 0.1;
 
   const m = mode; // dispatch on the mode at frame start so one keypress can't act on two screens
   if (m === 'play') {
     if (input.pauseTap || input.pressed('Escape') || input.pressed('p')) pause();
-    else { play.update(dt); if (play.status !== 'play') afterPlay(); }
+    else {
+      if (dev.on) devKeys();
+      play.update(dt * dev.speed); if (play.status !== 'play') afterPlay();
+    }
     if (mode === 'play') play.draw(g);
   }
   const screens = { title: [updateTitle, drawTitle], levels: [updateLevels, drawLevels], help: [updateHelp, drawHelp],
     store: [() => shopScreen.update(input, shopCtx, dt), () => shopScreen.draw(g, shopCtx)],
     chars: [() => charScreen.update(input, shopCtx, dt), () => charScreen.draw(g, shopCtx)],
     house: [updateHouse, drawHouse],
+    dev: [updateDevMenu, drawDevMenu],
     paused: [updatePaused, drawPaused], caught: [updateCaught, drawCaught], clear: [updateClear, drawClear] };
   if (screens[m]) { screens[m][0](); if (mode === m) screens[m][1](); } // skip the draw if the screen just changed
   else if (m === 'loading') { g.fillStyle = C.ink; g.fillRect(0, 0, VIEW_W, VIEW_H); drawText(g, 'LOADING...', VIEW_W / 2, 170, C.white, { align: 'center' }); }

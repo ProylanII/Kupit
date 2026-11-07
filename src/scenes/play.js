@@ -7,6 +7,7 @@ import { drawActor, drawTarget, drawCoin, drawObj, KEY_COLORS } from '../render/
 import { C, hexToRgb } from '../render/palette.js';
 import { drawText, textWidth } from '../ui/font.js';
 import { sfx } from '../core/audio.js';
+import { dev } from '../core/dev.js';
 import { VIEW_W, VIEW_H, MAP_H, BUTTON, BUTTON2, PAUSE_BTN, ABILITY_BTN } from '../core/input.js';
 
 const YELLOW = hexToRgb(C.yellow), RED = hexToRgb(C.red);
@@ -243,6 +244,22 @@ export class Play {
     this.drawHud(g);
   }
 
+  // Dev overlay: badges plus optional live stats.
+  drawDev(g) {
+    const w = this.world, p = w.player;
+    drawText(g, `DEV${dev.god ? ' GOD' : ''}${dev.speed !== 1 ? ` ${dev.speed}X` : ''}`, VIEW_W - 5, 31, C.red, { align: 'right', shadow: C.ink });
+    if (!dev.info) return;
+    const rows = [
+      `${this.level.id}`,
+      `TILE ${p.tx},${p.ty}  FPS ${Math.round(dev.fps)}`,
+      `COINS ${w.coins}/${this.level.quota}  PHASE ${w.phase}/${w.bossPhases.length}`,
+      `T ${Math.floor(w.time)}S  PAR ${this.level.par}S`,
+      ...w.adults.map((a) => `${a.type.toUpperCase()} ${a.state} A${a.alert.toFixed(1)}${a.awake ? '' : ' ZZ'}`),
+    ];
+    g.globalAlpha = 0.65; g.fillStyle = C.ink; g.fillRect(2, 34, 126, rows.length * 8 + 3); g.globalAlpha = 1;
+    rows.forEach((r, i) => drawText(g, r, 4, 36 + i * 8, i < 4 ? C.yellow : C.white));
+  }
+
   // Boss HUD: phase pips, the boss's sleep/watch bar, and big banners.
   drawBoss(g) {
     const b = this.level.boss, w = this.world;
@@ -348,6 +365,7 @@ export class Play {
       g.fillStyle = left < 0.25 ? C.red : C.orange; g.fillRect(5, 14, Math.round((VIEW_W - 10) * left), 1);
     }
     this.drawBoss(g);
+    if (dev.on) this.drawDev(g);
     // control strip
     g.fillStyle = C.ink; g.fillRect(0, MAP_H, VIEW_W, VIEW_H - MAP_H);
     g.fillStyle = C.wallD; g.fillRect(0, MAP_H, VIEW_W, 1);

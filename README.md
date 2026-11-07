@@ -38,6 +38,13 @@ Collect the coin quota, then reach the exit.
 - **Timing**: patrol waits, nap/phone cycles, timed gates, and the KAIN NA! dinner timer.
 - Stars: clear = 1, under par time = +1, never really spotted = +1.
 
+## Dev mode
+
+Open with `?dev=1` (remembered; `?dev=0` or the ` key turns it off). It unlocks every level in the level list and adds:
+pause menu -> DEV TOOLS (god mode, fill quota, go to exit, clear level, next boss phase, previous/next level,
+info overlay, game speed, +50 coins). Hotkeys while playing: `N` next level, `B` previous, `C` clear, `G` god,
+`K` fill quota, `X` go to exit, `I` info overlay.
+
 ## Dev
 
 ```

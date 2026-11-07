@@ -22,6 +22,7 @@ export class World {
     this.player = new Player(level.spawn[0], level.spawn[1], this.mods);
     this.player.items = Array(this.mods.startItems).fill('tsinelas');
     this.abilityCd = 0;
+    this.god = false; // dev mode: nobody can catch you
     this.adults = level.adults.map((d) => new Adult(d, this.map));
     this.targets = level.targets.map((t) => new Target(t));
     this.exit = at(level.exit);
@@ -330,6 +331,7 @@ export class World {
     for (const a of this.adults) {
       a.update(dt, this);
       this.maxAlert = Math.max(this.maxAlert, a.alert);
+      if (a.caught && this.god) { a.caught = false; a.state = 'search'; a.searchT = 1; a.alert = 0.5; }
       if (a.caught && this.status === 'play') { this.status = 'caught'; this.reason = 'seen'; this.catcher = a; this.emit({ type: 'caught' }); }
     }
     for (const nz of this.noises) {
@@ -339,18 +341,33 @@ export class World {
     while (this.bossPhases[this.phase] && this.coins >= this.bossPhases[this.phase].at) this.applyPhase(this.bossPhases[this.phase++]);
     if (this.status !== 'play') return;
 
-    if (this.patience && this.time >= this.patience) {
+    if (this.patience && this.time >= this.patience && !this.god) {
       this.status = 'caught'; this.reason = 'time';
       this.catcher = this.adults.find((a) => a.type === 'mama') || this.adults[0];
       this.emit({ type: 'caught' });
       return;
     }
 
-    if (this.open && !p.hidden && dist(p, this.exit) < 10) {
-      this.status = 'clear';
-      const fast = this.time <= this.level.par, stealth = this.maxAlert < 0.3;
-      this.result = { coins: this.coins, time: this.time, stars: 1 + fast + stealth, fast, stealth };
-      this.emit({ type: 'clear' });
-    }
+    if (this.open && !p.hidden && dist(p, this.exit) < 10) this.finish();
   }
+
+  finish() {
+    this.status = 'clear';
+    const fast = this.time <= this.level.par, stealth = this.maxAlert < 0.3;
+    this.result = { coins: this.coins, time: this.time, stars: 1 + fast + stealth, fast, stealth };
+    this.emit({ type: 'clear' });
+  }
+
+  // ---- dev helpers (used by the dev menu and tests)
+  devFillQuota() { this.coins = Math.max(this.coins, this.level.quota); }
+  // Drop the player on a free tile next to the exit (walk in to finish).
+  devGoToExit() {
+    const p = this.player, e = this.exit;
+    p.hidden = null; p.hideT = 0;
+    const side = [[-1, 0], [1, 0], [0, -1], [0, 1]].find(([dx, dy]) => !this.map.tileSolid(e.tx + dx, e.ty + dy));
+    const [dx, dy] = side || [0, 0];
+    p.x = e.x + dx * TILE; p.y = e.y + dy * TILE;
+  }
+  devNextPhase() { const ph = this.bossPhases[this.phase]; if (ph) this.coins = Math.max(this.coins, ph.at); return !!ph; }
+  devClear() { if (this.status === 'play') this.finish(); }
 }
