@@ -63,14 +63,26 @@ Updated after each phase. See AUDIT.md for the findings and DECISIONS.md for the
 |---|---|
 | All 14 levels + Random/Daily House completable and validated | Yes: validator + walkthrough bot in `npm test`, 150/150 houses, 60/60 dailies outside the test |
 | No P0/P1 left in AUDIT.md | Yes: #1-#8 and #10-#11 fixed; #9 is P2 and accepted |
-| Full animation set, or ART_SPEC.md if Blender is unavailable | Both: full pose set in the generated sheet; `docs/ART_SPEC.md` is the Blender hand-off |
+| Full animation set, or ART_SPEC.md if Blender is unavailable | Full pose set rendered in Blender through the pipeline (Phase 6); `docs/ART_SPEC.md` documents the contract |
 | Tests green | 143/143 |
 | Works offline and installs as a PWA | Verified headless (`tools/qa/pwa.mjs`); install from the home screen still worth one check by hand |
 | STATUS.md current | This file |
 
+## Phase 6: Blender art — done (2026-11-11, after the owner pointed out Blender 5.2.2 is installed)
+
+- Done: `tools/blender/build_characters.py` builds all 12 characters procedurally (boxes, palette materials,
+  joints as Empties, walk + every pose on one timeline) into `art/blend/characters.blend`; `render_sprites.py`
+  renders 285 frames + 12 portraits (camera 32 degrees down, top-left sun; fixed the old script's mirrored
+  "right" and back-lit sun); `pack_atlas.py` packs them; `npm run art:blender` chains all three (about 40 s).
+  The rendered sheet (80 KB) is the shipped one and passes the art lock; the code-drawn sheet stays one command
+  away (`npm run art:code`). Smoke + offline QA re-run green on the new sheet.
+- Judgement call for the owner: the rendered toys are consistent and inside the lock, but the code-drawn sheet
+  has more face detail at 16 px. Both are valid; switch with one command and `npm run build`.
+
 ## Needs the owner
 
-- Render the Blender characters (docs/ART_SPEC.md), or decide to ship with the generated art as is.
+- Look at the rendered sheet in game and choose it or the code-drawn one (see Phase 6). To refine a character,
+  edit its boxes in `build_characters.py` (or hand-model it in the .blend) and re-run `npm run art:blender`.
 - Run the silent playtest (docs/PLAYTEST.md) and the by-hand checklist (docs/QA.md) on a real phone.
 - DECISIONS.md has one **ASK**: KAIN NA at zero ends the level regardless of chances (as implemented). Say if
   dinner should cost a chance instead.

@@ -1,9 +1,10 @@
-# Sprite specification (hand-off for the Blender batch)
+# Sprite specification (the Blender batch)
 
-Blender is not installed on the dev machine, so the shipped art is still the code-drawn sheet from
-`tools/art/make_art.py`. The game is complete with it. This file is the exact contract a rendered batch has to
-meet so it drops in with **no code changes**: `tools/pack_atlas.py` writes the two files, `npm test` (art lock)
-accepts or rejects them, `npm run build` puts them in the offline cache.
+The shipped sheet is rendered in Blender 5.2 from `art/blend/characters.blend`, built by
+`tools/blender/build_characters.py` (`npm run art:blender` does build, render and pack). This file is the exact
+contract any batch, procedural or hand-modelled, has to meet so it drops in with **no code changes**:
+`tools/pack_atlas.py` writes the two files, `npm test` (art lock) accepts or rejects them, `npm run build` puts
+them in the offline cache. The code-drawn sheet (`npm run art:code`) meets the same contract.
 
 Everything here is also machine-readable in [`tools/art/style.json`](../tools/art/style.json), which the tests read.
 
@@ -63,8 +64,10 @@ sprite by its own height (`y + 6 - h`), so frames of different heights pop up an
   edge 6 px below the entity's ground point and its own soft shadow under the feet (do not render a shadow).
 - Nothing may extend past the frame; raised arms (`cast`, `caught`, `alert`) must fit inside the character's
   canvas height, so leave head-room in the body height above (16 / 21 / 10 px includes it).
-- Camera: orthographic, about 50 degrees down, so "down" shows the face and the top of the head, "up" shows the
-  back of the head and shoulders. Light from the **top-left** of the screen.
+- Camera: orthographic, 32 degrees down (`--tilt`), so "down" shows the face with a little of the top of the
+  head, "up" shows the back of the head and shoulders. Steeper tilts make hair swallow the face at 16 px.
+  Light: one sun from the **top-left** of the screen (travels +X, +Y, down), no cast shadows, a flat grey world
+  for fill so shaded faces snap to the palette's shade swatches.
 
 ## Colour rules (checked by `tests/artstyle.test.mjs`)
 
@@ -77,14 +80,17 @@ sprite by its own height (`y + 6 - h`), so frames of different heights pop up an
 
 ## Workflow
 
-1. Model + rig in `art/blend/characters.blend`: one top-level object per kind, named after it, facing -Y.
-   Actions per character `Jun.Walk`, `Jun.Reach`, ... (or shared `Walk`, `Reach`, ...). Pose actions are one frame.
-   Optional `PortraitCam` for busts.
-2. Render one character first: `blender -b art/blend/characters.blend -P tools/blender/render_sprites.py -- --out art/renders --kinds mama`
+1. `npm run art:blender` builds `art/blend/characters.blend` (one root Empty per kind, named after it, facing -Y,
+   feet at z=0, custom props `kupit_group` and `head_z`), renders and packs. Animation is the scene frame map
+   `scene["kupit_frames"]`: walk 1..9, reach 11, caught 12, cast 13, alert 14, sleep 15, phone 16, eat 17.
+   A hand-made file may instead use actions on an armature: `Jun.Walk` / `Walk` (loop) and one-frame
+   `Jun.Reach`, `Reach`, ... The renderer supports both; `PortraitCam` is created if missing.
+2. To iterate on one character: `node tools/blender/run.mjs --kinds mama --skip-build` (or the raw
+   `blender -b art/blend/characters.blend -P tools/blender/render_sprites.py -- --out art/renders --kinds mama`).
 3. Pack: `python tools/pack_atlas.py art/renders` (per-group sizes from `style.json`; `--size WxH` to override).
    The packer lists any frame the art lock still wants.
 4. `npm test` must be green (art lock, atlas coverage). Compare against `docs/art/style-reference.png` at 1x and 4x.
-5. Only then render the rest, then `npm run build` (new cache version) and commit `sheet.png` + `atlas.json`.
+5. `npm run build` (new cache version) and commit `sheet.png` + `atlas.json` (the renders and the .blend are not committed).
 
 `?noatlas` in the URL shows the code-drawn fallback for comparison. A frame missing from the atlas falls back to
 that character's idle frame (poses) or to the placeholder (walk frames), so characters can be replaced one at a time.

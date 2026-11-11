@@ -4,3 +4,6 @@ reference/
 .DS_Store
 Thumbs.db
 tools/qa/out/
+art/renders/
+art/blend/*.blend
+__pycache__/

@@ -4,10 +4,19 @@ The game draws characters from `assets/sprites/sheet.png` + `atlas.json` (loaded
 If a frame is missing from the atlas, `src/render/sprites.js` falls back to its code-drawn placeholder, so you can
 replace characters one at a time. `?noatlas` in the URL forces the placeholders.
 
-The shipped sheet is **drawn in code** by `tools/art/make_art.py` (Python + Pillow): every character is built from
-parts (head, hair style, top, bottom, accessories) with a 4-frame walk, poses and a 28x28 portrait.
-Edit `LOOKS`/`BUILDS` there and run `python tools/art/make_art.py` (add `--preview out.png --scale 6` to check it
-zoomed in). Real Blender art has not been made yet; when it is, `pack_atlas.py` replaces the same two files.
+The shipped sheet is **rendered in Blender** from `art/blend/characters.blend`, which `tools/blender/build_characters.py`
+builds procedurally (chunky boxes, palette materials, joints as Empties, every pose on one timeline) from the same
+`LOOKS`/`BUILDS` tables as the code-drawn generator. One command does build, render and pack:
+
+```
+npm run art:blender        # BLENDER=<path> if blender is not on PATH / in the usual folders; needs Python + Pillow
+npm run build && npm test  # offline list + art lock
+```
+
+The older **code-drawn** sheet is one command away and stays a valid fallback: `npm run art:code`
+(`tools/art/make_art.py`, add `--preview out.png --scale 6` to check it zoomed in). Both pass the art lock.
+To hand-model a character instead, open `characters.blend`, replace the boxes under its root Empty (keep the
+Empties' names so the poses still drive it) and re-run `node tools/blender/run.mjs --skip-build`.
 
 ## Sprite contract
 
@@ -24,14 +33,13 @@ zoomed in). Real Blender art has not been made yet; when it is, `pack_atlas.py` 
 
 ## Workflow
 
-1. **Model + rig** each character in Blender (chunky, warm, toy-like low-poly; flat shading). Name the top-level
-   object after the kind (`jun`, `mama`, ...), facing -Y. Add a `Walk` action (loopable cycle).
-   Keep `.blend` files in `art/blend/` (not committed if large).
+1. **Model** each character in Blender (chunky, warm, toy-like low-poly; flat shading). Name the top-level
+   object after the kind (`jun`, `mama`, ...), facing -Y, feet at z=0. Animation is either the scene frame map
+   `scene["kupit_frames"]` (what `build_characters.py` writes) or named actions on an armature (docs/ART_SPEC.md).
+   `art/blend/characters.blend` is generated and git-ignored; `build_characters.py` recreates it.
 2. **Render** all directions and frames:
-   `blender -b art/blend/characters.blend -P tools/blender/render_sprites.py -- --out art/renders`
-   (orthographic ~50 degree camera, transparent film, no anti-aliasing, flat colours).
-   `tools/blender/render_sprites.py` has **not been run yet** (Blender was not installed when it was written);
-   expect to tweak camera distance/`ortho_scale` on first use.
+   `blender -b art/blend/characters.blend -P tools/blender/render_sprites.py -- --out art/renders [--tilt 32]`
+   (orthographic camera 32 degrees down, sun from the top-left, transparent film, no anti-aliasing, flat colours).
 3. **Pixelate + pack** (needs Python + Pillow):
    `python tools/pack_atlas.py art/renders`
    Crops and shrinks each render to the locked body height for its group, snaps every pixel to the locked palette,

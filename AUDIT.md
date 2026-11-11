@@ -43,7 +43,7 @@ committed as-is first (`648e7aa`) so each phase below is its own commit.
 | Settings / accessibility | Music, SFX, mute, shake (full/low/off), red flash, vibrate, visual pulse, left-handed, ghost |
 | Credits | **Missing** (P2) |
 | Offline + install | SW + manifest present; `npm run build` stamps the version. Verified in headless Chrome in Phase 4 |
-| Blender character art | **Not made**. `render_sprites.py` was never run and renders walk frames only (no poses), so a batch made with it would fail the art-lock test. See ART_SPEC.md (Phase 3) |
+| Blender character art | Done in Phase 6 (Blender 5.2.2 turned out to be installed): characters built and rendered procedurally, `npm run art:blender`. The audit-time script had two bugs (mirrored "right", back-lit sun) and no poses; all fixed |
 
 ## Verification done for this audit
 

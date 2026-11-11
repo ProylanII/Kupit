@@ -66,3 +66,16 @@ was not done without the owner.
 - **Credits live on page 3 of How To Play** with a small Filipino glossary, rather than a separate screen.
 - **Item-cycle button grew** from r=6 to r=8 game px with a 5 px hit pad (about 42 css px on a phone).
 - **Load failure shows the error and a tap-to-retry** instead of "LOADING..." forever.
+
+## Phase 6 (Blender art)
+
+- **Characters are built procedurally in Blender** from the same look tables as the code-drawn generator, not
+  hand-modelled: twelve consistent characters in one afternoon, regenerable, and every pose comes from one
+  timeline. A hand-modelled character can replace any of them (docs/ART_SPEC.md).
+- **The rendered sheet ships** because the brief named it as the remaining item. The code-drawn sheet is kept
+  reproducible (`npm run art:code`) and the owner can pick either; both pass the art lock.
+- **Camera 32 degrees down, not 50**: at 16 px a steeper view turns heads into hair blocks.
+- **`art/renders/` and `art/blend/*.blend` are git-ignored**: 300 PNGs and a generated file; the build script and
+  `sheet.png` + `atlas.json` are the source of truth.
+- Fixed two bugs in the never-run render script while at it: direction 2 rendered the LEFT view (the camera's
+  +X is screen right), and the sun was back-lighting the characters.

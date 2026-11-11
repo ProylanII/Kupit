@@ -112,8 +112,8 @@ node tools/place-alkansya.mjs   # suggest secret alkansya spots (--write to add 
 
 - `src/world` tilemap + line of sight (DOM-free, tested)
 - `src/entities` player, adults (Mama/Lola/Tita), targets
-- `src/render` palette, tiles, placeholder pixel sprites (`sprites.js` is the swap point for Blender-rendered sheets)
-- `src/render/atlas.js` optional Blender sprite sheet; `tools/` icon, atlas and Blender scripts ([docs/ART_PIPELINE.md](docs/ART_PIPELINE.md))
+- `src/render` palette, tiles, sprites (`sprites.js` draws the sheet, with code-drawn placeholders as a fallback)
+- `src/render/atlas.js` the sprite sheet; `tools/blender/` builds, renders and packs it ([docs/ART_PIPELINE.md](docs/ART_PIPELINE.md), [docs/ART_SPEC.md](docs/ART_SPEC.md))
 - `src/game/house.js` seeded Random House generator; `src/game/validate.js` level validator (both tested)
 - `src/game/progression.js` characters, upgrades, `computeMods` (tested)
 - `src/game/world.js` all level rules (DOM-free, tested); `src/scenes/play.js` draws it
@@ -132,7 +132,8 @@ node tools/place-alkansya.mjs   # suggest secret alkansya spots (--write to add 
 - [x] Phase 3: sari-sari store (6 upgrades x 3 levels), character select with skills (Jun, Bing, Kuya Ramil, Nene)
 - [x] Phase 4: five bosses with multi-phase fights (Lola's Siesta, Mama sa Kusina, Tatay + Aso, Ninang's Fiesta, Sari-Sari Store)
 - [x] Phase 5: 14 levels (4 new big scrolling ones), camera + objective marker, Random House and Daily House modes
-- [x] Phase 6 (code side): sprite-sheet pipeline, procedural music, PWA, juice. Blender models/renders themselves are not made yet (see docs/ART_PIPELINE.md)
+- [x] Phase 6 (code side): sprite-sheet pipeline, procedural music, PWA, juice
 - [x] Roadmap pass (Nov 2026): failure state, onboarding, threat indicators, explicit actions, path-based sound, economy + cosmetics, kupit profiles, boss signatures + archetypes, accessibility, art lock, alkansya, daily streak/share, mutators, Pasko, story, ghosts, fixed timestep, versioned PWA + save, mobile polish, faster A*, music buffers, soak tests
+- [x] Phase 6 (art): Blender characters rendered through the pipeline inside the locked style (`npm run art:blender`, [docs/ART_SPEC.md](docs/ART_SPEC.md)); the code-drawn sheet stays as `npm run art:code`
+- [x] Finishing pass (Nov 2026): audit, walkthrough bot, logic review, full pose set, service-worker fix, headless QA ([STATUS.md](STATUS.md))
 - [ ] Silent playtest with new players ([docs/PLAYTEST.md](docs/PLAYTEST.md))
-- [ ] Phase 6 (art): actual Blender characters rendered through the pipeline, inside the locked style ([docs/ART_STYLE.md](docs/ART_STYLE.md))
