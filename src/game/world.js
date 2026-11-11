@@ -16,6 +16,8 @@ const PROGRESS_DECAY = 0.12;      // an interrupted kupit keeps most of its prog
 export const SCOLD_TIME = 1.8;    // the "caught!" beat before you respawn
 export const GRACE_TIME = 2;      // after respawning, nobody can see you for this long
 export const CATCH_PENALTY = 1 / 3; // share of your coins Mama takes back each time you're caught
+export const STEALTH_ALERT = 0.3;   // the SILENT star is lost once any adult's suspicion meter reaches this (or you're caught)
+export const SPAWN_GRACE = 1.2;     // an adult who joins mid-level (boss phase) stands blind for a moment: never spawned onto you
 
 const at = (p) => ({ x: p[0] * TILE + TILE / 2, y: p[1] * TILE + TILE / 2, tx: p[0], ty: p[1] });
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -155,6 +157,10 @@ export class World {
     return this.adults.some(inTile);
   }
 
+  // The SILENT star, precisely: no adult's suspicion meter ever reached STEALTH_ALERT (a '?' shows from 0.12, so a
+  // glance is fine; '!' at 0.6 and a dog's bark at 0.55 are not) and you were never caught.
+  get stealthOk() { return this.maxAlert < STEALTH_ALERT && this.catches === 0; }
+
   // Nobody is chasing or about to: a safe moment to remember where you are.
   get calm() { return !this.adults.some((a) => a.state === 'chase' || a.alert >= 0.6); }
 
@@ -252,7 +258,7 @@ export class World {
   // A boss phase fires when enough coins are collected: retune/spawn adults, move gates, banner.
   applyPhase(ph) {
     for (const m of [].concat(ph.adult || [])) this.adults[m.index]?.retune(m);
-    for (const d of ph.spawn || []) this.adults.push(this.makeAdult(d));
+    for (const d of ph.spawn || []) { const a = this.makeAdult(d); a.freezeT = SPAWN_GRACE; this.adults.push(a); }
     for (const [x, y] of ph.open || []) { this.pendingGates.delete(x + ',' + y); if (this.map.ch(x, y) === 'G') this.map.set(x, y, 'g'); }
     for (const [x, y] of ph.close || []) this.closeGate(x, y);
     if (ph.escape) this.escapeT = ph.escape;
@@ -588,7 +594,7 @@ export class World {
 
   finish() {
     this.status = 'clear';
-    const fast = this.time <= this.level.par, stealth = this.maxAlert < 0.3 && this.catches === 0;
+    const fast = this.time <= this.level.par, stealth = this.stealthOk;
     this.result = { coins: this.coins, time: this.time, stars: 1 + fast + stealth, fast, stealth, catches: this.catches, spotted: this.spotted, bonus: this.bonus };
     this.emit({ type: 'clear' });
   }

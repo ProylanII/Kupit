@@ -17,3 +17,11 @@ Updated after each phase. See AUDIT.md for the findings and DECISIONS.md for the
   Bot re-run outside the test: 150/150 houses, 48/48 mutator houses, 60/60 dailies.
 - Remaining: Phases 2-5.
 - Known issues: AUDIT.md findings 2-10.
+
+## Phase 2: game logic review — done
+
+- Done: every item in the brief's checklist verified against `world.js`/`adult.js` and the tests (table in
+  AUDIT.md). Added: exact SILENT-star rule with an in-run toast, explicit KAIN NA wording, spawn grace for
+  phase-spawned adults, `tests/rules.test.mjs` (143 tests green).
+- Remaining: Phases 3-5.
+- Known issues: AUDIT.md findings 2-10.

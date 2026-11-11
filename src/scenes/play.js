@@ -179,6 +179,10 @@ export class Play {
     this.input.itemEnabled = new Set(w.player.items).size > 1;
     w.update(dt, this.input.poll());
     this.steps++;
+    if (!this.stealthLost && !w.stealthOk) { // once per run, so the star rule is never a surprise on the clear screen
+      this.stealthLost = true;
+      if (!w.scold && w.status === 'play') this.toast = { text: 'SPOTTED! NO SILENT STAR THIS RUN', col: C.orange, t: 2.2 };
+    }
     if (this.rec && this.steps % GHOST_EVERY === 0 && w.status === 'play') this.rec.push([w.player.x, w.player.y, !!w.player.hidden]);
     this.updateCamera(dt * 9);
     for (const e of w.events) this.onEvent(e, dt);

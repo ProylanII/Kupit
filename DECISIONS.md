@@ -27,3 +27,17 @@ was not done without the owner.
   deterministic.
 - **Walkthrough bot becomes a test** (`tests/walkthrough.test.mjs`): every handmade level, 10 house seeds per
   difficulty, every mutator and the next 14 Daily Houses must be finishable with real inputs.
+
+## Phase 2 (game logic review)
+
+- **Rules kept as implemented.** Vision, alert, chase, search, noise tiers (lures vs glances), hiding, devices,
+  doors/keys/gates, dinner timer, boss phases, skills, store, save, pause and mute all matched the README and the
+  tests; nothing was redesigned. See AUDIT.md "What exists vs the spec" for the exact numbers.
+- **SILENT star defined precisely** (`World.stealthOk`, `STEALTH_ALERT = 0.3`): no adult's meter ever reached
+  0.3 and no catch. The help text and README now say so, and a one-time toast tells the player the moment the
+  star is gone, so the clear screen never surprises them.
+- **KAIN NA at zero** stays "level over regardless of chances" (it was already implemented that way); the help
+  text now says it. **ASK** if you would rather have dinner cost a chance instead.
+- **Adults who spawn in a boss phase are blind for 1.2 s** (`SPAWN_GRACE`, reuses the charm freeze). Before,
+  a phase could drop Kuya right onto the player and catch them in a quarter second. Fairness, not a design change.
+- **Economy untouched** (see Phase 0).

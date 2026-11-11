@@ -62,7 +62,13 @@ Collect the coin quota, then reach the exit.
   tension. Outfits (palette swaps) and title-screen decor are looks only. Star milestones at 10/20/30/42 unlock more.
 - **Story**: why Jun needs the coins (a short intro), paid off after the last boss.
 - **Ghost**: your best run on each level replays as a see-through kid (Options → GHOST).
-- Stars: clear = 1, under par time = +1, never caught or really spotted = +1.
+- Stars: clear = 1, under par time = +1, **silent** = +1. Silent means no adult's suspicion meter ever filled
+  past a third (a brief `?` is fine, a `!` or a dog's bark is not) and you were never caught. The run tells you the
+  moment it's gone.
+- **KAIN NA!** Some levels have a dinner bar. When it runs out Mama calls you in and the level is over, no matter
+  how many chances you have left. The green notch on the bar is par time. Noise comes in two kinds: lures (a
+  thrown tsinelas, a creaky board, lego, the TV) make adults walk over to look; glances (running, rummaging in a
+  stash) only make them turn their head, which may still put you in the cone, and can wake Lola.
 
 ## Install / offline (PWA)
 
