@@ -50,13 +50,14 @@ cam.location = (0, -6.0, 5.2)
 cam.rotation_euler = (math.radians(50), 0, 0)
 scene.camera = cam
 
-# flat, even lighting so the palette snap stays clean
+# flat, even lighting so the palette snap stays clean. The light comes from the TOP-LEFT of the screen,
+# like every sprite and tile in the game (docs/ART_STYLE.md): it travels right (+X), toward the camera (-Y), and down.
 if 'KupitSun' not in bpy.data.objects:
     sun_data = bpy.data.lights.new('KupitSun', 'SUN')
     sun_data.energy = 3.0
     sun = bpy.data.objects.new('KupitSun', sun_data)
-    sun.rotation_euler = (math.radians(40), 0, math.radians(20))
     scene.collection.objects.link(sun)
+bpy.data.objects['KupitSun'].rotation_euler = (math.radians(-45), 0, math.radians(45))
 
 
 def hide_all_but(root):

@@ -2,7 +2,7 @@
   "id": "01-sala",
   "name": "SALA",
   "tutorial": true,
-  "hint": "HOLD KUPIT NEAR MAMA'S PURSE. HIDE IF SEEN!",
+  "hint": "SNEAK TO MAMA'S PURSE, HOLD KUPIT, THEN EXIT",
   "tiles": [
     "###############",
     "#.............#",
@@ -38,8 +38,8 @@
     { "kind": "curtain", "at": [12, 2] },
     { "kind": "box", "at": [8, 9] }
   ],
+  "alkansya": { "at": [13, 2], "coins": 5 },
   "adults": [
-    { "type": "mama", "route": [[1,1],[13,1],[13,6],[1,6]] },
-    { "type": "lola", "at": [3, 10], "face": 0, "sweep": 0.5, "phase": 0, "cycle": { "on": 7, "off": 11 } }
+    { "type": "mama", "route": [[1,1,1.5],[13,1,1.5],[13,6,1.5],[1,6,1.5]], "cfg": { "speed": 17 } }
   ]
 }

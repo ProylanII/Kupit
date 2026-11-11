@@ -1,7 +1,7 @@
 {
   "id": "boss4-fiesta",
   "name": "NINANG'S FIESTA",
-  "hint": "THE NINANGS CIRCLE THE TABLES. SLIP THROUGH THE GAPS",
+  "hint": "GUESTS BLOCK THE VIEW. WALK BEHIND THEM",
   "boss": {
     "title": "NINANG'S FIESTA",
     "index": 0,
@@ -223,6 +223,13 @@
       ]
     }
   ],
+  "alkansya": {
+    "at": [
+      13,
+      14
+    ],
+    "coins": 8
+  },
   "adults": [
     {
       "type": "ninang",
@@ -325,6 +332,71 @@
         [
           2,
           12
+        ]
+      ]
+    },
+    {
+      "type": "bisita",
+      "route": [
+        [
+          2,
+          4,
+          1
+        ],
+        [
+          12,
+          4,
+          1
+        ]
+      ]
+    },
+    {
+      "type": "bisita",
+      "route": [
+        [
+          8,
+          8,
+          1
+        ],
+        [
+          13,
+          8,
+          1
+        ],
+        [
+          13,
+          10,
+          1
+        ],
+        [
+          8,
+          10,
+          1
+        ]
+      ]
+    },
+    {
+      "type": "bisita",
+      "route": [
+        [
+          3,
+          16,
+          1
+        ],
+        [
+          11,
+          16,
+          1
+        ],
+        [
+          11,
+          18,
+          1
+        ],
+        [
+          3,
+          18,
+          1
         ]
       ]
     }

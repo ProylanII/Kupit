@@ -253,6 +253,7 @@
       ]
     }
   ],
+  "alkansya": { "at": [1, 9], "coins": 8 },
   "adults": [
     {
       "type": "nena",

@@ -142,6 +142,8 @@ def face_front(c, L, look, hy, pose):
     kid = look.get('kid')
     shut = pose in ('sleep', 'caught')
     for ex in (x0 + 2, x0 + 7):
+        if pose == 'portrait':
+            break  # portrait() draws its own big eyes and brows at 2x
         if shut:
             c.hline(ex - (0 if ex == x0 + 2 else 1), ex + (1 if ex == x0 + 2 else 0), hy + 5, INK)
         elif kid or pose == 'alert':
@@ -195,6 +197,7 @@ def face_side(c, L, look, hy, pose):
     if look.get('glasses') and not shut:
         c.px(x0 + 7, hy + 4, 'G'); c.px(x0 + 9, hy + 4, 'G'); c.px(x0 + 9, hy + 5, 'G'); c.px(x0 + 7, hy + 5, 'G')
         c.px(x0 + 6, hy + 4, 'G'); c.px(x0 + 5, hy + 4, 'G')
+        c.px(x0 + 8, hy + 4, '#dfe7ee')  # lens top (was left as brow colour: a gap in the rim)
     if look.get('earrings'):
         c.px(x0 + 4, hy + 7, 'A')
 
@@ -670,27 +673,33 @@ def portrait(name):
         if col == INK:
             continue
         c.rect(x * S, y * S, S, S, col)
-    # big expressive eyes, brows, mouth at 1x
+    # Big expressive eyes, brows, mouth at 1x. The face is cols 4..23 (centre 13.5, same as the mouth),
+    # so the eyes sit at 8-9 and 18-19 and everything else mirrors around 13.5.
     ey = (hy + 4) * S
-    for ex in ((2 + 2) * S, (2 + 7) * S - 1):
-        c.rect(ex, ey, 2, 3, INK); c.px(ex, ey, '#ffffff')
-        if look.get('kid'):
-            c.px(ex + 1, ey + 3, INK) if False else None
+    EYES = (8, 18)
+    if look.get('shades'):  # sunglasses pushed up on the forehead (the 1x copy above drops their ink frame)
+        for ex in EYES:
+            c.rect(ex - 2, ey - 4, 6, 2, INK); c.rect(ex, ey - 4, 2, 2, 'a')
+        c.rect(12, ey - 4, 4, 1, 'h')
+    for ex in EYES:
+        c.rect(ex, ey, 2, 3, INK)
+        c.px(ex, ey, '#ffffff')  # catch-light, same side on both eyes (one light source)
     if look.get('kid'):
         c.rect(5, ey + 4, 2, 1, BLUSH); c.rect(21, ey + 4, 2, 1, BLUSH)
         c.hline(12, 15, ey + 6, '#a8433f'); c.px(13, ey + 7, '#c25a4f'); c.px(14, ey + 7, '#c25a4f')
     else:
-        c.hline(3, 7, ey - 2, 'h'); c.hline(18, 22, ey - 2, 'h')
+        if not look.get('shades'):
+            c.hline(EYES[0] - 1, EYES[0] + 2, ey - 2, 'h'); c.hline(EYES[1] - 1, EYES[1] + 2, ey - 2, 'h')
         c.hline(12, 15, ey + 6, '#a8433f')
     if look.get('stache'):
         c.hline(10, 17, ey + 5, 'H'); c.hline(11, 16, ey + 6, 'H')
     if look.get('lips'):
         c.hline(12, 15, ey + 6, '#e0304a'); c.hline(13, 14, ey + 7, '#e0304a')
-    if look.get('glasses'):
-        for ex in (4, 17):
-            c.hline(ex - 1, ex + 4, ey - 1, 'G'); c.hline(ex - 1, ex + 4, ey + 3, 'G')
-            c.vline(ex - 1, ey - 1, ey + 3, 'G'); c.vline(ex + 4, ey - 1, ey + 3, 'G')
-        c.hline(9, 16, ey, 'G')
+    if look.get('glasses'):  # each lens is centred on its eye (it used to miss the left eye completely)
+        for ex in EYES:
+            c.hline(ex - 2, ex + 3, ey - 1, 'G'); c.hline(ex - 2, ex + 3, ey + 3, 'G')
+            c.vline(ex - 2, ey - 1, ey + 3, 'G'); c.vline(ex + 3, ey - 1, ey + 3, 'G')
+        c.hline(EYES[0] + 4, EYES[1] - 3, ey, 'G')  # bridge between the lenses, not across an eye
     if look.get('earrings'):
         c.rect(3, ey + 6, 2, 2, 'A'); c.rect(23, ey + 6, 2, 2, 'A')
     return c, look

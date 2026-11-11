@@ -1,5 +1,5 @@
 {
-  "version": "557df732",
+  "version": "ad80fa84",
   "files": [
     "assets/sprites/atlas.json",
     "assets/sprites/sheet.png",
@@ -15,7 +15,9 @@
     "src/core/haptics.js",
     "src/core/input.js",
     "src/core/music.js",
+    "src/core/rng.js",
     "src/core/save.js",
+    "src/core/settings.js",
     "src/data/levels/01-sala.json",
     "src/data/levels/02-kusina.json",
     "src/data/levels/03-buong-bahay.json",
@@ -31,10 +33,12 @@
     "src/data/levels/kwarto.json",
     "src/data/levels/palengke.json",
     "src/data/levels/sampayan.json",
+    "src/data/story.js",
     "src/data/tracks.js",
     "src/entities/adult.js",
     "src/entities/player.js",
     "src/entities/target.js",
+    "src/game/ghost.js",
     "src/game/house.js",
     "src/game/progression.js",
     "src/game/validate.js",
@@ -50,6 +54,7 @@
     "src/ui/menu.js",
     "src/world/los.js",
     "src/world/pathfind.js",
+    "src/world/sound.js",
     "src/world/tilemap.js"
   ]
 }

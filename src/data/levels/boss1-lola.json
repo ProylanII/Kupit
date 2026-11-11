@@ -1,7 +1,7 @@
 {
   "id": "boss1-lola",
   "name": "LOLA'S SIESTA",
-  "hint": "STEAL WHILE LOLA SLEEPS. RUMMAGING NEAR HER WAKES HER",
+  "hint": "EVERY NOISE DRAINS LOLA'S SLEEP. KEEP IT QUIET",
   "boss": {
     "title": "LOLA'S SIESTA",
     "index": 0,
@@ -61,7 +61,7 @@
       },
       {
         "at": 6,
-        "banner": "LOLA WOKE UP! TAKBO!",
+        "banner": "LOLA WOKE UP! WALANG INGAY!",
         "escape": 25,
         "adult": {
           "index": 0,
@@ -72,7 +72,8 @@
             "spread": 24
           },
           "speed": 24,
-          "sweep": 1.2
+          "sweep": 1.2,
+          "hairTrigger": true
         }
       }
     ]
@@ -119,7 +120,7 @@
         5
       ],
       "coins": 2,
-      "time": 2.0
+      "time": 2
     },
     {
       "kind": "bayong",
@@ -128,7 +129,7 @@
         6
       ],
       "coins": 2,
-      "time": 2.0
+      "time": 2
     },
     {
       "kind": "bayong",
@@ -137,7 +138,7 @@
         3
       ],
       "coins": 2,
-      "time": 2.0
+      "time": 2
     }
   ],
   "items": [
@@ -226,6 +227,13 @@
       ]
     }
   ],
+  "alkansya": {
+    "at": [
+      13,
+      1
+    ],
+    "coins": 8
+  },
   "adults": [
     {
       "type": "lola",
@@ -243,7 +251,8 @@
           "off": 8
         },
         "lightSleeper": true,
-        "checksHides": true
+        "checksHides": true,
+        "depth": true
       }
     }
   ]

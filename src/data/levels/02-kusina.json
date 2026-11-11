@@ -1,7 +1,7 @@
 {
   "id": "02-kusina",
   "name": "KUSINA",
-  "hint": "Q THROWS THE TSINELAS. NOISE LURES THEM!",
+  "hint": "SEEN? HIDE IN THE BOX. THROW TSINELAS TO LURE",
   "tiles": [
     "###############",
     "#CCCCC..FF.CC.#",
@@ -48,6 +48,7 @@
     { "kind": "box", "at": [1, 8] },
     { "kind": "basket", "at": [13, 6] }
   ],
+  "alkansya": { "at": [1, 2], "coins": 5 },
   "adults": [
     { "type": "mama", "route": [[2,3,1.5],[12,3],[12,6,1.5],[2,6]] },
     { "type": "lola", "at": [8, 11], "face": 3.14159, "sweep": 0.6, "phase": 4 }

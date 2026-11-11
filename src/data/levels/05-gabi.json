@@ -57,6 +57,7 @@
     { "kind": "creak", "at": [9, 10] },
     { "kind": "creak", "at": [10, 3] }
   ],
+  "alkansya": { "at": [1, 20], "coins": 5 },
   "adults": [
     { "type": "mama", "route": [[2,13,3,-1.5708],[5,16],[2,19,2],[5,13]] },
     { "type": "lola", "at": [10, 4], "face": -1.5708, "sweep": 0.8, "phase": 2 },

@@ -21,6 +21,11 @@ INK = (27, 20, 36)
 
 
 def load_palette():
+    # the locked art palette (docs/ART_STYLE.md); tests/artstyle.test.mjs rejects any colour outside it
+    style = os.path.join(ROOT, 'tools', 'art', 'style.json')
+    if os.path.exists(style):
+        with open(style, encoding='utf8') as fh:
+            return sorted({tuple(int(h[i:i + 2], 16) for i in (1, 3, 5)) for h in json.load(fh)['palette']})
     src = open(os.path.join(ROOT, 'src', 'render', 'palette.js'), encoding='utf8').read()
     cols = sorted({tuple(int(h[i:i + 2], 16) for i in (0, 2, 4)) for h in re.findall(r"#([0-9a-fA-F]{6})", src)})
     return cols

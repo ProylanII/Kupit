@@ -32,7 +32,8 @@ and that standing still at the spawn for 4 s is safe. The same validator checks 
   "quota": 6,                  // coins needed to unlock the exit
   "par": 120,                  // seconds for the speed star
   "patience": 160,             // optional: "KAIN NA!" timer, caught when it runs out
-  "targets": [{ "kind": "purse|bayong|wallet|piggy", "at": [x,y], "coins": 3, "time": 1.6 }],
+  "targets": [{ "kind": "purse|bayong|wallet|piggy|candy", "at": [x,y], "coins": 3, "time": 1.6 }], // time 0.5..4
+  "alkansya": { "at": [x,y], "coins": 5 }, // optional secret bonus stash (tools/place-alkansya.mjs suggests a spot)
   "items":   [{ "kind": "tsinelas|pandesal|key", "at": [x,y], "color": "red|blue|green|gold" }],
   "locks":   [{ "at": [x,y], "key": "blue" }],          // on a D tile
   "switches":[{ "at": [x,y], "gates": [[x,y]], "time": 6 }], // time = auto-close seconds (optional)
@@ -47,6 +48,29 @@ and that standing still at the spawn for 4 s is safe. The same validator checks 
 }
 ```
 
+## Stashes (targets)
+
+Each kind steals differently (`TARGET_KINDS` in `src/entities/target.js`). `time` is multiplied by the kind's hold factor.
+Stash noises are not lures: adults in earshot turn to look, and sleepers close by may wake.
+
+| Kind | Hold | Noise |
+|---|---|---|
+| `purse` | quick (x0.85) | the clasp clicks when it opens (at the end) |
+| `bayong` | slow (x1.35) | a soft rustle every 0.7 s, so it's safest while Lola naps |
+| `wallet` | normal | a loud zipper when you start, so time it against Tita's phone breaks |
+| `piggy` | x1.1 | a jingle with every shake |
+| `candy` | normal | the lid rattles |
+| `alkansya` | normal | Optional. Its coins go to the bank, not the quota, and it can be found once per level. |
+
+Letting go keeps your progress: it drains slowly (about 8 s from full), so you can duck out of sight and come back.
+Put the bigger coin values in the riskier spots (Random House does this automatically).
+
+## Sound
+
+Noises travel along the rooms (`src/world/sound.js`). Walls stop them, and a closed door adds about 2.5 tiles of
+distance. Furniture and gate bars let them through. An adult hears a noise if the path distance is shorter than the
+noise's radius. Lures are answered a beat later the farther away the adult is, so a crowd turns one at a time.
+
 ## Adult extras
 
 - `"cfg": { ... }` overrides stats for one adult: `range`, `fov`, `speed`, `rate`, `cycle`, `sleepy`,
@@ -55,6 +79,15 @@ and that standing still at the spawn for 4 s is safe. The same validator checks 
   spots: hiding is no longer a free reset), `lightSleeper` (stealing within ~3 tiles drains her sleep 2.5x faster),
   `tracker` (dog follows the player's scent trail), `hunt: { "every": 4, "spread": 24 }` (keeps heading for roughly
   where the player is).
+- Signature keys used by bosses and archetypes:
+  - `depth`: a sleep-depth meter. Every noise drains it, and she only wakes at zero. Used by Lola's Siesta.
+  - `hairTrigger`: any noise she hears means an instant chase toward it.
+  - `followsDog: <adult index>`: hears that dog's barks anywhere and goes to look. Checked by the validator.
+  - `ears: 1.6`: hears this much farther. A dog with `ears` barks toward lures it hears.
+  - `tattle: { "r": 170, "windup": 0.5, "say": "MAAA!" }`: when he spots you, a wind-up, then a shout of radius `r`
+    from where he stands. It sends everyone in earshot to where he saw you.
+  - `leash: 64`: gives up a chase this far from home.
+  - `scan: { "amp": 0.85, "speed": 1.4 }`: the cone sweeps side to side while walking.
 - `"sweepPhase": 3.5` offsets a sweeping adult's rotation so several cones "roll" out of sync.
 
 ## Bosses
@@ -84,6 +117,15 @@ Extra target kind `candy` (the garapon prize). Adult types `nena` (Aling Nena) a
 at spawn for 4s is safe on every level.
 
 Adult types: `mama`, `lola` (sleeps in cycles, noise wakes her), `tita` (phone cycles), `tatay` (fast),
-`kuya` (tattletale: alerts everyone), `aso` (dog: barks instead of chasing, eats pandesal), `nena`, `ninang`.
+`kuya` (tattletale: a wind-up, then a shout that calls everyone nearby), `aso` (dog: barks instead of chasing, eats
+pandesal), `nena`, `ninang`. Late-game community archetypes, built from the same behaviours:
+
+- `tanod`: barangay watchman. His flashlight cone sweeps while he walks, and his whistle calls everyone.
+- `tindera`: market vendor. Shouts MAGNANAKAW! but never strays far from her stall.
+- `bisita`: party guest. Harmless and walks a route, but **blocks sight**, so you can hide behind them.
+- `trike`: a tricycle on a timed route. Harmless and blocks sight, but it knocks you down and honks.
+
+Generated houses can also carry `mutators`, `brownout` (darker night), `noThrow` (no throwables) and `pasko`
+(Noche Buena decorations). See `src/game/house.js`.
 Routes are walked with A* (adults open closed doors, never pass gates).
 Objects must sit on plain floor and not overlap.

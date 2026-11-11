@@ -200,6 +200,7 @@
       ]
     }
   ],
+  "alkansya": { "at": [20, 22], "coins": 5 },
   "adults": [
     {
       "type": "tita",

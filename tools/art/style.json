@@ -1,0 +1,148 @@
+{
+  "_doc": "Locked sprite style for Kupit. Read by tests/artstyle.test.mjs (and tools/pack_atlas.py for the palette). Change it on purpose, never by accident: see docs/ART_STYLE.md.",
+  "tile": 16,
+  "outline": "#1b1424",
+  "alpha": "binary",
+  "light": "top-left",
+  "directions": [
+    0,
+    2,
+    3
+  ],
+  "mirrored": {
+    "1": 2
+  },
+  "walkFrames": 4,
+  "poses": {
+    "kid": [
+      "reach",
+      "caught"
+    ],
+    "adult": [
+      "alert",
+      "sleep"
+    ]
+  },
+  "kinds": {
+    "kid": [
+      "jun",
+      "bing",
+      "ramil",
+      "nene"
+    ],
+    "adult": [
+      "mama",
+      "lola",
+      "tita",
+      "tatay",
+      "kuya",
+      "nena",
+      "ninang"
+    ],
+    "dog": [
+      "aso"
+    ]
+  },
+  "height": {
+    "kid": [
+      16,
+      20
+    ],
+    "adult": [
+      20,
+      24
+    ],
+    "dog": [
+      11,
+      14
+    ],
+    "portrait": [
+      30,
+      30
+    ]
+  },
+  "palette": [
+    "#1b1424",
+    "#227a43",
+    "#22807a",
+    "#24160f",
+    "#24488f",
+    "#2a1f33",
+    "#2a2640",
+    "#2b3b6a",
+    "#2e1a3a",
+    "#2f5fbf",
+    "#2fa55b",
+    "#2fa59b",
+    "#33201a",
+    "#3580b8",
+    "#382a4a",
+    "#3a2418",
+    "#3a3550",
+    "#3a4f8a",
+    "#3a62a8",
+    "#46415a",
+    "#46a0e0",
+    "#4a2c1c",
+    "#4a2c5a",
+    "#4a3a5f",
+    "#4a3d5c",
+    "#4f2a44",
+    "#4f7fd0",
+    "#5a3a28",
+    "#5a5468",
+    "#5f8fe0",
+    "#6b3a5a",
+    "#6b4a8c",
+    "#6e4424",
+    "#6e4430",
+    "#7a5a8c",
+    "#7a7488",
+    "#7fd7ff",
+    "#7fe0d4",
+    "#8a2050",
+    "#8a5a2b",
+    "#8a5fb5",
+    "#9a6232",
+    "#9a94a8",
+    "#a82e2e",
+    "#a83a3a",
+    "#a8433f",
+    "#b07a4c",
+    "#bdb6ab",
+    "#c02f3a",
+    "#c0306a",
+    "#c25a4f",
+    "#c48a4a",
+    "#c4bfd0",
+    "#c98a4a",
+    "#c98e62",
+    "#c9a8e8",
+    "#cfc7b8",
+    "#d6c9a4",
+    "#d89f6c",
+    "#d94040",
+    "#d94a4a",
+    "#d9578f",
+    "#d9762a",
+    "#d9a06a",
+    "#dfe7ee",
+    "#e0304a",
+    "#e0a92e",
+    "#ec8f86",
+    "#ecb98f",
+    "#ece6dc",
+    "#f0dcb8",
+    "#f0e6c8",
+    "#f2c394",
+    "#f6f1e7",
+    "#ff4b4b",
+    "#ff7eb6",
+    "#ff9a3c",
+    "#ffb0d4",
+    "#ffd0a0",
+    "#ffd84d",
+    "#ffe36b",
+    "#ffffff"
+  ]
+}

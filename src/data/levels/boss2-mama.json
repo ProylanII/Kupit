@@ -209,6 +209,7 @@
       ]
     }
   ],
+  "alkansya": { "at": [1, 12], "coins": 8 },
   "adults": [
     {
       "type": "mama",

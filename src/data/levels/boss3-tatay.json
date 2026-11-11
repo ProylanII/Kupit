@@ -1,7 +1,7 @@
 {
   "id": "boss3-tatay",
   "name": "TATAY + ASO",
-  "hint": "ASO FOLLOWS YOUR SCENT. ONE PANDESAL BUYS YOU TIME",
+  "hint": "TATAY FOLLOWS ASO'S BARKS. PANDESAL SPLITS THEM",
   "boss": {
     "title": "TATAY + ASO",
     "index": 0,
@@ -52,16 +52,26 @@
       },
       {
         "at": 7,
-        "banner": "TATAY IS COMING FOR YOU!",
+        "banner": "ASO IS LOOSE! TATAY FOLLOWS",
         "escape": 25,
-        "adult": {
-          "index": 0,
-          "hunt": {
-            "every": 4,
-            "spread": 24
+        "adult": [
+          {
+            "index": 0,
+            "hunt": {
+              "every": 4,
+              "spread": 24
+            },
+            "speed": 42
           },
-          "speed": 42
-        }
+          {
+            "index": 1,
+            "speed": 54,
+            "hunt": {
+              "every": 3,
+              "spread": 16
+            }
+          }
+        ]
       }
     ]
   },
@@ -197,6 +207,13 @@
       ]
     }
   ],
+  "alkansya": {
+    "at": [
+      1,
+      16
+    ],
+    "coins": 8
+  },
   "adults": [
     {
       "type": "tatay",
@@ -223,7 +240,8 @@
         ]
       ],
       "cfg": {
-        "checksHides": true
+        "checksHides": true,
+        "followsDog": 1
       }
     },
     {
@@ -252,7 +270,8 @@
       ],
       "cfg": {
         "tracker": true,
-        "range": 48
+        "range": 48,
+        "ears": 1.6
       }
     }
   ]

@@ -1,7 +1,7 @@
 {
   "id": "03-buong-bahay",
   "name": "BUONG BAHAY",
-  "hint": "DOORS BLOCK SIGHT. THE BACK DOOR NEEDS A KEY",
+  "hint": "DOORS BLOCK SIGHT. KEYS OPEN LOCKS. LEVERS: GATES",
   "tiles": [
     "###############",
     "#.......#.....#",
@@ -21,7 +21,7 @@
     "#......#......#",
     "#..CC..#......#",
     "#......#...PP.#",
-    "#......#......#",
+    "#####G##......#",
     "#......#......#",
     "#......#......#",
     "###############"
@@ -50,9 +50,13 @@
   "traps": [
     { "kind": "creak", "at": [11, 8] }
   ],
+  "switches": [
+    { "at": [5, 16], "gates": [[5, 18]] }
+  ],
+  "alkansya": { "at": [1, 2], "coins": 5 },
   "adults": [
     { "type": "mama", "route": [[1,9],[13,9,1.2],[13,13],[1,13,1.2]] },
     { "type": "lola", "at": [10, 3], "face": 1.5708, "sweep": 0.7, "phase": 3 },
-    { "type": "tita", "route": [[2,17],[5,17],[5,20],[2,20]] }
+    { "type": "tita", "route": [[1,15],[6,15],[6,17],[1,17]] }
   ]
 }

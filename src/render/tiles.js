@@ -243,8 +243,15 @@ function wall(g, map, tx, ty, x, y, night, lights) {
   if (!isWall(map.ch(tx, ty - 1)) && ty > 0) r(g, C.wallL, x, y, TILE, 1);
 }
 
+// A small parol (star lantern) centred on (cx, cy).
+export function parol(g, cx, cy, s = 1) {
+  const P = ['..y..', '.yry.', 'yrrry', '.yry.', 'y.r.y'];
+  P.forEach((row, j) => [...row].forEach((c, i) => { if (c !== '.') r(g, c === 'y' ? C.gold : C.red, cx - 2 * s + i * s, cy - 2 * s + j * s, s, s); }));
+  r(g, C.gold2, cx, cy + 3 * s, s, 2 * s);
+}
+
 // ---------------------------------------------------------------- build
-export function buildBackground(map, { night = false } = {}) {
+export function buildBackground(map, { night = false, pasko = false } = {}) {
   const cv = document.createElement('canvas');
   cv.width = map.w * TILE; cv.height = map.h * TILE;
   const g = cv.getContext('2d');
@@ -291,6 +298,20 @@ export function buildBackground(map, { night = false } = {}) {
     }
     g.globalAlpha = 1;
   }
+  // 6. Pasko: Christmas lights strung along the walls and a parol in every window
+  if (pasko) {
+    const bulbs = [C.red, C.green, C.gold, '#4f8fff', C.pink];
+    each((ch, tx, ty, x, y) => {
+      if (!isWall(ch) || isWall(map.ch(tx, ty + 1))) return;
+      for (let i = 0; i < 4; i++) {
+        const bx = x + 2 + i * 4, by = y + 5 + ((i + tx) % 2);
+        r(g, C.ink, bx, by - 1, 1, 1);
+        r(g, bulbs[(tx * 4 + i) % bulbs.length], bx, by, 2, 2);
+      }
+    });
+    for (const l of lights) parol(g, l.x, l.y - 9);
+  }
   cv.windows = lights; // used by the night lighting (moonlight pools)
+  cv.pasko = pasko;
   return cv;
 }

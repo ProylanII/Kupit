@@ -52,6 +52,7 @@
     { "kind": "creak", "at": [7, 3] },
     { "kind": "lego", "at": [3, 3] }
   ],
+  "alkansya": { "at": [13, 10], "coins": 5 },
   "adults": [
     { "type": "aso", "route": [[1,7],[13,7],[13,11],[1,11]], "cycle": { "on": 9, "off": 6 }, "sleepy": true },
     { "type": "tatay", "route": [[7,1,1.5,0],[13,1],[13,4,2,3.14159],[7,4]] }

@@ -40,6 +40,8 @@ export const UPGRADES = {
 
 export const BASE_RUN_NOISE = 48;
 export const BASE_ITEM_CAP = 3;
+// No stack of upgrades and kid traits may remove the tension: these are hard floors.
+export const FLOORS = { runNoise: 24, stealTime: 0.5, alertRate: 0.55 };
 
 const lvl = (ups, id) => (ups && ups[id]) | 0;
 
@@ -51,9 +53,9 @@ export function computeMods(charId = 'jun', ups = {}) {
     skill: c.skill,
     speed: c.speed ?? 1,
     radius: c.radius ?? 4,
-    runNoise: BASE_RUN_NOISE * (c.runNoise ?? 1) * (1 - 0.2 * lvl(ups, 'quiet')),
-    stealTime: (c.stealTime ?? 1) * (1 - 0.15 * lvl(ups, 'hands')),
-    alertRate: (c.alertRate ?? 1) * (1 - 0.1 * lvl(ups, 'shadow')),
+    runNoise: Math.max(FLOORS.runNoise, BASE_RUN_NOISE * (c.runNoise ?? 1) * (1 - 0.2 * lvl(ups, 'quiet'))),
+    stealTime: Math.max(FLOORS.stealTime, (c.stealTime ?? 1) * (1 - 0.15 * lvl(ups, 'hands'))),
+    alertRate: Math.max(FLOORS.alertRate, (c.alertRate ?? 1) * (1 - 0.1 * lvl(ups, 'shadow'))),
     itemCap: BASE_ITEM_CAP + lvl(ups, 'pockets'),
     startItems: lvl(ups, 'stash'),
     patienceBonus: 10 * lvl(ups, 'pasensya'),
@@ -77,7 +79,107 @@ export function buyUpgrade(save, id) {
   return true;
 }
 
+// What an upgrade does for the kid you're playing, now and after the next level (store stat bars).
+// frac: 0..1 how far along the stat is from "no upgrade" to its best (floors included).
+const STAT = {
+  quiet:    { key: 'runNoise', label: 'NOISE', lowGood: true, fmt: (v) => Math.round(v) },
+  hands:    { key: 'stealTime', label: 'KUPIT TIME', lowGood: true, fmt: (v) => `${Math.round(v * 100)}%` },
+  pockets:  { key: 'itemCap', label: 'POCKETS', fmt: (v) => v },
+  shadow:   { key: 'alertRate', label: 'NOTICED', lowGood: true, fmt: (v) => `${Math.round(v * 100)}%` },
+  pasensya: { key: 'patienceBonus', label: 'DINNER', fmt: (v) => `+${v}S` },
+  stash:    { key: 'startItems', label: 'START WITH', fmt: (v) => v },
+};
+export function upgradeStat(save, id) {
+  const s = STAT[id], max = UPGRADES[id].costs.length, have = lvl(save.upgrades, id);
+  const at = (n) => computeMods(save.char, { ...save.upgrades, [id]: n })[s.key];
+  const v0 = at(0), vMax = at(max), now = at(have);
+  const frac = v0 === vMax ? 1 : (now - v0) / (vMax - v0);
+  return { label: s.label, now: s.fmt(now), next: have < max ? s.fmt(at(have + 1)) : null, frac: Math.max(0, Math.min(1, frac)) };
+}
+
 export const owns = (save, id) => save.chars.includes(id);
+
+// ---- cosmetics: they never touch balance -------------------------------------------
+// Outfits are palette swaps of the kid's top and bottom (see render/sprites.js).
+// how: cost (coins) | stars (milestone) | mutator (clear a level-3+ Random House with it) | pasko (free in season)
+export const OUTFIT_ORDER = ['basic', 'pula', 'lila', 'jersey', 'pambahay', 'barong', 'glow', 'pasko', 'ginto'];
+export const OUTFITS = {
+  basic:    { name: 'PAMBAHAY NI NANAY', how: { cost: 0 } },
+  pula:     { name: 'PULANG DAMIT', how: { cost: 12 }, top: ['#d94a4a', '#a83a3a'], bottom: ['#3a3550', '#2a2640'] },
+  lila:     { name: 'LILA', how: { cost: 15 }, top: ['#8a5fb5', '#6b4a8c'], bottom: ['#ece6dc', '#bdb6ab'] },
+  jersey:   { name: 'BASKETBALL JERSEY', how: { stars: 10 }, top: ['#2f5fbf', '#24488f'], bottom: ['#d94a4a', '#a83a3a'] },
+  pambahay: { name: 'SANDO AT SHORTS', how: { mutator: 'tsinelas' }, top: ['#f6f1e7', '#cfc7b8'], bottom: ['#46a0e0', '#3580b8'] },
+  barong:   { name: 'MINI BARONG', how: { mutator: 'bisita' }, top: ['#f3ead2', '#d9cba6'], bottom: ['#5a5468', '#46415a'] },
+  glow:     { name: 'GLOW SHIRT', how: { mutator: 'brownout' }, top: ['#7fd7ff', '#4f8fff'], bottom: ['#2a3560', '#1d2448'] },
+  pasko:    { name: 'PAMASKONG DAMIT', how: { pasko: true }, top: ['#d94a4a', '#a83a3a'], bottom: ['#2fa55b', '#227a43'] },
+  ginto:    { name: 'GINTONG KUPIT', how: { stars: 42 }, top: ['#ffd84d', '#c9962b'], bottom: ['#ffd84d', '#c9962b'] },
+};
+// Title-screen skyline decorations.
+export const DECOR_ORDER = ['pusa', 'alitaptap', 'parol', 'banderitas', 'jeep', 'paputok'];
+export const DECOR = {
+  pusa:       { name: 'PUSA SA BUBONG', how: { cost: 6 } },
+  alitaptap:  { name: 'ALITAPTAP', how: { cost: 8 } },
+  parol:      { name: 'PAROL', how: { cost: 10 } },
+  banderitas: { name: 'BANDERITAS', how: { cost: 12 } },
+  jeep:       { name: 'JEEPNEY', how: { stars: 20 } },
+  paputok:    { name: 'PAPUTOK', how: { stars: 30 } },
+};
+export const STAR_MILESTONES = [10, 20, 30, 42].map((stars) => ({
+  stars,
+  rewards: [
+    ...OUTFIT_ORDER.filter((id) => OUTFITS[id].how.stars === stars).map((id) => ({ kind: 'outfit', id, name: OUTFITS[id].name })),
+    ...DECOR_ORDER.filter((id) => DECOR[id].how.stars === stars).map((id) => ({ kind: 'decor', id, name: DECOR[id].name })),
+  ],
+}));
+
+export const totalStars = (save) => Object.values(save.stars || {}).reduce((s, n) => s + (n | 0), 0);
+
+// Grant whatever the save now qualifies for (star milestones, mutator clears, the Pasko season).
+// Returns the newly unlocked rewards, for a "NEW!" toast.
+export function grantUnlocks(save, { pasko = false } = {}) {
+  const got = [];
+  const stars = totalStars(save);
+  const give = (kind, id, name) => {
+    const list = kind === 'outfit' ? save.outfits : save.decor;
+    if (!list.includes(id)) { list.push(id); got.push({ kind, id, name }); }
+  };
+  for (const id of OUTFIT_ORDER) {
+    const h = OUTFITS[id].how;
+    if ((h.stars && stars >= h.stars) || (h.mutator && save.mutatorClears?.[h.mutator]) || (h.pasko && pasko) || h.cost === 0) give('outfit', id, OUTFITS[id].name);
+  }
+  for (const id of DECOR_ORDER) {
+    const h = DECOR[id].how;
+    if ((h.stars && stars >= h.stars) || (id === 'parol' && pasko)) give('decor', id, DECOR[id].name);
+  }
+  return got;
+}
+
+export function buyCosmetic(save, kind, id) {
+  const def = (kind === 'outfit' ? OUTFITS : DECOR)[id], list = kind === 'outfit' ? save.outfits : save.decor;
+  if (!def || list.includes(id)) return 'owned';
+  if (def.how.cost === undefined) return 'locked';
+  if (save.bank < def.how.cost) return 'poor';
+  save.bank -= def.how.cost;
+  list.push(id);
+  return 'bought';
+}
+
+// ---- payouts -------------------------------------------------------------------------
+// Campaign: the first clear pays everything; replays pay half the coins plus only newly earned stars,
+// so the store empties in the second half of the campaign instead of by grinding level 1.
+export function campaignPayout({ coins, stars, prevStars, first, bossBonus = 0, alkansya = 0 }) {
+  const newStars = Math.max(0, stars - (prevStars || 0));
+  return (first ? coins + stars + bossBonus : Math.ceil(coins / 2) + newStars) + alkansya;
+}
+// Random House: scales with difficulty and mutators, with diminishing returns for each house cleared today.
+// Daily House: full pay on the day's first clear; replays only pay for better stars.
+// mult = the mutator multiplier (house.js mutatorMult).
+export function housePayout({ coins, stars, diff, housesToday = 0, daily = false, prevStars = 0, mult = 1 }) {
+  const base = (coins + stars) * (0.6 + 0.2 * diff) * mult;
+  if (daily) return prevStars ? Math.max(0, stars - prevStars) : Math.round(base) + 2;
+  const day = Math.max(0.25, 1 - 0.15 * housesToday);
+  return Math.max(1, Math.round(base * day));
+}
 
 // Buy (if needed) and select a character. Returns 'selected' | 'bought' | 'poor'.
 export function pickChar(save, id) {

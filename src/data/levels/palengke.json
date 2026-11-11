@@ -1,7 +1,7 @@
 {
   "id": "08-palengke",
   "name": "PALENGKE",
-  "hint": "BUSY MARKET! VENDORS WATCH THE AISLES",
+  "hint": "TINDERAS SHOUT MAGNANAKAW! STAY OUT OF SIGHT",
   "tiles": [
     "############################",
     "#...........TT.............#",
@@ -211,9 +211,16 @@
       ]
     }
   ],
+  "alkansya": {
+    "at": [
+      25,
+      28
+    ],
+    "coins": 5
+  },
   "adults": [
     {
-      "type": "tita",
+      "type": "tindera",
       "at": [
         6,
         7
@@ -222,7 +229,7 @@
       "sweep": 0.5
     },
     {
-      "type": "ninang",
+      "type": "tindera",
       "at": [
         19,
         7

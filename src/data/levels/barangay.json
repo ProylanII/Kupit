@@ -1,7 +1,7 @@
 {
   "id": "09-barangay",
   "name": "BARANGAY HALL",
-  "hint": "TWO KEYS, TWO LOCKS. FOLLOW THE ARROW",
+  "hint": "TANOD'S FLASHLIGHT SWEEPS. MIND THE TRICYCLE",
   "tiles": [
     "##########################",
     "#........#,,,,,,#........#",
@@ -256,9 +256,16 @@
       ]
     }
   ],
+  "alkansya": {
+    "at": [
+      1,
+      1
+    ],
+    "coins": 5
+  },
   "adults": [
     {
-      "type": "mama",
+      "type": "tanod",
       "route": [
         [
           11,
@@ -344,6 +351,21 @@
         [
           18,
           7
+        ]
+      ]
+    },
+    {
+      "type": "trike",
+      "route": [
+        [
+          13,
+          3,
+          2.5
+        ],
+        [
+          13,
+          26,
+          2.5
         ]
       ]
     }

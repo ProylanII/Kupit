@@ -4,30 +4,47 @@
 // Every result is checked with validateLevel + idleSafe, otherwise the next derived seed is tried.
 import { TileMap } from '../world/tilemap.js';
 import { validateLevel, idleSafe, solve } from './validate.js';
+import { mulberry32, hashStr } from '../core/rng.js';
 
-export function mulberry32(a) {
-  return () => {
-    a |= 0; a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+export { mulberry32 };
 
+// ---- Daily House: one house per day for everyone, rolling over at midnight Manila time (UTC+8),
+// whatever time zone the phone itself is set to.
+const MANILA_MS = 8 * 3600 * 1000;
+const manila = (date = new Date()) => new Date(date.getTime() + MANILA_MS); // read it with getUTC*()
+export const dailyId = (date = new Date()) => { const m = manila(date); return `${m.getUTCFullYear()}-${m.getUTCMonth() + 1}-${m.getUTCDate()}`; };
 // "2026-11-07" -> stable number, so everyone gets the same Daily House.
-export function dailySeed(date = new Date()) {
-  const s = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
-  let h = 2166136261;
-  for (const ch of s) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
-  return 1000 + ((h >>> 0) % 9000);
+export const dailySeed = (date = new Date()) => 1000 + (hashStr(dailyId(date)) % 9000);
+// Easy at the start of the week, hardest on Sunday.
+export const DAILY_DIFF = [5, 2, 2, 3, 3, 4, 4]; // Sun..Sat
+export const dailyDiff = (date = new Date()) => DAILY_DIFF[manila(date).getUTCDay()];
+// Pasko season (the long Filipino Christmas): the Daily House becomes a Noche Buena house.
+export function isPasko(date = new Date()) {
+  const m = manila(date), mo = m.getUTCMonth() + 1;
+  return mo === 11 || mo === 12 || (mo === 1 && m.getUTCDate() <= 6);
 }
-export const dailyId = (date = new Date()) => `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+// The day before a daily id ("2026-3-1" -> "2026-2-28"), for streaks.
+export const prevDailyId = (id) => {
+  const [y, m, d] = id.split('-').map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d) - 24 * 3600 * 1000);
+  return `${t.getUTCFullYear()}-${t.getUTCMonth() + 1}-${t.getUTCDate()}`;
+};
+
+// Random House mutators: harder rules for a bigger payout (multipliers stack).
+export const MUTATORS = {
+  brownout: { name: 'BROWNOUT', mult: 1.25, desc: 'LIGHTS OUT. DARK HOUSE' },
+  tsinelas: { name: 'WALANG TSINELAS', mult: 1.25, desc: 'NOTHING TO THROW' },
+  bisita:   { name: 'BISITA', mult: 1.5, desc: 'RELATIVES ARE VISITING' },
+};
+export const MUTATOR_ORDER = ['brownout', 'tsinelas', 'bisita'];
+export const mutatorMult = (muts = []) => muts.reduce((m, k) => m * (MUTATORS[k]?.mult || 1), 1);
 
 const TYPES = ['sala', 'kusina', 'kwarto', 'bakuran', 'hall'];
 const FLOOR = { sala: '.', kusina: ',', kwarto: '.', bakuran: ';', hall: '.' };
 const STATIONARY = ['lola', 'tita', 'ninang'];
 
-function build(seed, diff) {
+function build(seed, diff, opts = {}) {
+  const mut = new Set(opts.mutators || []);
   const R = mulberry32(seed);
   const ri = (a, b) => a + Math.floor(R() * (b - a + 1));
   const pick = (a) => a[Math.floor(R() * a.length)];
@@ -36,6 +53,8 @@ function build(seed, diff) {
   // ---- room grid
   const C = ri(2, 3), RR = ri(3, 4);
   const iw = Array.from({ length: C }, () => ri(6, 8)), ih = Array.from({ length: RR }, () => ri(5, 7));
+  // 3 short rows would make a 19-tile house, shorter than the screen: grow the shortest row until it is 20+
+  while (ih.reduce((s, h) => s + h + 1, 1) < 20) ih[ih.indexOf(Math.min(...ih))]++;
   const xs = [], ys = [];
   let W = 1, H = 1;
   for (const w of iw) { xs.push(W); W += w + 1; }
@@ -146,24 +165,22 @@ function build(seed, diff) {
     const room = pool[i % pool.length];
     const cells = free(room);
     if (!cells.length) continue;
-    const coins = ri(1, 3);
-    targets.push({ kind: pick(['purse', 'wallet', 'piggy', 'bayong']), at: take(cells), coins, time: Math.round((1 + coins * 0.2) * 10) / 10 });
+    targets.push({ kind: pick(['purse', 'wallet', 'piggy', 'bayong']), at: take(cells), coins: ri(1, 3) });
   }
-  const total = targets.reduce((s, t) => s + t.coins, 0);
-  const quota = targets.length >= 3 ? total - Math.min(...targets.map((t) => t.coins)) : total;
 
   // ---- adults
   const bag = ['mama', 'mama', 'lola', 'tita'];
   if (diff >= 2) bag.push('aso');
   if (diff >= 3) bag.push('tatay', 'kuya');
   if (diff >= 4) bag.push('ninang', 'mama');
-  const count = Math.min(6, 1 + diff);
+  const base = Math.min(6, 1 + diff), count = base + (mut.has('bisita') ? 2 : 0);
   const homes = shuffle(rooms.filter((r) => r !== startRoom));
   const used = {};
   const adults = [];
   for (let i = 0; i < count; i++) {
-    let type = pick(bag);
-    for (let t = 0; t < 6 && (used[type] || 0) >= 2; t++) type = pick(bag);
+    const visitor = i >= base; // BISITA mutator: the visiting relatives
+    let type = visitor ? pick(['tita', 'ninang', 'tita']) : pick(bag);
+    for (let t = 0; t < 6 && !visitor && (used[type] || 0) >= 2; t++) type = pick(bag);
     used[type] = (used[type] || 0) + 1;
     const room = homes[i % homes.length];
     const cells = free(room);
@@ -185,6 +202,14 @@ function build(seed, diff) {
     if (type === 'aso') adults[adults.length - 1].cfg = { range: 44 };
   }
 
+  // ---- riskier stashes hold more: the biggest coin values go where the most adults walk by
+  const risk = (t) => adults.reduce((n, a) => n + (a.route || [a.at]).filter((q) => Math.abs(q[0] - t.at[0]) + Math.abs(q[1] - t.at[1]) <= 4).length, 0);
+  const values = targets.map((t) => t.coins).sort((a, b) => a - b);
+  targets.map((t, i) => ({ t, k: risk(t) + i * 0.01 })).sort((a, b) => a.k - b.k).forEach(({ t }, i) => { t.coins = values[i]; });
+  for (const t of targets) t.time = Math.round((1 + t.coins * 0.2) * 10) / 10;
+  const total = targets.reduce((s, t) => s + t.coins, 0);
+  const quota = targets.length >= 3 ? total - Math.min(...targets.map((t) => t.coins)) : total;
+
   // ---- items, hiding spots, devices, traps
   const all = shuffle(rooms.flatMap((r) => free(r).map((c) => ({ c, room: r }))));
   const grab = (accept = () => true) => {
@@ -195,10 +220,13 @@ function build(seed, diff) {
     return e.c;
   };
   const items = [];
-  for (let i = 0; i < 2; i++) { const c = grab(); if (c) items.push({ kind: 'tsinelas', at: c }); }
-  if (adults.some((a) => a.type === 'aso')) for (let i = 0; i < 2; i++) { const c = grab(); if (c) items.push({ kind: 'pandesal', at: c }); }
+  const throwables = !mut.has('tsinelas'); // WALANG TSINELAS: nothing to throw (cells are still used up, so the layout matches)
+  for (let i = 0; i < 2; i++) { const c = grab(); if (c && throwables) items.push({ kind: 'tsinelas', at: c }); }
+  if (adults.some((a) => a.type === 'aso')) for (let i = 0; i < 2; i++) { const c = grab(); if (c && throwables) items.push({ kind: 'pandesal', at: c }); }
   const hide = [];
-  for (let i = 0; i < 4 + ri(0, 2); i++) { const c = grab(); if (c) hide.push({ kind: pick(['box', 'curtain', 'basket']), at: c }); }
+  // not right next to a purse: KUPIT takes the button there, so you couldn't hide until it was emptied
+  const besideTarget = (e) => targets.some((t) => Math.abs(t.at[0] - e.c[0]) + Math.abs(t.at[1] - e.c[1]) <= 1);
+  for (let i = 0; i < 4 + ri(0, 2); i++) { const c = grab((e) => !besideTarget(e)); if (c) hide.push({ kind: pick(['box', 'curtain', 'basket']), at: c }); }
   const devices = [];
   for (let i = 0; i < (diff >= 4 ? 2 : 1); i++) { const c = grab(); if (c) devices.push({ kind: pick(['tv', 'radio']), at: c, dur: 9 }); }
   const traps = [];
@@ -211,6 +239,11 @@ function build(seed, diff) {
     night: diff >= 4 && R() < 0.5, tiles: rows, spawn, exit, quota, par,
     targets, items, devices, hide, traps, adults,
   };
+  if (mut.size) L.mutators = MUTATOR_ORDER.filter((k) => mut.has(k));
+  if (mut.has('brownout')) { L.night = true; L.brownout = true; L.hint = 'BROWNOUT! STAY CLOSE TO THE LIGHT'; }
+  if (mut.has('tsinelas')) { L.noThrow = true; L.hint = 'WALANG TSINELAS: NO THROWING TODAY'; }
+  if (mut.has('bisita')) L.hint = 'BISITA! THE RELATIVES ARE VISITING';
+  if (opts.pasko) { L.pasko = true; L.night = true; L.name = 'NOCHE BUENA'; L.hint = 'NOCHE BUENA! EVERYONE IS UP LATE'; }
   if (diff >= 3) L.patience = Math.round((par * 1.8) / 5) * 5;
 
   // ---- one locked door (diff >= 3): the key must be on the near side
@@ -232,10 +265,11 @@ function build(seed, diff) {
 }
 
 // Always returns a valid level; tries derived seeds if a layout fails validation.
-export function generateHouse(seed, diff = 2) {
+// opts: { mutators: ['brownout', 'tsinelas', 'bisita'], pasko: true }
+export function generateHouse(seed, diff = 2, opts = {}) {
   for (let k = 0; k < 80; k++) {
     const s = seed + k * 7919;
-    const L = build(s, diff);
+    const L = build(s, diff, opts);
     if (validateLevel(L).length === 0 && idleSafe(L, 4)) return L;
   }
   throw new Error(`could not generate a valid house for seed ${seed}`);

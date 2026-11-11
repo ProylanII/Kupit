@@ -76,14 +76,23 @@ export function validateLevel(L) {
     if (!(L.items || []).some((i) => i.kind === 'key' && i.color === l.key)) bad(`no ${l.key} key for lock ${l.at}`);
   }
 
+  for (const t of L.targets) if (t.time !== undefined && !(t.time >= 0.5 && t.time <= 4)) bad(`target ${t.at} hold time ${t.time} (0.5..4s)`);
+  if (L.alkansya) {
+    place(L.alkansya.at, 'alkansya');
+    if (!(L.alkansya.coins > 0)) bad('alkansya needs coins');
+  }
+
   const reach = solve(L, map);
   if (!reach.has(L.exit.join())) bad('exit unreachable');
+  if (L.alkansya && !reach.has(L.alkansya.at.join())) bad(`alkansya ${L.alkansya.at} unreachable`);
   let total = 0;
   for (const t of L.targets) { if (!reach.has(t.at.join())) bad(`target ${t.at} unreachable`); total += t.coins; }
   if (L.quota > total) bad('quota exceeds available coins');
   for (const it of L.items || []) if (!reach.has(it.at.join())) bad(`item ${it.kind} ${it.at} unreachable`);
 
-  const pass = (x, y) => map.ch(x, y) === 'D' || !map.tileSolid(x, y);
+  // adults open plain doors but have no keys: a patrol must not need a locked door
+  const locked = new Set((L.locks || []).map((l) => l.at.join()));
+  const pass = (x, y) => (map.ch(x, y) === 'D' ? !locked.has(`${x},${y}`) : !map.tileSolid(x, y));
   for (const a of L.adults) {
     if (!ADULT_TYPES[a.type]) { bad(`unknown adult type ${a.type}`); continue; }
     const pts = a.route || [a.at];
@@ -93,6 +102,8 @@ export function validateLevel(L) {
       if (!findPath(map, p[0], p[1], q[0], q[1], pass)) bad(`${a.type} route ${p}->${q} has no path`);
     }
     if (L.spawn.join() === pts[0].slice(0, 2).join()) bad(`${a.type} starts on the spawn`);
+    const f = a.cfg?.followsDog;
+    if (f !== undefined && !(L.adults[f] && L.adults[f].type === 'aso')) bad(`${a.type} followsDog must point at an aso`);
   }
 
   if (L.boss) {

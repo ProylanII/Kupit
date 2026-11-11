@@ -3,6 +3,7 @@
 // internals later without touching gameplay code.
 import { C } from './palette.js';
 import { atlasSprite } from './atlas.js';
+import { OUTFITS } from '../game/progression.js';
 
 const cache = new Map();
 
@@ -104,12 +105,73 @@ function mirror(cv) {
   return f;
 }
 
+// ---- palette swaps -----------------------------------------------------------------
+// The sheet uses exact palette colours (tools/art/make_art.py), so swapping a few hex values recolours a
+// character cleanly. Kids: 'jun~pula' = Jun in the PULA outfit (outfits live in game/progression.js).
+// Adults: a few extra characters are recoloured versions of existing ones (no new art needed).
+export const KID_SLOTS = { // the top / bottom colours (base, shade) of each kid in the sheet
+  jun:   { top: ['#ffd84d', '#e0a92e'], bottom: ['#2f5fbf', '#24488f'] },
+  bing:  { top: ['#ff7eb6', '#d9578f'], bottom: null }, // one-piece dress
+  ramil: { top: ['#2fa55b', '#227a43'], bottom: ['#3a3550', '#2a2640'] },
+  nene:  { top: ['#ff9a3c', '#d9762a'], bottom: null }, // white skirt shares the eye-white colour
+  kid:   { top: ['#ffd84d', '#e0a92e'], bottom: ['#2f5fbf', '#24488f'] },
+};
+export const VARIANTS = {
+  bisita:  { base: 'tita', map: { '#2fa59b': '#ff9a3c', '#22807a': '#d9762a', '#7fe0d4': '#ffe36b', '#ff7eb6': '#2a1f33', '#d9578f': '#1b1424', '#ffb0d4': '#4a3d5c' } },
+  tanod:   { base: 'kuya', map: { '#46a0e0': '#c9a46a', '#3580b8': '#a6824a', '#2f5fbf': '#3a3550', '#24488f': '#2a2640', '#5a5468': '#3a3550', '#46415a': '#2a2640' } },
+  tindera: { base: 'nena', map: { '#4f7fd0': '#46e08a', '#3a62a8': '#2fa55b', '#6b3a5a': '#a8433f', '#4f2a44': '#7a2a2a', '#9a94a8': '#2a1f33', '#7a7488': '#1b1424', '#c4bfd0': '#4a3d5c' } },
+};
+
+// kind -> { base, map } for swapped kinds, else null
+function swapOf(kind) {
+  if (VARIANTS[kind]) return VARIANTS[kind];
+  const i = kind.indexOf('~');
+  if (i < 0) return null;
+  const base = kind.slice(0, i), o = OUTFITS[kind.slice(i + 1)], slots = KID_SLOTS[base];
+  const map = {};
+  if (o && slots) {
+    if (o.top) slots.top.forEach((c, k) => { map[c] = o.top[k]; });
+    if (o.bottom && slots.bottom) slots.bottom.forEach((c, k) => { map[c] = o.bottom[k]; });
+  }
+  return { base, map };
+}
+
+const rgbKey = (r, g, b) => (r << 16) | (g << 8) | b;
+export function recolor(src, map) {
+  const cv = document.createElement('canvas');
+  cv.width = src.width; cv.height = src.height;
+  const g = cv.getContext('2d');
+  g.drawImage(src, 0, 0);
+  const m = new Map(Object.entries(map).map(([a, b]) => { const p = (h) => parseInt(h.slice(1), 16); return [p(a), [p(b) >> 16, (p(b) >> 8) & 255, p(b) & 255]]; }));
+  if (!m.size || !cv.width) return cv;
+  const img = g.getImageData(0, 0, cv.width, cv.height), d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    if (!d[i + 3]) continue;
+    const to = m.get(rgbKey(d[i], d[i + 1], d[i + 2]));
+    if (to) { d[i] = to[0]; d[i + 1] = to[1]; d[i + 2] = to[2]; }
+  }
+  g.putImageData(img, 0, 0);
+  return cv;
+}
+
 // frame: 0..3 walk cycle, or a pose name from the sheet ('reach', 'alert', 'sleep', 'caught').
 // Poses the sheet lacks (or the code placeholders) fall back to the idle frame.
 export function getSprite(kind, dir, frame) {
   const key = `${kind}|${dir}|${frame}`;
   let s = cache.get(key);
   if (s) return s;
+  const sw = swapOf(kind);
+  if (sw) {
+    s = recolor(getSprite(sw.base, dir, frame), sw.map);
+    cache.set(key, s);
+    return s;
+  }
+  if (kind === 'trike') {
+    s = mapSprite('trike', OBJ.trike, OBJ_PAL.trike);
+    if (dir === 1) s = mirror(s);
+    cache.set(key, s);
+    return s;
+  }
   const art = atlasSprite(`${kind}|${dir === 1 ? 2 : dir}|${frame}`); // real art, if a sprite sheet is installed
   if (!art && typeof frame === 'string') { s = getSprite(kind, dir, 0); cache.set(key, s); return s; }
   if (art) {
@@ -154,8 +216,14 @@ export function drawActor(g, kind, x, y, dir, frame, { dim = false } = {}) {
 
 // 28x28 bust from the sprite sheet (menus, boss banners). Returns false when the sheet has none.
 export function drawPortrait(g, kind, x, y, scale = 1) {
-  const s = atlasSprite(`portrait|${kind}`);
-  if (!s) return false;
+  const key = `portrait|${kind}`;
+  let s = cache.get(key);
+  if (!s) {
+    const sw = swapOf(kind), art = atlasSprite(`portrait|${sw ? sw.base : kind}`);
+    if (!art) return false;
+    s = sw ? recolor(art, sw.map) : art;
+    cache.set(key, s);
+  }
   g.drawImage(s, Math.round(x), Math.round(y), s.width * scale, s.height * scale);
   return true;
 }
@@ -182,12 +250,15 @@ const PIGGY = [
 const CANDY = [ // garapon of candy: the real prize
   '..llll..', '.gggggg.', 'gGrGyGbg', 'gyGbGrGg', 'gGgGgyGg', 'gbGrGyGg', '.gggggg.',
 ];
+const ALKANSYA = [ // bamboo coin bank with a slot on top
+  '..ss..', 'aAAAAa', 'aAAAAa', 'nnnnnn', 'aAAAAa', 'aAAAAa', 'nnnnnn', 'aAAAAa',
+];
 
 export function drawTarget(g, kind, x, y, done) {
   const pal = done
-    ? { g: C.dgray, p: C.dgray, P: C.gray, c: C.gray, w: C.gray, W: C.dgray, i: C.gray, e: C.dgray, l: C.dgray, G: C.gray, r: C.gray, y: C.gray, b: C.gray }
-    : { g: C.purse, p: C.purse, P: C.purse2, c: C.gold, w: '#d9c27a', W: '#b99a4a', i: C.pink, e: C.ink, l: C.red, G: '#9fd8e8', r: C.red, y: C.gold, b: '#4f8fff' };
-  const rows = { purse: PURSE, bayong: BAYONG, wallet: WALLET, piggy: PIGGY, candy: CANDY }[kind] || PURSE;
+    ? { g: C.dgray, p: C.dgray, P: C.gray, c: C.gray, w: C.gray, W: C.dgray, i: C.gray, e: C.dgray, l: C.dgray, G: C.gray, r: C.gray, y: C.gray, b: C.gray, a: C.dgray, A: C.gray, n: C.dgray, s: C.ink }
+    : { g: C.purse, p: C.purse, P: C.purse2, c: C.gold, w: '#d9c27a', W: '#b99a4a', i: C.pink, e: C.ink, l: C.red, G: '#9fd8e8', r: C.red, y: C.gold, b: '#4f8fff', a: '#7fae4a', A: '#a7cf6a', n: '#d9c27a', s: C.ink };
+  const rows = { purse: PURSE, bayong: BAYONG, wallet: WALLET, piggy: PIGGY, candy: CANDY, alkansya: ALKANSYA }[kind] || PURSE;
   if (kind === 'candy') pal.g = done ? C.dgray : '#cfe9f2';
   const s = mapSprite(`${kind}|${done}`, rows, pal);
   g.drawImage(s, Math.round(x) - Math.floor(s.width / 2), Math.round(y) - Math.floor(s.height / 2) + 1);
@@ -228,6 +299,21 @@ export const OBJ = {
   sandok: ['..ss..', '.ssss.', '.ssss.', '..hh..', '..hh..', '..hh..'],
   pot: ['.s.s..', '..s.s.', 'pppppp', 'pBBBBp', '.pppp.'],
   lego: ['rr..bb', 'rr..bb', '..yy..', 'gg.yy.', 'gg....'],
+  // tricycle (side view, facing right): roofed sidecar + motorbike with driver
+  trike: [
+    '..bbbbbbbbbb........', '..b........b....hh..', '.bbbbbbbbbbbb..hhhh.', '.bwwwwwwwwwwb...ss..',
+    '.bwwwwwwwwwwbrrrssr.', '.bbbbbbbbbbbbrrrrrrr', '.BBBBBBBBBBBBrrrrrr.', '..kk......kk....kk..',
+    '.kggk....kggk..kggk.', '..kk......kk....kk..',
+  ],
+  // action-button icons
+  hand: ['..h.h..', '.hhhhh.', '.hhhhhh', 'hhhhhh.', '.hhhhh.', '..hhh..'],
+  door: ['dddd', 'dDDd', 'dDDd', 'dDyd', 'dDDd', 'dDDd'],
+  lock: ['.kkk.', 'k...k', 'yyyyy', 'yykyy', 'yyyyy'],
+  out: ['..w..', '.www.', 'wwwww', '.www.', '.www.'],
+  eye: ['..kkk..', '.kwwwk.', 'kwwkwwk', '.kwwwk.', '..kkk..'],
+  alkansya: ALKANSYA,
+  // parol: the Christmas star lantern
+  parol: ['....y....', '...yry...', 'yyyyryyyy', '.yyrrryy.', '..yrrry..', '.yy.r.yy.', 'yy..r..yy', '....r....', '...r.r...'],
 };
 
 const OBJ_PAL = {
@@ -243,6 +329,14 @@ const OBJ_PAL = {
   sandok: { s: C.gray, h: C.table2 },
   pot: { s: C.white, p: C.dgray, B: '#b8423a' },
   lego: { r: C.red, b: C.blue, y: C.gold, g: C.green },
+  trike: { b: '#4f8fff', B: C.blue, w: '#9fd8e8', r: C.red, h: '#3a2418', s: C.skin2, k: C.ink, g: C.gray },
+  hand: { h: C.skin },
+  door: { d: C.table, D: C.table2, y: C.gold },
+  lock: { k: C.ink, y: C.gold },
+  out: { w: C.white },
+  eye: { k: C.ink, w: C.white },
+  alkansya: { a: '#7fae4a', A: '#a7cf6a', n: '#d9c27a', s: C.ink },
+  parol: { y: C.gold, r: C.red },
 };
 
 export const KEY_COLORS = { red: C.red, blue: '#4f8fff', green: C.green, gold: C.gold };
