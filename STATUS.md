@@ -36,3 +36,14 @@ Updated after each phase. See AUDIT.md for the findings and DECISIONS.md for the
   Blender is absent). `docs/ART_SPEC.md` is the complete hand-off. Cache version bumped by `npm run build`.
 - Remaining: Phases 4-5. Real Blender renders (human task, see ART_SPEC.md).
 - Known issues: AUDIT.md findings 4-6, 9-10.
+
+## Phase 4: UX and release readiness — done
+
+- Done: onboarding confirmed (story intro, coach, tips, help in pause); settings/accessibility confirmed; item
+  button enlarged; credits + glossary page; load-failure screen with retry; README port note. **Found and fixed
+  a P0**: the service worker broke every navigation once it controlled the page on hosts that redirect
+  `/index.html` (AUDIT.md #11). `tools/qa/smoke.mjs` (every screen and level, phone + desktop, dev hotkeys,
+  load failure) and `tools/qa/pwa.mjs` (whole version cached, controlled navigation, offline boot + play,
+  manifest/icons) both pass; `docs/QA.md` has the manual checklist.
+- Remaining: Phase 5 (final QA pass, STATUS/AUDIT closure). Real Blender renders (human task).
+- Known issues: AUDIT.md #9 (fractional phone scale, accepted).

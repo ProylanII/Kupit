@@ -388,6 +388,13 @@ const HELP = [[
   ['KAIN NA', 'THE ORANGE BAR IS DINNER TIME. WHEN IT RUNS OUT MAMA CALLS YOU IN AND THE LEVEL IS OVER, CHANCES OR NOT. THE GREEN NOTCH IS PAR TIME.'],
   ['SECRET', 'EVERY LEVEL HIDES ONE ALKANSYA FOR BONUS COINS.'],
   ['STARS', 'CLEAR: 1. UNDER PAR TIME: +1. SILENT: +1 IF NOBODY\'S METER FILLS PAST A THIRD AND YOU ARE NEVER CAUGHT. A QUICK ? IS FINE, A ! OR A BARK IS NOT.'],
+], [
+  ['CREDITS', 'KUPIT IS A PIXEL STEALTH GAME MADE IN PLAIN JAVASCRIPT: NO ENGINE, NO DOWNLOADS. THE ART, THE MUSIC AND THE FONT ARE ALL DRAWN AND PLAYED IN CODE.'],
+  ['WORDS', 'KUPIT: TO POCKET SOMETHING SNEAKILY. TAGO: HIDE. BUKAS / SARA: OPEN / CLOSE. HULI: CAUGHT. KAIN NA: DINNER IS READY.'],
+  ['MORE', 'TSINELAS: SLIPPERS. ALKANSYA: PIGGY BANK. BAYONG: WOVEN BAG. PANDESAL: BREAD ROLL. SARI-SARI: CORNER STORE. TANOD: VILLAGE WATCHMAN.'],
+  ['SAVES', 'YOUR PROGRESS STAYS ON THIS DEVICE. OPTIONS > COPY SAVE CODE MOVES IT TO ANOTHER ONE.'],
+  ['OFFLINE', 'INSTALL IT FROM THE BROWSER MENU AND IT PLAYS WITHOUT INTERNET. UPDATE READY ON THE TITLE SCREEN MEANS A NEW VERSION IS WAITING.'],
+  ['THANKS', 'SALAMAT SA PAGLALARO!'],
 ]];
 let helpPage = 0;
 
@@ -814,7 +821,16 @@ function frame(now) {
     dev: [updateDevMenu, drawDevMenu],
     paused: [updatePaused, drawPaused], caught: [updateCaught, drawCaught], clear: [updateClear, drawClear] };
   if (screens[m]) { screens[m][0](); if (mode === m) screens[m][1](); } // skip the draw if the screen just changed
-  else if (m === 'loading') { g.fillStyle = C.ink; g.fillRect(0, 0, VIEW_W, VIEW_H); drawText(g, 'LOADING...', VIEW_W / 2, 170, C.white, { align: 'center' }); }
+  else if (m === 'loading') {
+    g.fillStyle = C.ink; g.fillRect(0, 0, VIEW_W, VIEW_H);
+    if (!loadError) drawText(g, 'LOADING...', VIEW_W / 2, 170, C.white, { align: 'center' });
+    else { // a level file or the sprite sheet failed to load (bad deploy, flaky network): say so, offer a retry
+      drawText(g, 'COULD NOT LOAD THE GAME', VIEW_W / 2, 150, C.red, { align: 'center' });
+      wrap(loadError.toUpperCase().replace(/[^A-Z0-9 .:/'-]/g, ' '), 56).slice(0, 3).forEach((l, i) => drawText(g, l, VIEW_W / 2, 166 + i * 9, C.gray, { align: 'center' }));
+      if (Math.floor(age * 2) % 2) drawText(g, 'TAP TO RETRY', VIEW_W / 2, 210, C.yellow, { align: 'center' });
+      if (input.tapPos || input.pressed('Enter') || input.pressed(' ')) location.reload();
+    }
+  }
 
   syncMusic(dt);
   syncWake(mode === 'play');
@@ -846,12 +862,14 @@ Promise.all([loadLevels(), loadAtlas()]).then(([l]) => {
   if (q.has('daily')) startDaily();
 }).catch((e) => {
   console.error(e);
+  loadError = String((e && e.message) || e || 'UNKNOWN ERROR');
   mode = 'loading';
 });
+let loadError = null;
 requestAnimationFrame(frame);
 
 // Debug hook for automated checks: window.__kupit
-window.__kupit = { get play() { return play; }, get mode() { return mode; }, start, startHouse, startDaily, input, get save() { return save; }, get cur() { return cur; }, get run() { return run; } };
+window.__kupit = { get play() { return play; }, get mode() { return mode; }, start, startHouse, startDaily, input, get save() { return save; }, get cur() { return cur; }, get run() { return run; }, get loadError() { return loadError; } };
 
 // ---- installable + offline (PWA) --------------------------------------------------------
 // The service worker serves one consistent, versioned copy of the game. When a new version has downloaded

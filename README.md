@@ -20,7 +20,8 @@ ES modules need a web server (not `file://`):
 npm start            # or: python -m http.server 8080
 ```
 
-Open http://localhost:8080 (phone on same LAN works too). `?level=2` jumps to a level, `?daily` to today's Daily House.
+Open http://localhost:8080 (phone on same LAN works too). If 8080 is taken, `serve` picks another port and prints
+it. `?level=2` jumps to a level, `?daily` to today's Daily House.
 
 | Action | Keyboard | Touch |
 |---|---|---|
@@ -103,7 +104,8 @@ info overlay, game speed, +50 coins). Hotkeys while playing: `N` next level, `B`
 ## Dev
 
 ```
-npm test             # validator, AI, sound, save, economy, art-lock and soak tests
+npm test             # validator, AI, sound, save, economy, art-lock, soak and walkthrough-bot tests (no deps)
+npm run qa           # headless Chrome: every screen/level, offline + install check (needs `npm i` once; see docs/QA.md)
 node tools/economy.mjs          # campaign income vs store prices, level by level
 node tools/place-alkansya.mjs   # suggest secret alkansya spots (--write to add them)
 ```

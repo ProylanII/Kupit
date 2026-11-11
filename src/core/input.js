@@ -8,7 +8,7 @@ export const BUTTON = { x: 214, y: 372, r: 18 };  // action
 export const BUTTON2 = { x: 176, y: 372, r: 14 }; // throw item (hold to aim, release to throw)
 export const ABILITY_BTN = { x: 100, y: 372, r: 11 }; // character skill
 export const PAUSE_BTN = { x: 138, y: 372, r: 10 }; // pause
-export const ITEM_BTN = { x: 156, y: 357, r: 6 };  // cycle which item you throw next
+export const ITEM_BTN = { x: 156, y: 357, r: 8 };  // cycle which item you throw next
 const RIGHT = { BUTTON: 214, BUTTON2: 176, ABILITY_BTN: 100, PAUSE_BTN: 138, ITEM_BTN: 156 };
 export const layout = { left: false };
 export function setLeftHanded(on) {
@@ -57,7 +57,7 @@ export class Input {
       this.tapPos = p;
       const near = (b, pad) => Math.hypot(p.x - b.x, p.y - b.y) <= b.r + pad;
       if (this.buttonEnabled && near(PAUSE_BTN, 6)) { this.pauseTap = true; return; }
-      if (this.buttonEnabled && this.itemEnabled && near(ITEM_BTN, 2)) { this.cycleTap = true; return; }
+      if (this.buttonEnabled && this.itemEnabled && near(ITEM_BTN, 5)) { this.cycleTap = true; return; }
       const onBtn = this.buttonEnabled && near(BUTTON, 6);
       const onBtn2 = !onBtn && this.button2Enabled && near(BUTTON2, 5);
       const onBtn3 = !onBtn && !onBtn2 && this.abilityEnabled && near(ABILITY_BTN, 5);

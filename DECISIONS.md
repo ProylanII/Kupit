@@ -53,3 +53,16 @@ was not done without the owner.
 - **Dog bark pose shows 0.6 s per bark** (render-side timer), not for the whole bark cooldown.
 - **Packer sizes come from `style.json`** (group mid-height) so a batch cannot land outside the lock; `--size`
   still overrides. `kid` frames are copied from `jun` (legacy alias) rather than rendered.
+
+## Phase 4 (UX and release readiness)
+
+- **One dev dependency added: `puppeteer-core`** (dev only, drives the Chrome/Edge already on the machine,
+  downloads nothing). Justification: it found a P0 (AUDIT.md #11) that no Node test can see, and offline/install
+  behaviour can only be verified in a real browser. `npm test` stays dependency-free; `npm run qa` is the
+  browser layer (docs/QA.md). Not added to the precache, not shipped.
+- **Service worker answers app navigations from a plain copy of `./`**, never from a redirected response, and
+  only for the app's own path (`/` or `/index.html` under its scope); other paths go to the network.
+- **Onboarding exists** (intro story, level-1 coach, one-time tips, pause-menu help) and was left as is.
+- **Credits live on page 3 of How To Play** with a small Filipino glossary, rather than a separate screen.
+- **Item-cycle button grew** from r=6 to r=8 game px with a 5 px hit pad (about 42 css px on a phone).
+- **Load failure shows the error and a tap-to-retry** instead of "LOADING..." forever.

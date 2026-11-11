@@ -3,3 +3,4 @@ reference/
 *.blend1
 .DS_Store
 Thumbs.db
+tools/qa/out/

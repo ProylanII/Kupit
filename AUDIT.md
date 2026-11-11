@@ -90,6 +90,7 @@ committed as-is first (`648e7aa`) so each phase below is its own commit.
 | 8 | **P2** | `tools/pack_atlas.py` default `--size 10x12` produces 14 px kids, below the locked 16-20 px, so a packed Blender batch would fail the art lock. `render_sprites.py` renders no poses. | Fixed in Phase 3 (per-kind sizes, pose actions, ART_SPEC.md) |
 | 9 | **P2** | Phones get a fractional canvas scale (1.625x on a 390 px wide phone), so pixels are uneven. Integer scale would leave the game at 1x (too small). | Left as is; noted in DECISIONS.md |
 | 10 | **P2** | `npm start` fixes port 8080; on this machine another app owns 8080 and `serve` silently moved to a random port. | Fixed in Phase 4: README notes it, the port is shown by `serve` |
+| 11 | **P0** | Found in Phase 4 by the headless offline check: once the service worker controlled the page, every navigation to the game failed (`net::ERR_FAILED`). The worker stored the start page by cloning the cached `index.html` response; on hosts that redirect `/index.html` to `/` (serve, Netlify, ...) that response is "redirected", and Chrome refuses redirected responses for navigations. An installed copy would have been dead after its first visit on such a host. | Fixed in Phase 4: `sw.js` stores a plain copy of `./` and answers app navigations from it; `tools/qa/pwa.mjs` proves cache, controlled navigation, offline boot and play |
 
 ## Doc vs code mismatches
 
