@@ -41,3 +41,15 @@ was not done without the owner.
 - **Adults who spawn in a boss phase are blind for 1.2 s** (`SPAWN_GRACE`, reuses the charm freeze). Before,
   a phase could drop Kuya right onto the player and catch them in a quarter second. Fairness, not a design change.
 - **Economy untouched** (see Phase 0).
+
+## Phase 3 (animation)
+
+- **Extended the generated art instead of waiting for Blender.** `make_art.py` is deterministic and already
+  produces the shipped sheet, so the missing poses were added there; the game is complete with it and the
+  Blender batch stays a drop-in replacement (ART_SPEC.md).
+- **Style lock changed on purpose** (poses added to `style.json`) in this phase's commit, as ART_STYLE.md asks.
+- **Hiding has no sprite**: the kid is inside the box; peeking eyes and the eye-icon do the job. Run is the walk
+  cycle at 1.7x plus dust, not separate frames (the 16 px scale does not read a second cycle).
+- **Dog bark pose shows 0.6 s per bark** (render-side timer), not for the whole bark cooldown.
+- **Packer sizes come from `style.json`** (group mid-height) so a batch cannot land outside the lock; `--size`
+  still overrides. `kid` frames are copied from `jun` (legacy alias) rather than rendered.

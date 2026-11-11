@@ -5,11 +5,15 @@ then writes assets/sprites/sheet.png + atlas.json (the same files tools/pack_atl
 
 Frame keys in atlas.json:
   kind|dir|0..3     walk cycle (0 = idle). dir 0 down, 2 right, 3 up; left is mirrored in the game.
-  kind|dir|reach    kids: grabbing coins        adults: n/a
-  kind|dir|alert    adults: "HOY!" (spotted you / chasing a sound)
-  kind|dir|sleep    adults: eyes closed (asleep, eating)
+  kind|dir|reach    kids: grabbing coins        adults: both arms forward (stirring the pot, busy)
+  kind|dir|alert    adults: "HOY!" (spotted you / chasing a sound)   dog: barking (mouth open)
+  kind|dir|sleep    adults: eyes closed (asleep)                     dog: asleep
   kind|dir|caught   kids: arms up, eyes shut
+  kind|dir|cast     kids: one arm straight up (skill)
+  kind|dir|phone    adults: hand to the ear with a phone (Tita's phone time)
+  kind|dir|eat      dog: head down in the food
   portrait|kind     28x28 bust for menus and boss banners
+The pose list per group is locked in tools/art/style.json and checked by tests/artstyle.test.mjs.
 
 Characters are built from parts (head, hair style, top, bottom, accessories) so every one has its own silhouette.
 Needs Pillow.
@@ -452,6 +456,10 @@ def arm_side(c, L, look, ty, pose, f):
         pts = [(x, ty), (x + 1, ty)] + [(x + 2 + i, ty) for i in range(4)]
     elif pose == 'caught':
         pts = [(x, ty), (x, ty - 1), (x + 1, ty - 2), (x + 1, ty - 3)]
+    elif pose == 'cast':  # one arm straight up
+        pts = [(x, ty), (x + 1, ty - 1), (x + 1, ty - 2), (x + 2, ty - 3), (x + 2, ty - 4)]
+    elif pose == 'phone':  # hand up to the ear
+        pts = [(x, ty), (x + 1, ty - 1), (x + 2, ty - 2), (x + 3, ty - 3)]
     elif f == 1:
         pts = [(x, ty)] + [(x + (i + 1) // 2, ty + i) for i in range(1, n)]
     elif f == 3:
@@ -460,6 +468,8 @@ def arm_side(c, L, look, ty, pose, f):
         pts = [(x, ty + i) for i in range(n)]
     for i, (px, py) in enumerate(pts):
         c.px(px, py, col(i, i == len(pts) - 1))
+    if pose == 'phone':  # the phone, held in front of the cheek
+        c.vline(x + 5, ty - 5, ty - 3, INK); c.px(x + 5, ty - 4, '#7fd7ff')
 
 
 def legs_front(c, L, look, f, view):
@@ -583,6 +593,17 @@ def humanoid(name, d, f):
         elif pose == 'reach' and view == 'front':
             arm_front(c, ax[0], ty, n - 1, sleeve); arm_front(c, ax[1], ty, n - 1, sleeve)
             c.hline(tx0, tx0 + 1, ty + n - 2, 'S'); c.hline(tx0 + tw - 2, tx0 + tw - 1, ty + n - 2, 's')
+        elif pose == 'cast':  # skill: one arm straight up past the head, the other at the side
+            arm_front(c, ax[0], ty, n, sleeve)
+            x = L['x0'] + 10
+            c.px(ax[1], ty, 'T' if sleeve else 'S')
+            c.vline(x, hy + 1, ty - 1, 'S'); c.px(x, hy + 1, 's')
+        elif pose == 'phone':  # hand up to the ear, holding a phone
+            arm_front(c, ax[0], ty, n, sleeve)
+            x = L['x0'] + 10
+            c.px(ax[1], ty, 'T' if sleeve else 'S')
+            c.vline(x, hy + 4, ty - 1, 'S')
+            c.rect(x - 1, hy + 3, 2, 3, INK); c.px(x - 1, hy + 4, '#7fd7ff')
         else:
             for i, x in enumerate(ax):
                 short = (fr == 1 and i == 1) or (fr == 3 and i == 0)
@@ -632,6 +653,16 @@ DOG_BACK = [
     '..hHHHHh..',
 ]
 DOG_FB_LEGS = {0: ['..H.HH.H..', '..F.FF.F..'], 1: ['..H.HH.H..', '..F.F..F..'], 2: ['..H.HH.H..', '..F.FF.F..'], 3: ['..H.HH.H..', '..F..F.F..']}
+DOG_SIDE_EAT = [  # head down in the food, tail up
+    '...............',
+    '.D.............',
+    'D..............',
+    '.D.........DD..',
+    '.DHHHHHHHHHHHD.',
+    '..HHHHHHHHHHEHH',
+    '..hHHHHHHHHHwhN',
+    '..hHHHHHHHhwww.',
+]
 
 
 def dog(d, f):
@@ -640,13 +671,20 @@ def dog(d, f):
         body = DOG_SIDE[:]
         if f == 'sleep':
             body[2] = '.........HHDHHN'
+        if f == 'alert':  # barking: ears up, mouth open
+            body[0] = '.........DD.DD.'
+            body[3] = 'D........HHHNh.'
+        if f == 'eat':
+            body = DOG_SIDE_EAT[:]
         rows = body + DOG_SIDE_LEGS[fr]
         if fr in (1, 3):  # tail wag
             rows[3] = '.........HHHwh.'; rows[4] = 'DD......HHHw...'
     else:
         body = (DOG_FRONT if d == 0 else DOG_BACK)[:]
-        if f == 'sleep' and d == 0:
+        if f in ('sleep', 'eat') and d == 0:
             body[3] = '.HDDHHDDH.'
+        if f == 'alert' and d == 0:
+            body[7] = '..HwNNwH..'
         rows = body + DOG_FB_LEGS[fr]
     c = Cv(len(rows[0]), len(rows))
     c.rows(0, 0, rows, {})
@@ -708,11 +746,11 @@ def portrait(name):
 # ---- sheet ---------------------------------------------------------------------------
 def frames_for(name):
     if name == 'aso':
-        poses = WALK + ['sleep', 'alert']
+        poses = WALK + ['sleep', 'alert', 'eat']
     elif name in KIDS:
-        poses = WALK + ['reach', 'caught']
+        poses = WALK + ['reach', 'caught', 'cast']
     else:
-        poses = WALK + ['alert', 'sleep']
+        poses = WALK + ['alert', 'sleep', 'phone', 'reach']
     for d in (0, 2, 3):
         for f in poses:
             yield d, f
@@ -784,7 +822,7 @@ def pack(frames):
 def preview(frames, path, scale, only=None):
     names = only or (KIDS + ADULTS + ['aso'])
     cell = 26
-    cols = 18
+    cols = max(len(list(frames_for(n))) for n in names)
     im = Image.new('RGBA', (cols * cell * scale, (len(names) + (0 if only else 2)) * cell * scale), (205, 154, 91, 255))
     for r, name in enumerate(names):
         for i, (d, f) in enumerate(frames_for(name)):

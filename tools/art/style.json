@@ -16,11 +16,19 @@
   "poses": {
     "kid": [
       "reach",
-      "caught"
+      "caught",
+      "cast"
     ],
     "adult": [
       "alert",
-      "sleep"
+      "sleep",
+      "phone",
+      "reach"
+    ],
+    "dog": [
+      "sleep",
+      "alert",
+      "eat"
     ]
   },
   "kinds": {

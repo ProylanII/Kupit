@@ -16,10 +16,10 @@ zoomed in). Real Blender art has not been made yet; when it is, `pack_atlas.py` 
 | Kinds | `jun bing ramil nene` (kids), `mama lola tita tatay kuya nena ninang` (adults), `aso` (dog) |
 | Directions | `0` down (towards camera), `2` right, `3` up. Left is mirrored in code. |
 | Frames | `0..3` walk cycle. Frame 0 doubles as the idle pose. |
-| Poses | Optional named frames: `reach` (kid stealing), `caught` (kid), `alert` (adult spotted you), `sleep` (adult asleep). Missing poses fall back to frame 0. |
-| Portraits | Optional `portrait|<kind>` (28x28 bust) for character select, boss banners and the caught screen. |
+| Poses | Named frames, required by the art lock: kids `reach caught cast`, adults `alert sleep phone reach`, dog `sleep alert eat` (see [ART_SPEC.md](ART_SPEC.md) for when each shows). Missing poses fall back to frame 0. |
+| Portraits | Optional `portrait|<kind>` (30x30 bust) for character select, boss banners and the caught screen. |
 | Key | `"kind|dir|frame"` in `atlas.json`, e.g. `"mama|2|1"` |
-| Size | Kids ~12x16 px body, adults ~14x20, plus a 1px ink outline. Any size works: feet sit on the bottom edge, body centred. |
+| Size | Locked: kids 16-20 px tall, adults 20-24, dog 11-14 including the 1px ink outline (`tools/art/style.json`). Feet on the bottom edge, body centred, every frame of a character the same canvas size. |
 | Colours | Flat colours, no anti-aliasing; alpha is on/off. `pack_atlas.py` snaps to `src/render/palette.js`. |
 
 ## Workflow
@@ -33,9 +33,11 @@ zoomed in). Real Blender art has not been made yet; when it is, `pack_atlas.py` 
    `tools/blender/render_sprites.py` has **not been run yet** (Blender was not installed when it was written);
    expect to tweak camera distance/`ortho_scale` on first use.
 3. **Pixelate + pack** (needs Python + Pillow):
-   `python tools/pack_atlas.py art/renders --size 10x12`
-   Shrinks each render, snaps every pixel to the game palette, thresholds alpha, adds the ink outline and writes
-   `assets/sprites/sheet.png` + `atlas.json`. Frames named `<kind>_<dir>_<frame>.png`; `_1_` (left) is skipped.
+   `python tools/pack_atlas.py art/renders`
+   Crops and shrinks each render to the locked body height for its group, snaps every pixel to the locked palette,
+   thresholds alpha, adds the ink outline and writes `assets/sprites/sheet.png` + `atlas.json`. Frames named
+   `<kind>_<dir>_<frame|pose>.png` and `portrait_<kind>.png`; `_1_` (left) is skipped. It prints any frame the art
+   lock still expects.
 4. **Rebuild the offline list**: `npm run build`, then `npm test` (checks the atlas covers every character).
 
 Hand-drawn pixel art (Aseprite/Piskel) works the same way: export frames with those names and run step 3, or write

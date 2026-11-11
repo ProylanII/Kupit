@@ -16,7 +16,7 @@ built from the shipped tile set and night lighting. Compare new renders against 
 | Light | From the **top-left**. Highlights go on upper-left edges and shade colours (`t`, `b`, `h`) on the right column and bottom row. | One light source everywhere: tiles, furniture and characters. |
 | Size vs tile (16 px) | Kids 16–20 px tall (about 1.1–1.25 tiles), adults 20–24 px (about 1.4 tiles), dog 11–14 px, portraits 30×30 with the outline. Feet sit on the bottom edge and the body is centred. | Adults must loom over kids, and nobody may cover a whole doorway. |
 | Directions | 4-way: down (`0`), right (`2`), up (`3`). Left is the right sprite **mirrored in code**, never stored. | Halves the render and animation work. 8 directions add little at this size. |
-| Frame budget | 4-frame walk cycle per direction (frame 0 = idle). Kids add `reach` + `caught`, adults add `alert` + `sleep`. That is at most 18 frames per character. | Enough life at 6–8 fps without bloating the sheet. |
+| Frame budget | 4-frame walk cycle per direction (frame 0 = idle). Kids add `reach`, `caught`, `cast`; adults add `alert`, `sleep`, `phone`, `reach`; the dog adds `sleep`, `alert`, `eat`. At most 24 frames per character (`docs/ART_SPEC.md` says when each shows). | Enough life at 6–8 fps without bloating the sheet. |
 | Atlas | Everything in one `assets/sprites/sheet.png` + `atlas.json`, keys `kind\|dir\|frame`. | One texture and one request, which the offline cache (sw.js) handles as a unit. |
 | Variants | New characters that are "the same body, different clothes" (guests, tanod, tindera, kid outfits) are palette swaps in `src/render/sprites.js` (`VARIANTS`, `KID_SLOTS`), not new renders. | Zero extra art for new content. |
 

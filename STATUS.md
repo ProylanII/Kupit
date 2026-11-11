@@ -25,3 +25,14 @@ Updated after each phase. See AUDIT.md for the findings and DECISIONS.md for the
   phase-spawned adults, `tests/rules.test.mjs` (143 tests green).
 - Remaining: Phases 3-5.
 - Known issues: AUDIT.md findings 2-10.
+
+## Phase 3: animation — done (with the generated art; Blender art is a hand-off)
+
+- Done: sheet regenerated with the full pose set (kids `reach caught cast`, adults `alert sleep phone reach`,
+  dog `sleep alert eat`; 306 frames, 256x479, 24 KB). Renderer shows every state: kid skill cast with a flash
+  ring, dog bark and eating, Tita's phone, Mama stirring. Stars pop in one by one on the clear screen. Style lock
+  (`style.json` + art test) now requires the poses. `pack_atlas.py` sizes per group and reports missing frames;
+  `render_sprites.py` renders pose actions; both dry-run tested (the packer on exploded sheet frames, since
+  Blender is absent). `docs/ART_SPEC.md` is the complete hand-off. Cache version bumped by `npm run build`.
+- Remaining: Phases 4-5. Real Blender renders (human task, see ART_SPEC.md).
+- Known issues: AUDIT.md findings 4-6, 9-10.

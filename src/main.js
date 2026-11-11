@@ -69,6 +69,7 @@ let earned = 0;
 let bossBonus = 0;
 let msg = null;    // { text, color, t } short message on menus
 let shareText = null;
+let starShown = [false, false, false]; // clear screen: which stars have popped in
 
 const FADE = 0.25;
 const STEP = 1 / 60; // the simulation always advances in fixed 60 Hz steps (same game on 60/120/144 Hz screens)
@@ -654,7 +655,12 @@ function drawClear() {
   const r = play.result;
   const last = !run && idx === levels.length - 1;
   drawText(g, run ? 'HOUSE CLEARED!' : last ? 'ALL DONE!' : cur.boss ? 'BOSS BEATEN!' : 'NICE KUPIT!', VIEW_W / 2, 70, C.gold, { scale: (cur.boss && !last) || run ? 4 : 5, align: 'center', shadow: C.gold2 });
-  for (let i = 0; i < 3; i++) drawStar(g, VIEW_W / 2 - 22 + i * 15, 118, i < r.stars);
+  for (let i = 0; i < 3; i++) { // stars pop in one by one
+    const at = 0.6 + i * 0.35, on = i < r.stars && age > at;
+    if (on && !starShown[i]) { starShown[i] = true; sfx.coin(); }
+    if (on && age < at + 0.12) { g.fillStyle = C.white; g.fillRect(VIEW_W / 2 - 24 + i * 15, 116, 9, 9); }
+    drawStar(g, VIEW_W / 2 - 22 + i * 15, 118, on);
+  }
   drawText(g, `COINS ${r.coins}   TIME ${Math.floor(r.time)}S${r.catches ? `   CAUGHT ${r.catches}X` : ''}`, VIEW_W / 2, 138, C.white, { align: 'center' });
   if (run) drawText(g, `HOUSE ${cur.seed}   LEVEL ${run.diff}${run.daily ? '   DAILY' : ''}${run.mutators.length ? `   X${mutatorMult(run.mutators)}` : ''}`, VIEW_W / 2, 150, C.gray, { align: 'center' });
   else drawText(g, newBest ? 'NEW BEST TIME! (GHOST SAVED)' : `BEST ${Math.floor(save.best[cur.id] || r.time)}S`, VIEW_W / 2, 150, newBest ? C.green : C.gray, { align: 'center' });
@@ -704,6 +710,7 @@ function afterPlay() {
   if (play.status === 'caught') { setMode('caught'); return; }
   if (play.status !== 'clear') return;
   setMode('clear');
+  starShown = [false, false, false];
   const r = play.result, today = dailyId();
   if (run) { // Random House: pays coins (scaled), but no level unlocks or records (except the daily)
     bossBonus = 0;

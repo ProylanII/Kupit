@@ -110,6 +110,8 @@ export class Play {
     this.rec = opts.record ? [] : null; // ghost recording
     this.ghost = opts.ghost && opts.ghost.length ? opts.ghost : null;
     this.actors = [];
+    this.castT = 0;          // kid's skill pose
+    this.barks = new Map();  // adult -> seconds left of the bark pose
     this.updateCamera(1);
   }
 
@@ -205,6 +207,8 @@ export class Play {
     keep(this.parts, (p) => p.l > 0);
     if (this.banner && (this.banner.t -= dt) <= 0) this.banner = null;
     if (this.toast && (this.toast.t -= dt) <= 0) this.toast = null;
+    this.castT = Math.max(0, this.castT - dt);
+    for (const [a, t] of this.barks) { if (t - dt <= 0) this.barks.delete(a); else this.barks.set(a, t - dt); }
     for (const r of this.rings) r.age += dt;
     keep(this.rings, (r) => r.age < (r.tattle ? 0.8 : 0.5));
     for (const r of this.pings) r.age += dt;
@@ -237,7 +241,10 @@ export class Play {
         for (let i = 0; i < e.n * 2; i++) this.parts.push({ x: e.x + (Math.random() * 14 - 7), y: e.y - 4, vy: -50 - Math.random() * 40, l: 1 });
         break;
       case 'alkansya': this.toast = { text: `ALKANSYA! +${e.n} BONUS`, col: C.green, t: 2.2 }; break;
-      case 'spotted': case 'bark': sfx.alert(); this.buzz(40); this.kick(2); break;
+      case 'spotted': case 'bark':
+        sfx.alert(); this.buzz(40); this.kick(2);
+        if (e.type === 'bark') this.barks.set(e.who, 0.6);
+        break;
       case 'caught':
         if (e.final) { sfx.caught(); this.buzz([80, 40, 140]); this.kick(6); if (settings.flash) this.flash = 0.6; }
         else {
@@ -258,7 +265,13 @@ export class Play {
         break;
       case 'cycle': sfx.click(); break;
       case 'throw': sfx.whoosh(); break;
-      case 'ability': sfx.skill(); this.buzz(20, C.teal); break;
+      case 'ability': {
+        sfx.skill(); this.buzz(20, C.teal);
+        this.castT = 0.35; // skill pose, plus a flash ring at the raised hand
+        const p = w.player;
+        this.rings.push({ x: p.x + 4, y: p.y - 14, r: 12, age: 0, lure: false, tattle: false });
+        break;
+      }
       case 'phase': sfx.phase(); this.buzz([40, 30, 40]); this.kick(3); this.banner = { kind: 'phase', text: e.text, t: 3 }; break;
       case 'land': sfx.thud(); break;
       case 'hide': case 'unhide': sfx.hide(); if (e.seen) this.showTip('seenHide'); break;
@@ -435,7 +448,8 @@ export class Play {
     const blink = p.graceT > 0 && Math.floor(now / 100) % 2;
     for (const e of actors) {
       if (e === p) {
-        if (!blink) drawActor(g, this.look, p.x, p.y, p.dir, w.status === 'caught' || w.scold ? 'caught' : p.stealing ? 'reach' : p.moving ? Math.floor(p.stepT * 8) % 4 : 0);
+        // kid poses: caught > skill cast > kupit (reach) > walk cycle (sneak 8 fps, run 13.6 fps) > idle
+        if (!blink) drawActor(g, this.look, p.x, p.y, p.dir, w.status === 'caught' || w.scold ? 'caught' : this.castT > 0 ? 'cast' : p.stealing ? 'reach' : p.moving ? Math.floor(p.stepT * 8) % 4 : 0);
       } else this.drawAdult(g, e);
     }
     for (const h of w.hides) if (h.kind === 'curtain') drawObj(g, 'curtain', h.x, h.y - 1);
@@ -567,21 +581,23 @@ export class Play {
   drawAdult(g, a) {
     if (a.cfg.vehicle) { this.drawTrike(g, a); return; }
     const dir = Math.abs(Math.cos(a.a)) > Math.abs(Math.sin(a.a)) ? (Math.cos(a.a) < 0 ? 1 : 2) : (Math.sin(a.a) < 0 ? 3 : 0);
-    const sleeping = !a.awake && (a.cfg.sleepy || a.state === 'eat');
+    // Pose by state (all in the sheet, see docs/ART_SPEC.md): eat > sleep > phone > stirring > alert (shouting,
+    // or a dog barking) > walk cycle > idle. Missing poses fall back to idle in getSprite.
+    const eating = a.state === 'eat';
+    const napping = !a.awake && a.cfg.sleepy && !eating;
+    const barking = (this.barks.get(a) || 0) > 0;
     const shout = this.world.catcher === a || (a.awake && !a.moving && (a.state === 'chase' || a.alert >= 0.6));
-    const frame = a.cfg.sleepy && !a.awake ? 'sleep' : shout ? 'alert' : a.moving ? Math.floor(a.stepT * 6) % 4 : 0;
-    const top = drawActor(g, a.type, a.x, a.y, dir, frame, { dim: !a.awake && a.cfg.sleepy });
+    const frame = eating ? 'eat' : napping ? 'sleep' : !a.awake && a.cfg.phone ? 'phone' : !a.awake && a.cfg.cook ? 'reach'
+      : barking || shout ? 'alert' : a.moving ? Math.floor(a.stepT * 6) % 4 : 0;
+    const top = drawActor(g, a.type, a.x, a.y, dir, frame, { dim: napping });
     const cx = Math.round(a.x);
     if (a.cfg.harmless) return;
-    if (sleeping && a.state !== 'eat') {
+    if (napping) {
       const b = Math.floor(performance.now() / 500) % 2;
       drawText(g, a.cfg.depth && a.depth < 0.35 ? 'Z' : 'ZZ', cx + 4, top - 6 - b, a.cfg.depth && a.depth < 0.35 ? C.orange : C.white, { shadow: C.ink });
-    } else if (!a.awake && a.cfg.cook) { // stirring the pot: back turned
+    } else if (!a.awake && a.cfg.cook) { // stirring the pot
       drawObj(g, 'pot', cx + (dir === 1 ? -9 : 9), Math.round(a.y) - 1);
       if (Math.floor(performance.now() / 400) % 2) drawText(g, '~', cx + (dir === 1 ? -10 : 8), Math.round(a.y) - 11, C.white);
-    } else if (!a.awake && a.cfg.phone) {
-      g.fillStyle = C.ink; g.fillRect(cx + (dir === 1 ? -7 : 5), Math.round(a.y) - 4, 4, 6);
-      g.fillStyle = C.pink; g.fillRect(cx + (dir === 1 ? -6 : 6), Math.round(a.y) - 3, 2, 4);
     }
     // '?' suspicious, '!' about to chase: shape AND colour, so it reads for colour-blind players too
     if (a.alert > 0.12 && a.awake && !a.say) {
