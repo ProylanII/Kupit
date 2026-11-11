@@ -24,8 +24,8 @@ and that standing still at the spawn for 4 s is safe. The same validator checks 
 ```jsonc
 {
   "id": "05-gabi", "name": "GABI",
-  "tutorial": true,            // show move controls for 6s
-  "hint": "SHORT TIP",         // shown for 6s (max ~55 chars)
+  "tutorial": true,            // level 1 only: step-by-step coaching line, skill tip held back
+  "hint": "SHORT TIP",         // shown for the first 8s (max 58 chars, checked)
   "night": true,               // dark tint
   "tiles": ["###...", ...],
   "spawn": [5, 1], "exit": [12, 20],
@@ -128,4 +128,7 @@ pandesal), `nena`, `ninang`. Late-game community archetypes, built from the same
 Generated houses can also carry `mutators`, `brownout` (darker night), `noThrow` (no throwables) and `pasko`
 (Noche Buena decorations). See `src/game/house.js`.
 Routes are walked with A* (adults open closed doors, never pass gates).
-Objects must sit on plain floor and not overlap.
+Objects must sit on plain floor and not overlap. Hiding spots, stashes and the alkansya may not sit within one
+tile of a door's walkable neighbours: standing there to open the door, the action button would say TAGO or KUPIT
+(they outrank BUKAS) and the door would look stuck. The validator rejects it, and `tests/walkthrough.test.mjs`
+plays every level with real inputs to prove it can be finished.

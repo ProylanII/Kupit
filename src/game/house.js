@@ -3,7 +3,7 @@
 // hiding spots and (from difficulty 3) a locked door whose key lies on the near side.
 // Every result is checked with validateLevel + idleSafe, otherwise the next derived seed is tried.
 import { TileMap } from '../world/tilemap.js';
-import { validateLevel, idleSafe, solve } from './validate.js';
+import { validateLevel, idleSafe, solve, besideDoor } from './validate.js';
 import { mulberry32, hashStr } from '../core/rng.js';
 
 export { mulberry32 };
@@ -157,13 +157,18 @@ function build(seed, diff, opts = {}) {
   occ.add(key(...exit));
   const take = (cells) => { const c = pick(cells); occ.add(key(...c)); return c; };
 
+  // Stashes and hiding spots stay clear of door approaches (see validate.js besideDoor): standing there the
+  // action button must say BUKAS, not KUPIT or TAGO.
+  const appr = doors.filter((d) => !d.arch).flatMap((d) => [[d.x + 1, d.y], [d.x - 1, d.y], [d.x, d.y + 1], [d.x, d.y - 1]].filter(([x, y]) => g[y]?.[x] && g[y][x] !== '#').map(([x, y]) => [x, y, d.x, d.y]));
+  const clearOfDoors = (c) => !besideDoor(appr, c);
+
   // ---- targets
   const n = 2 + (diff >= 3 ? 1 : 0) + (diff >= 5 ? 1 : 0);
   const pool = shuffle(rooms.filter((r) => r !== startRoom));
   const targets = [];
   for (let i = 0; i < n; i++) {
     const room = pool[i % pool.length];
-    const cells = free(room);
+    const cells = free(room).filter(clearOfDoors);
     if (!cells.length) continue;
     targets.push({ kind: pick(['purse', 'wallet', 'piggy', 'bayong']), at: take(cells), coins: ri(1, 3) });
   }
@@ -226,7 +231,7 @@ function build(seed, diff, opts = {}) {
   const hide = [];
   // not right next to a purse: KUPIT takes the button there, so you couldn't hide until it was emptied
   const besideTarget = (e) => targets.some((t) => Math.abs(t.at[0] - e.c[0]) + Math.abs(t.at[1] - e.c[1]) <= 1);
-  for (let i = 0; i < 4 + ri(0, 2); i++) { const c = grab((e) => !besideTarget(e)); if (c) hide.push({ kind: pick(['box', 'curtain', 'basket']), at: c }); }
+  for (let i = 0; i < 4 + ri(0, 2); i++) { const c = grab((e) => !besideTarget(e) && clearOfDoors(e.c)); if (c) hide.push({ kind: pick(['box', 'curtain', 'basket']), at: c }); }
   const devices = [];
   for (let i = 0; i < (diff >= 4 ? 2 : 1); i++) { const c = grab(); if (c) devices.push({ kind: pick(['tv', 'radio']), at: c, dur: 9 }); }
   const traps = [];

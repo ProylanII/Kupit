@@ -39,6 +39,21 @@ export function solve(L, map, blockedDoors = new Set()) {
   }
 }
 
+// The walkable squares next to every closed door, as [x, y, doorX, doorY].
+export function doorApproaches(map) {
+  const out = [];
+  for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) {
+    if (map.ch(x, y) !== 'D') continue;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!map.tileSolid(x + dx, y + dy)) out.push([x + dx, y + dy, x, y]);
+  }
+  return out;
+}
+// A hiding spot or stash within one tile of a door's approach square is in reach from where you open the door,
+// and TAGO/KUPIT outrank BUKAS on the action button: the door would look stuck. Returns the offending door or null.
+export function besideDoor(appr, p) {
+  return appr.find(([ax, ay]) => Math.max(Math.abs(p[0] - ax), Math.abs(p[1] - ay)) <= 1) || null;
+}
+
 export function validateLevel(L) {
   const errs = [];
   const bad = (m) => errs.push(m);
@@ -81,6 +96,11 @@ export function validateLevel(L) {
     place(L.alkansya.at, 'alkansya');
     if (!(L.alkansya.coins > 0)) bad('alkansya needs coins');
   }
+  const appr = doorApproaches(map);
+  const doorCheck = (p, what) => { const d = besideDoor(appr, p); if (d) bad(`${what} ${p} is beside door ${d[2]},${d[3]}: ACT would say TAGO/KUPIT there, not BUKAS`); };
+  for (const h of L.hide || []) doorCheck(h.at, `hide:${h.kind}`);
+  for (const t of L.targets) doorCheck(t.at, `target:${t.kind}`);
+  if (L.alkansya) doorCheck(L.alkansya.at, 'alkansya');
 
   const reach = solve(L, map);
   if (!reach.has(L.exit.join())) bad('exit unreachable');

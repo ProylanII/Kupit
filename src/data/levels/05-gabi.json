@@ -34,7 +34,7 @@
   "patience": 160,
   "targets": [
     { "kind": "purse",  "at": [5, 19], "coins": 3, "time": 1.6 },
-    { "kind": "piggy",  "at": [7, 10], "coins": 2, "time": 1.2 },
+    { "kind": "piggy",  "at": [8, 10], "coins": 2, "time": 1.2 },
     { "kind": "bayong", "at": [9, 1],  "coins": 3, "time": 1.8 }
   ],
   "locks": [
