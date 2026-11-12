@@ -86,3 +86,32 @@ Updated after each phase. See AUDIT.md for the findings and DECISIONS.md for the
 - Run the silent playtest (docs/PLAYTEST.md) and the by-hand checklist (docs/QA.md) on a real phone.
 - DECISIONS.md has one **ASK**: KAIN NA at zero ends the level regardless of chances (as implemented). Say if
   dinner should cost a chance instead.
+
+## Story pass — done (2026-11-11)
+
+- Done: the cat story (intro, 10 scenes, ending, epilogue) in a new mixed-case dialogue font; hideout home screen;
+  barangay map with chapters; Aling Nena's store sells the kittens' needs; siblings join through scenes; new
+  levels GATAS (carry the milk), IBALIK (put it back), BAGYO (storm finale, replaces the sari-sari boss) and HINGI
+  (epilogue); save v3 migration; `tests/story.test.mjs`. All levels pass the validator and the walkthrough bot.
+- The designed-but-unbuilt list from this pass was built in the redesign pass below.
+- Needs the owner: play the new levels by hand for feel (the bot proves they are finishable, not that they are
+  fun), and read the script in `src/data/story.js`.
+
+## Redesign pass — done (2026-11-11)
+
+- Done: the ending rewritten (caught in the storm, then understood and forgiven) and wired to play the moment
+  BAGYO is cleared; characters redrawn with cats and portrait moods; missions replace the fixed stars; the thirteen
+  older maps rebuilt with cover, loops and routines; videoke masking and crowd blending at the fiesta; softer
+  vision cones; kittens that follow; new tiles (aparador, stall, laundry, bangko, drum, estante, concrete).
+- Checks on the final build: `npm test` 174/174 (14 new in `tests/redesign.test.mjs`); `tools/qa/smoke.mjs` all
+  screens and all 17 levels on phone and desktop viewports with no console errors; `tools/qa/pwa.mjs` offline and
+  installable; `tools/qa/ending.mjs` the ending flow on a fresh save.
+- Not verified by a person: how the new rooms, routines, blending and missions feel to play, and whether the
+  redrawn characters are what the owner had in mind (see "Needs the owner").
+
+## Needs the owner (redesign pass)
+
+- Look at the new characters in game and say what is still off; each head is a small grid in `HEADS` in
+  `tools/art/make_art.py`, then `npm run art:code` and `npm run build`.
+- Read the new ending in `src/data/story.js` (`ENDING`).
+- Play the rebuilt levels by hand, the fiesta and the palengke first: those changed the most.

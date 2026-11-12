@@ -1,6 +1,6 @@
 // Static level background, drawn once per level into an offscreen canvas.
 // Pass order: floors -> contact shadows -> furniture -> walls (with wall decor) -> window light.
-import { TILE } from '../world/tilemap.js';
+import { TILE, FURNITURE } from '../world/tilemap.js';
 import { C } from './palette.js';
 
 const r = (g, c, x, y, w, h) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
@@ -11,7 +11,8 @@ const hash = (x, y, s = 0) => {
   return (h ^ (h >>> 16)) >>> 0;
 };
 
-const FURN = new Set('TSBPCF');
+const FURN = new Set(FURNITURE);
+const LOW_SHADOW = new Set('PHW'); // small round things: no long contact shadow
 const isWall = (c) => c === '#';
 const isFloorish = (c) => !isWall(c) && !FURN.has(c);
 
@@ -25,6 +26,16 @@ function floor(g, ch, tx, ty, x, y) {
     }
     const f = hash(tx, ty, 9);
     if (f % 9 === 0) { r(g, f & 32 ? C.yellow : C.white, x + (f >>> 4) % 12 + 2, y + (f >>> 9) % 11 + 2, 2, 2); }
+  } else if (ch === ':') { // poured concrete: big slabs, a few cracks and stains
+    r(g, '#b4b0b8', x, y, TILE, TILE);
+    if (ty % 2 === 0) r(g, '#9b97a3', x, y, TILE, 1);
+    if ((tx + (ty >> 1)) % 3 === 0) r(g, '#9b97a3', x, y, 1, TILE);
+    for (let i = 0; i < 3; i++) {
+      const h = hash(tx, ty, 20 + i);
+      r(g, i ? '#a6a2ae' : '#c2bec6', x + 1 + (h % 13), y + 1 + ((h >>> 6) % 13), 1 + (h >>> 12) % 2, 1);
+    }
+    const k = hash(tx, ty, 24);
+    if (k % 11 === 0) { r(g, '#8d8996', x + 3 + (k >>> 4) % 7, y + 4, 1, 4); r(g, '#8d8996', x + 4 + (k >>> 4) % 7, y + 7, 2, 1); } // crack
   } else if (ch === ',') { // kitchen tiles with grout
     r(g, C.tile, x, y, TILE, TILE);
     r(g, C.tile2, x, y, 8, 8); r(g, C.tile2, x + 8, y + 8, 8, 8);
@@ -173,6 +184,140 @@ function fridge(g, x, y) {
   shade(g, 0.3, x + 1, y + 15, 14, 1);
 }
 
+// bangko: a wooden stool, or the white plastic monobloc chair every house has
+function bangko(g, tx, ty, x, y) {
+  shade(g, 0.25, x + 3, y + 13, 11, 2);
+  if (hash(tx, ty, 11) % 2) {
+    r(g, C.table, x + 3, y + 5, 10, 6); r(g, C.table2, x + 3, y + 5, 10, 2); r(g, C.wood, x + 4, y + 5, 8, 1);
+    r(g, C.table, x + 3, y + 11, 2, 3); r(g, C.table, x + 11, y + 11, 2, 3);
+  } else {
+    r(g, C.counter, x + 4, y + 1, 8, 6); r(g, C.white, x + 4, y + 1, 8, 1); r(g, C.counter2, x + 6, y + 3, 1, 3); r(g, C.counter2, x + 9, y + 3, 1, 3);
+    r(g, C.white, x + 3, y + 7, 10, 4); r(g, C.counter2, x + 3, y + 10, 10, 1);
+    r(g, C.counter, x + 3, y + 11, 2, 3); r(g, C.counter, x + 11, y + 11, 2, 3);
+  }
+}
+
+// a blue plastic water drum with a tabo floating in it
+function drum(g, tx, ty, x, y) {
+  shade(g, 0.25, x + 2, y + 13, 13, 2);
+  r(g, '#24488f', x + 3, y + 4, 10, 11); r(g, C.blue, x + 3, y + 4, 8, 11); r(g, '#5f8fe0', x + 4, y + 5, 2, 9);
+  r(g, '#24488f', x + 3, y + 9, 10, 1);
+  r(g, C.blue, x + 2, y + 2, 12, 3); r(g, '#5f8fe0', x + 2, y + 2, 12, 1);
+  r(g, '#9fd8e8', x + 4, y + 3, 8, 1);
+  if (hash(tx, ty, 12) % 2) { r(g, C.red, x + 8, y + 2, 3, 2); r(g, C.red, x + 11, y + 1, 2, 1); } // tabo
+}
+
+// estante: a low shelf with the things a family keeps on it
+function estante(g, map, tx, ty, x, y) {
+  const lf = map.ch(tx - 1, ty) === 'A', rt = map.ch(tx + 1, ty) === 'A';
+  r(g, C.table2, x, y + 4, TILE, 5); r(g, C.wood, x, y + 4, TILE, 1);       // top
+  r(g, C.table, x, y + 9, TILE, 6); r(g, C.woodLine, x, y + 9, TILE, 1);    // front
+  r(g, '#5c3620', x + 2, y + 11, 5, 3); r(g, '#5c3620', x + 9, y + 11, 5, 3); // open shelves
+  r(g, C.red, x + 3, y + 12, 1, 2); r(g, C.gold, x + 4, y + 12, 1, 2); r(g, C.teal, x + 10, y + 12, 2, 2); // books
+  shade(g, 0.3, x, y + 15, TILE, 1);
+  if (!lf) r(g, C.table, x, y + 4, 1, 11);
+  if (!rt) r(g, '#5c3620', x + 15, y + 4, 1, 11);
+  const h = hash(tx, ty, 13) % 5;
+  if (h === 0) { // little altar: santo, two candles
+    r(g, C.red, x + 6, y, 4, 6); r(g, C.gold, x + 6, y, 4, 1); r(g, C.skin, x + 7, y + 1, 2, 2);
+    r(g, C.white, x + 3, y + 3, 1, 3); r(g, C.white, x + 12, y + 3, 1, 3); r(g, C.yellow, x + 3, y + 2, 1, 1); r(g, C.yellow, x + 12, y + 2, 1, 1);
+  } else if (h === 1) { // electric fan
+    r(g, C.dgray, x + 7, y + 4, 2, 3); r(g, C.gray, x + 4, y - 1, 8, 6); r(g, C.fridge, x + 5, y, 6, 4); r(g, C.dgray, x + 7, y + 1, 2, 2);
+  } else if (h === 2) { // framed photos
+    r(g, C.gold2, x + 2, y + 1, 5, 5); r(g, '#9fd8e8', x + 3, y + 2, 3, 3); r(g, C.table, x + 9, y + 2, 5, 4); r(g, C.capiz, x + 10, y + 3, 3, 2);
+  } else if (h === 3) { // trophy and a jar
+    r(g, C.gold, x + 4, y, 4, 3); r(g, C.gold2, x + 5, y + 3, 2, 2); r(g, C.table, x + 4, y + 5, 4, 1);
+    r(g, '#9fd8e8', x + 10, y + 2, 3, 4); r(g, C.red, x + 10, y + 1, 3, 1);
+  } else { // folded clothes
+    r(g, C.pink, x + 3, y + 3, 6, 2); r(g, C.white, x + 3, y + 2, 6, 1); r(g, C.sofa2, x + 10, y + 2, 4, 3);
+  }
+}
+
+// aparador: a wardrobe taller than anyone in the house. Nobody sees past it.
+function aparador(g, map, tx, ty, x, y) {
+  const lf = map.ch(tx - 1, ty) === 'K', rt = map.ch(tx + 1, ty) === 'K', up = map.ch(tx, ty - 1) === 'K', dn = map.ch(tx, ty + 1) === 'K';
+  r(g, '#5c3620', x, y, TILE, TILE);
+  if (!dn) {
+    r(g, C.table2, x, y, TILE, up ? 2 : 4); r(g, C.wood, x, y, TILE, 1);        // the top, catching the light
+    r(g, C.table, x, y + (up ? 2 : 4), TILE, up ? 13 : 11);                      // doors
+    r(g, '#5c3620', x + 7, y + (up ? 2 : 4), 1, 11); r(g, C.table2, x + 1, y + 5, 5, 8); r(g, C.table2, x + 9, y + 5, 5, 8);
+    r(g, C.table, x + 2, y + 6, 3, 6); r(g, C.table, x + 10, y + 6, 3, 6);
+    r(g, C.gold, x + 6, y + 9, 1, 2); r(g, C.gold, x + 8, y + 9, 1, 2);
+    if (hash(tx, ty, 14) % 3 === 0) { r(g, '#9fd8e8', x + 10, y + 6, 3, 6); r(g, C.white, x + 10, y + 6, 1, 3); } // mirror door
+    shade(g, 0.4, x, y + 15, TILE, 1);
+  } else { r(g, C.table2, x, y, TILE, TILE); r(g, C.wood, x, y, TILE, 1); r(g, C.table, x + 7, y, 1, TILE); }
+  if (!lf) r(g, C.table2, x, y, 1, TILE);
+  if (!rt) r(g, C.ink, x + 15, y, 1, TILE);
+  if (!up) r(g, C.wood, x, y, TILE, 1);
+}
+
+// tindahan: a market stall under a striped awning, goods piled in front
+const AWNINGS = [[C.red, C.white], ['#2f5fbf', C.white], ['#2fa55b', C.yellow], [C.orange, C.white]];
+function stall(g, map, tx, ty, x, y) {
+  const up = map.ch(tx, ty - 1) === 'M', dn = map.ch(tx, ty + 1) === 'M', lf = map.ch(tx - 1, ty) === 'M', rt = map.ch(tx + 1, ty) === 'M';
+  let sx = tx; while (map.ch(sx - 1, ty) === 'M') sx--;
+  let sy = ty; while (map.ch(sx, sy - 1) === 'M') sy--;
+  const [a, b] = AWNINGS[hash(sx, sy, 15) % AWNINGS.length];
+  if (!dn) { // the front of the stall: crates of goods under the awning's edge
+    for (let px = 0; px < TILE; px++) r(g, ((tx * TILE + px) >> 2) & 1 ? a : b, x + px, y, 1, up ? TILE - 9 : 7);
+    r(g, C.ink, x, y + (up ? 6 : 6), TILE, 1);
+    for (let px = 0; px < TILE; px += 4) r(g, ((tx * TILE + px) >> 2) & 1 ? a : b, x + px + 1, y + 7, 2, 1); // scalloped hem
+    r(g, C.table, x, y + 9, TILE, 6); r(g, C.table2, x, y + 9, TILE, 1); r(g, '#5c3620', x + 7, y + 10, 1, 5);
+    const h = hash(tx, ty, 16) % 4, goods = [[C.orange, C.yellow], [C.leaf2, C.leaf], [C.red, '#ffb0a0'], ['#9fb0bf', C.fridge]][h];
+    for (let i = 0; i < 6; i++) { const k = hash(tx * 7 + i, ty, 17); r(g, goods[k & 1], x + 1 + (i % 3) * 5 + (k >>> 3) % 2, y + 8 + (i > 2 ? 2 : 0), 3, 2); }
+    shade(g, 0.35, x, y + 15, TILE, 1);
+  } else for (let px = 0; px < TILE; px++) r(g, ((tx * TILE + px) >> 2) & 1 ? a : b, x + px, y, 1, TILE); // the awning's roof
+  if (!up) { r(g, C.white, x, y, TILE, 1); }
+  if (!lf) r(g, C.ink, x, y, 1, TILE);
+  if (!rt) r(g, C.ink, x + 15, y, 1, TILE);
+}
+
+// The top half of a wardrobe rises over the tile behind it: drawn OVER anyone standing there, so it reads as tall.
+export function drawTallTop(g, map, tx, ty) {
+  if (map.ch(tx, ty - 1) === 'K') return;
+  const x = tx * TILE, y = ty * TILE - 9, lf = map.ch(tx - 1, ty) === 'K', rt = map.ch(tx + 1, ty) === 'K';
+  r(g, C.ink, x, y - 1, TILE, 1);
+  r(g, C.table2, x, y, TILE, 3); r(g, C.wood, x, y, TILE, 1);          // the top, catching the light
+  r(g, C.table, x, y + 3, TILE, 6); r(g, '#5c3620', x + 7, y + 3, 1, 6); // the upper doors
+  r(g, C.table2, x + 1, y + 4, 5, 5); r(g, C.table2, x + 9, y + 4, 5, 5);
+  if (!lf) r(g, C.ink, x, y, 1, 9);
+  if (!rt) r(g, C.ink, x + 15, y, 1, 9);
+}
+
+// Hanging laundry: drawn every frame OVER whoever is standing in it (see Play.drawOverlayTiles).
+const CLOTHES = [[C.white, C.counter2], [C.pink, C.bed], ['#7fd7ff', C.blue], [C.yellow, C.gold2], [C.red, '#a83a3a'], [C.leaf2, C.leaf]];
+export function drawLaundry(g, map, tx, ty, t) {
+  const x = tx * TILE, y = ty * TILE;
+  const vert = (map.ch(tx, ty - 1) === 'L' || map.ch(tx, ty + 1) === 'L') && map.ch(tx - 1, ty) !== 'L' && map.ch(tx + 1, ty) !== 'L';
+  const sway = Math.round(Math.sin(t * 1.4 + tx * 0.9 + ty * 0.5));
+  if (vert) { // a line running away from you: clothes seen edge-on, overlapping down the tile
+    r(g, C.counter2, x + 7, y - 6, 1, TILE + 6);
+    for (let i = 0; i < 2; i++) {
+      const [c1, c2] = CLOTHES[hash(tx, ty, 30 + i) % CLOTHES.length], yy = y - 5 + i * 8;
+      r(g, C.ink, x + 2 + sway, yy - 1, 12, 11);
+      r(g, c1, x + 3 + sway, yy, 10, 9); r(g, c2, x + 3 + sway, yy + 7, 10, 2); r(g, c2, x + 11 + sway, yy, 2, 9);
+    }
+    return;
+  }
+  r(g, C.counter2, x, y - 5, TILE, 1); // the line
+  const kind = hash(tx, ty, 31) % 3, [c1, c2] = CLOTHES[hash(tx, ty, 32) % CLOTHES.length];
+  if (kind === 0) { // a bedsheet: the whole width of the tile
+    r(g, C.ink, x, y - 5, TILE, 19);
+    r(g, c1, x + 1, y - 4, 14, 8); r(g, c1, x + 1 + sway, y + 4, 14, 8); r(g, c2, x + 1 + sway, y + 11, 14, 1);
+    for (let i = 3; i < 14; i += 4) r(g, c2, x + i + sway, y - 1, 1, 10);
+  } else if (kind === 1) { // two shirts
+    for (const ox of [0, 8]) {
+      const [s1, s2] = CLOTHES[hash(tx + ox, ty, 33) % CLOTHES.length];
+      r(g, C.ink, x + ox, y - 5, 8, 15);
+      r(g, s1, x + ox + 1, y - 4, 6, 3); r(g, s1, x + ox + 2 + sway, y - 1, 4, 9); r(g, s2, x + ox + 2 + sway, y + 7, 4, 1);
+      r(g, C.counter2, x + ox + 3, y - 4, 2, 1);
+    }
+  } else { // towel and shorts
+    r(g, C.ink, x, y - 5, 9, 17); r(g, c1, x + 1, y - 4, 7, 8); r(g, c1, x + 1 + sway, y + 4, 7, 6); r(g, c2, x + 1 + sway, y + 6, 7, 2);
+    r(g, C.ink, x + 9, y - 5, 7, 11); r(g, C.blue, x + 10, y - 4, 5, 5); r(g, C.blue, x + 10 + sway, y + 1, 2, 3); r(g, C.blue, x + 13 + sway, y + 1, 2, 3);
+  }
+}
+
 // ---------------------------------------------------------------- walls
 function wallDecor(g, map, tx, ty, x, y, night) {
   const h = hash(tx, ty, 7);
@@ -214,7 +359,7 @@ function wallDecor(g, map, tx, ty, x, y, night) {
 function wall(g, map, tx, ty, x, y, night, lights) {
   const below = map.ch(tx, ty + 1);
   if (!isWall(below)) {
-    const outside = below === ';';
+    const outside = below === ';' || below === ':' || below === 'L';
     r(g, C.wallD, x, y, TILE, 4);                 // top of the wall
     r(g, C.wallL, x, y, TILE, 1);
     if (outside) { // hollow-block fence
@@ -261,20 +406,21 @@ export function buildBackground(map, { night = false, pasko = false } = {}) {
     if (isWall(ch)) return;
     if (ch === 'R') return rug(g, map, tx, ty, x, y);
     let f = ch;
-    if (FURN.has(ch) || ch === 'D' || ch === 'd' || ch === 'G' || ch === 'g') {
-      const nb = [map.ch(tx, ty + 1), map.ch(tx - 1, ty), map.ch(tx + 1, ty), map.ch(tx, ty - 1)].find((c) => c === '.' || c === ',' || c === ';');
+    if (FURN.has(ch) || ch === 'L' || ch === 'D' || ch === 'd' || ch === 'G' || ch === 'g') {
+      const nb = [map.ch(tx, ty + 1), map.ch(tx - 1, ty), map.ch(tx + 1, ty), map.ch(tx, ty - 1)].find((c) => c === '.' || c === ',' || c === ';' || c === ':');
       f = nb || '.';
     }
     floor(g, f, tx, ty, x, y);
+    if (ch === 'L') shade(g, 0.18, x + 1, y + 11, TILE - 2, 4); // the shadow of the washing on the ground
   });
   // 2. contact shadows: under walls and furniture, along walls
   each((ch, tx, ty, x, y) => {
     if (!isFloorish(ch)) return;
     const up = map.ch(tx, ty - 1), lf = map.ch(tx - 1, ty);
     if (isWall(up)) { shade(g, 0.28, x, y, TILE, 2); shade(g, 0.14, x, y + 2, TILE, 2); }
-    else if (FURN.has(up) && up !== 'P') shade(g, 0.22, x + 1, y, TILE - 1, 2);
+    else if (FURN.has(up) && !LOW_SHADOW.has(up)) shade(g, up === 'K' || up === 'M' ? 0.34 : 0.22, x + 1, y, TILE - 1, up === 'K' || up === 'M' ? 4 : 2);
     if (isWall(lf)) shade(g, 0.16, x, y, 2, TILE);
-    else if (FURN.has(lf) && lf !== 'P') shade(g, 0.14, x, y + 2, 2, TILE - 2);
+    else if (FURN.has(lf) && !LOW_SHADOW.has(lf)) shade(g, 0.14, x, y + 2, lf === 'K' || lf === 'M' ? 4 : 2, TILE - 2);
   });
   // 3. furniture
   each((ch, tx, ty, x, y) => {
@@ -284,6 +430,11 @@ export function buildBackground(map, { night = false, pasko = false } = {}) {
     else if (ch === 'P') plant(g, tx, ty, x, y);
     else if (ch === 'C') counter(g, map, tx, ty, x, y);
     else if (ch === 'F') fridge(g, x, y);
+    else if (ch === 'H') bangko(g, tx, ty, x, y);
+    else if (ch === 'W') drum(g, tx, ty, x, y);
+    else if (ch === 'A') estante(g, map, tx, ty, x, y);
+    else if (ch === 'K') aparador(g, map, tx, ty, x, y);
+    else if (ch === 'M') stall(g, map, tx, ty, x, y);
   });
   // 4. walls
   const lights = [];
@@ -293,7 +444,7 @@ export function buildBackground(map, { night = false, pasko = false } = {}) {
     g.globalAlpha = 0.13; g.fillStyle = C.yellow;
     for (const l of lights) for (let i = 0; i < 18; i++) {
       const w = 12 - Math.floor(i / 3), px = l.x - 6 + Math.floor(i / 2);
-      if (!isFloorish(map.ch(Math.floor(px / TILE), Math.floor((l.y + i) / TILE)))) break;
+      if (!isFloorish(map.ch(Math.floor(px / TILE), Math.floor((l.y + i) / TILE))) || l.outside) break;
       g.fillRect(px, l.y + i, w, 1);
     }
     g.globalAlpha = 1;

@@ -114,8 +114,12 @@ test('tracker dog follows the scent trail you leave', () => {
   assert.ok(fromHome > 100 && dog.x > c(8), `dog followed the trail to the right (moved ${fromHome.toFixed(0)}px, x=${dog.x.toFixed(0)})`);
 });
 
-test('Aling Nena drops the shutter in the last phase; the lever opens it again', () => {
-  const L = JSON.parse(readFileSync(new URL('../src/data/levels/boss5-sarisari.json', import.meta.url), 'utf8'));
+test('a final phase can drop a shutter (an open gate closes); the lever opens it again', () => {
+  const tiles = ['###############', ...Array(17).fill('#.............#'), '#######g#######', '#.............#', '#.............#', '###############'];
+  const L = { id: 'shutter', name: 'X', tiles, spawn: [2, 2], exit: [12, 20], quota: 2, par: 60,
+    targets: [{ kind: 'purse', at: [5, 5], coins: 2 }], switches: [{ at: [1, 13], gates: [[7, 18]], time: 8 }],
+    boss: { title: 'X', index: 0, bonus: 5, phases: [{ at: 2, banner: 'SHUTTER!', escape: 30, close: [[7, 18]] }] },
+    adults: [{ type: 'nena', at: [12, 2], face: 0 }] };
   const w = new World(L);
   w.god = true;
   assert.equal(w.map.ch(7, 18), 'g');

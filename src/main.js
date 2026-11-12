@@ -2,24 +2,27 @@ import { Input, VIEW_W, VIEW_H } from './core/input.js';
 import { loadSave, writeSave, requestPersist, saveCode, readSaveCode } from './core/save.js';
 import { sfx, setMuted, isMuted, suspendAudio } from './core/audio.js';
 import { Play } from './scenes/play.js';
-import { drawText } from './ui/font.js';
+import { drawText, drawBig } from './ui/font.js';
 import { drawActor, drawStar, drawTarget, drawCoin, drawPortrait, drawObj } from './render/sprites.js';
 import { parol } from './render/tiles.js';
 import {
-  CHARACTERS, CHAR_ORDER, STAR_MILESTONES, totalStars, grantUnlocks, campaignPayout, housePayout,
+  CHARACTERS, CHAR_ORDER, STAR_MILESTONES, MAX_STARS, totalStars, grantUnlocks, campaignPayout, housePayout,
+  grantSiblings, NEED_ORDER, hasNeed, needCost,
 } from './game/progression.js';
 import {
   generateHouse, dailySeed, dailyId, dailyDiff, isPasko, prevDailyId, MUTATORS, MUTATOR_ORDER, mutatorMult,
 } from './game/house.js';
 import { C } from './render/palette.js';
-import { shopScreen, charScreen, cosmeticsScreen } from './scenes/shop.js';
+import { shopScreen, upgradesScreen, charScreen, cosmeticsScreen } from './scenes/shop.js';
+import { drawHideout, drawCat, drawMap, mapLayout, mapScrollFor, mapNodeRect, mapVisible } from './scenes/hub.js';
 import { dev, initDev, setDev, SPEEDS } from './core/dev.js';
 import { music } from './core/music.js';
 import { loadAtlas } from './render/atlas.js';
 import { hapticsOn, vibrate, canVibrate } from './core/haptics.js';
 import { settings, applySettings, SHAKE_LEVELS, shakeLabel, VOLUME_STEPS } from './core/settings.js';
 import { loadGhost, storeGhost } from './game/ghost.js';
-import { INTRO, ENDING } from './data/story.js';
+import { INTRO, BEFORE, ENDING, EPILOGUE, NAMES, CHAPTERS } from './data/story.js';
+import { missionIds, missionLabel, maskOf, starsOf } from './game/missions.js';
 import { drawMenu, drawButton, buttonRect, menuHit, hit } from './ui/menu.js';
 
 const canvas = document.getElementById('game');
@@ -58,7 +61,7 @@ let levels = [];
 let idx = 0;
 let cur = null;   // the level being played (handmade or generated)
 let run = null;   // null for campaign, { seed, diff, daily, mutators } for Random House
-let mode = 'loading'; // loading | title | levels | help | options | story | house | dev | store | cosmetics | chars | play | paused | caught | clear
+let mode = 'loading'; // loading | title | levels | help | options | story | house | dev | store | upgrades | cosmetics | chars | play | paused | caught | clear
 let play = null;
 let age = 0;
 let sel = 0;       // highlighted menu item
@@ -70,6 +73,7 @@ let bossBonus = 0;
 let msg = null;    // { text, color, t } short message on menus
 let shareText = null;
 let starShown = [false, false, false]; // clear screen: which stars have popped in
+let starsBefore = 0;                   // clear screen: the missions already done before this run (bit mask)
 
 const FADE = 0.25;
 const STEP = 1 / 60; // the simulation always advances in fixed 60 Hz steps (same game on 60/120/144 Hz screens)
@@ -88,7 +92,10 @@ function launch() {
   const campaign = !run;
   const ghost = campaign && settings.ghost ? loadGhost(cur.id) : null;
   play = new Play(cur, input, { char: save.char, upgrades: save.upgrades, lives: 3, alkansyaFound: !!save.alkansya[cur.id] },
-    { tips, ghost, outfit: save.outfit, record: campaign, log: playtest ? ptEvent : null });
+    { tips, ghost, outfit: save.outfit, record: campaign, log: playtest ? ptEvent : null,
+      earned: campaign ? save.missions[cur.id] | 0 : 0,
+      quietClear: campaign && !!cur.ending && !save.story.ending, // the storm ends on "HULI KA!", not on a fanfare
+      kitten: !campaign || cur.storm ? 0 : cur.hingi ? 3 : save.story.epilogue ? 1 : 0 }); // the epilogue: all three trot after you; afterwards Tigre tags along
   ptLog('start');
   input.reset();
   acc = 0;
@@ -155,42 +162,90 @@ function drawMsg(y = 318) {
 }
 
 // ---- story panels -------------------------------------------------------------
-let story = null; // { panels, i, then }
-function startStory(panels, then) { story = { panels, i: 0, then }; setMode('story'); }
+let story = null; // { panels, i, then, flash }
+function startStory(panels, then) { story = { panels, i: 0, then, flash: 0 }; setMode('story'); enterPanel(); }
+// A "caught" panel opens exactly like the game's own caught screen: the sting, a buzz and a red flash.
+function enterPanel() {
+  const p = story.panels[story.i];
+  if (p && p.caught) { sfx.caught(); vibrate([80, 40, 140]); story.flash = settings.flash ? 0.7 : 0; }
+}
+const levelIds = () => levels.map((l) => l.id);
 
+// Start a campaign level, playing whatever part of the story comes before it the first time.
+function begin(i) {
+  const L = levels[i];
+  if (!L) return;
+  const go = () => begin(i);
+  if (i === 0 && !save.story.intro) { startStory(INTRO, () => { save.story.intro = true; persist(); go(); }); return; }
+  // (the ending normally plays the moment the storm is cleared; this covers saves that got past it another way)
+  if (L.epilogue && !save.story.ending) { startStory(ENDING, () => { save.story.ending = true; persist(); go(); }); return; }
+  const scene = BEFORE[L.id];
+  if (scene && !save.story.seen[L.id]) {
+    startStory(scene, () => {
+      save.story.seen[L.id] = true;
+      for (const p of scene) if (p.flag) save.story[p.flag] = true; // e.g. Aling Nena's discount
+      grantSiblings(save, levelIds());                               // a sibling who joined in this scene
+      persist(); go();
+    });
+    return;
+  }
+  start(i);
+}
+
+const SKIP = { x: VIEW_W - 58, y: 8, w: 50, h: 15 };
 function updateStory() {
-  const skip = { x: VIEW_W - 58, y: 8, w: 50, h: 15 };
-  if (hit(input.tapPos, skip) || input.pressed('Escape')) { sfx.unlock(); story.then(); return; }
+  if (hit(input.tapPos, SKIP) || input.pressed('Escape')) { sfx.unlock(); story.then(); return; }
   if (age > 0.3 && (input.tapPos || input.pressed('Enter') || input.pressed(' ') || input.pressed('e'))) {
+    const p = story.panels[story.i], all = p.lines.reduce((n, l) => n + l.length, 0);
     sfx.click();
-    if (++story.i >= story.panels.length) story.then(); else age = 0;
+    if (age * 45 < all) age = 99; // first tap finishes the line, the next one moves on
+    else if (++story.i >= story.panels.length) story.then(); else { age = 0; enterPanel(); }
   }
 }
 
 function drawStory() {
   g.fillStyle = C.ink; g.fillRect(0, 0, VIEW_W, VIEW_H);
   if (!titleBg) titleBg = buildTitleBg();
-  g.globalAlpha = 0.35; g.drawImage(titleBg, 0, 100); g.globalAlpha = 1;
-  const p = story.panels[story.i];
-  drawButton(g, { x: VIEW_W - 58, y: 8, w: 50, h: 15 }, 'SKIP', false);
-  g.fillStyle = C.gold; g.fillRect(VIEW_W / 2 - 31, 60, 62, 62);
-  g.fillStyle = C.ink; g.fillRect(VIEW_W / 2 - 29, 62, 58, 58);
-  const look = p.who === 'jun' ? (save.outfit !== 'basic' ? `jun~${save.outfit}` : 'jun') : p.who;
-  if (!drawPortrait(g, look, VIEW_W / 2 - 28, 63, 2)) drawActor(g, look, VIEW_W / 2, 110, 0, 0);
-  drawText(g, p.who === 'nena' ? 'ALING NENA' : p.who.toUpperCase(), VIEW_W / 2, 130, C.gold, { align: 'center', scale: 2 });
-  g.fillStyle = C.wallD; g.fillRect(12, 160, VIEW_W - 24, 20 + p.lines.length * 12);
-  const shown = Math.floor(age * 40); // typewriter
+  g.globalAlpha = 0.3; g.drawImage(titleBg, 0, 0); g.globalAlpha = 1;
+  const p = story.panels[story.i], cx = VIEW_W / 2, py = 150;
+  drawButton(g, SKIP, 'SKIP', false);
+  if (p.caught) drawText(g, 'HULI KA!', cx, 96, C.red, { scale: 6, align: 'center', shadow: C.ink });
+  g.fillStyle = p.caught ? C.red : C.gold; g.fillRect(cx - 32, py - 1, 64, 64);
+  g.fillStyle = '#2a2440'; g.fillRect(cx - 30, py + 1, 60, 60);
+  const look = p.who === 'jun' && save.outfit !== 'basic' ? `jun~${save.outfit}` : p.who;
+  if (!drawPortrait(g, look, cx - 30, py + 1, 2, p.mood)) {
+    if (p.who === 'cat') { g.save(); g.translate(cx - 26, py + 52); g.scale(4, 4); drawCat(g, 0, 0, { big: true, patch: '#e8a04a', t: performance.now() / 1000 }); g.restore(); }
+    else drawActor(g, look, cx, py + 50, 0, 0);
+  }
+  drawBig(g, NAMES[p.who] || p.who, cx, py + 70, C.gold, { align: 'center' });
+  g.fillStyle = C.wallD; g.fillRect(6, 240, VIEW_W - 12, 16 + p.lines.length * 12);
+  g.fillStyle = C.ink; g.fillRect(6, 240, VIEW_W - 12, 1);
+  const shown = Math.floor(age * 45); // typewriter
   let used = 0;
-  p.lines.forEach((l, i) => { const n = Math.max(0, Math.min(l.length, shown - used)); used += l.length; drawText(g, l.slice(0, n), VIEW_W / 2, 170 + i * 12, C.white, { align: 'center' }); });
-  for (let i = 0; i < story.panels.length; i++) { g.fillStyle = i === story.i ? C.gold : C.dgray; g.fillRect(VIEW_W / 2 - story.panels.length * 4 + i * 8, 236, 5, 5); }
-  if (Math.floor(age * 2) % 2) drawText(g, 'TAP TO CONTINUE', VIEW_W / 2, 300, C.gray, { align: 'center' });
+  p.lines.forEach((l, i) => { const n = Math.max(0, Math.min(l.length, shown - used)); used += l.length; drawBig(g, l.slice(0, n), cx, 249 + i * 12, C.white, { align: 'center' }); });
+  if (p.join && shown >= used) drawText(g, `${CHARACTERS[p.join].name} JOINS THE CREW! SKILL: ${CHARACTERS[p.join].skill.label}`, cx, 312, C.green, { align: 'center' });
+  if (p.flag === 'nena' && shown >= used) drawText(g, "CAT THINGS COST LESS AT ALING NENA'S NOW", cx, 322, C.yellow, { align: 'center' });
+  for (let i = 0; i < story.panels.length; i++) { g.fillStyle = i === story.i ? C.gold : C.dgray; g.fillRect(cx - story.panels.length * 4 + i * 8, 340, 5, 5); }
+  if (Math.floor(age * 2) % 2) drawText(g, 'TAP TO CONTINUE', cx, 358, C.gray, { align: 'center' });
+  if (story.flash > 0) { g.globalAlpha = Math.min(0.6, story.flash); g.fillStyle = C.red; g.fillRect(0, 0, VIEW_W, VIEW_H); g.globalAlpha = 1; story.flash -= 1 / 40; }
 }
 
-// ---- title ------------------------------------------------------------------
-const TITLE_Y = 184, TITLE_GAP = 19;
+// ---- title: the hideout under the house -------------------------------------------------
+// One big button for the story, six small ones for everything else. (Keyboard order = the list order.)
+const HUB_Y = 186;
+const TITLE_RECTS = [
+  { x: 20, y: 268, w: 200, h: 21 },
+  { x: 20, y: 294, w: 98, h: 17 }, { x: 122, y: 294, w: 98, h: 17 },
+  { x: 20, y: 315, w: 98, h: 17 }, { x: 122, y: 315, w: 98, h: 17 },
+  { x: 20, y: 336, w: 98, h: 17 }, { x: 122, y: 336, w: 98, h: 17 },
+];
 function titleItems() {
-  return [save.unlocked > 0 ? `CONTINUE: LEVEL ${unlockedMax() + 1}` : 'PLAY', 'LEVELS', 'RANDOM HOUSE', 'STORE', 'CHARACTERS', 'HOW TO PLAY', 'OPTIONS'];
+  const L = levels[unlockedMax()];
+  const play = !save.story.intro && save.unlocked === 0 ? 'START THE STORY' : `${save.story.epilogue ? 'VISIT' : 'NEXT'}: ${L ? L.name : ''}`;
+  return [play, 'MAP', 'RANDOM HOUSE', "ALING NENA'S", 'THE CREW', 'HOW TO PLAY', 'OPTIONS'];
 }
+const canAffordNeed = () => NEED_ORDER.some((id) => !hasNeed(save, id) && save.bank >= needCost(save, id));
+const chapterOf = (i) => { let c = 0; levels.slice(0, i + 1).forEach((L) => { const k = CHAPTERS.findIndex((x) => x.from === L.id); if (k >= 0) c = k; }); return c; };
 
 // Title backdrop: night sky, moon and a row of houses with lit capiz windows. Drawn once, stars twinkle on top.
 let titleBg = null;
@@ -282,37 +337,39 @@ function drawTitle() {
     g.fillStyle = i % 4 ? '#8a86b0' : C.white; g.fillRect(x, y, 1, 1);
   }
   drawDecor(t);
-  const kx = 40 + ((t * 18) % 120);
-  const look = save.outfit !== 'basic' ? `${CHARACTERS[save.char].look}~${save.outfit}` : CHARACTERS[save.char].look;
-  drawActor(g, look, kx, 174, 2, Math.floor(t * 6) % 4);
-  drawTarget(g, 'purse', 190, 174, false);
-  drawActor(g, 'mama', 215, 180, 1, 0);
-  drawText(g, 'KUPIT', VIEW_W / 2, 50, C.gold, { scale: 9, align: 'center', shadow: C.gold2 });
-  drawText(g, 'SNEAK. KUPIT. ESCAPE.', VIEW_W / 2, 112, C.white, { align: 'center' });
-  drawMenu(g, titleItems(), sel, TITLE_Y, TITLE_GAP);
+  drawText(g, 'KUPIT', VIEW_W / 2, 44, C.gold, { scale: 8, align: 'center', shadow: C.gold2 });
+  drawText(g, save.story.epilogue ? 'MAGSABI KA LANG. JUST ASK.' : 'SNEAK. KUPIT. ESCAPE.', VIEW_W / 2, 98, C.white, { align: 'center' });
+  drawHideout(g, save, t, HUB_Y);
+  const items = titleItems();
+  TITLE_RECTS.forEach((r, i) => drawButton(g, r, items[i], i === sel));
+  if (canAffordNeed() && Math.floor(t * 2) % 2) { const r = TITLE_RECTS[3]; g.fillStyle = C.ink; g.fillRect(r.x + r.w - 9, r.y - 3, 8, 8); g.fillStyle = C.pink; g.fillRect(r.x + r.w - 8, r.y - 2, 6, 6); drawText(g, '!', r.x + r.w - 6, r.y - 1, C.ink); }
   drawCoin(g, 8, 8); drawText(g, String(save.bank), 16, 9, C.white);
   const stars = totalStars(save), next = STAR_MILESTONES.find((m) => m.stars > stars);
-  drawStar(g, 7, 16, true); drawText(g, `${stars}/42`, 16, 17, C.white);
+  drawStar(g, 7, 16, true); drawText(g, `${stars}/${MAX_STARS}`, 16, 17, C.white);
   if (next) drawText(g, `NEXT GIFT AT ${next.stars}`, 8, 26, C.gray);
+  if (levels.length) { const c = chapterOf(unlockedMax()); drawText(g, `CHAPTER ${c + 1}`, VIEW_W - 34, 9, C.gray, { align: 'right' }); }
   if (updateReady) {
     const r = updateRect();
     g.fillStyle = C.ink; g.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2);
     g.fillStyle = Math.floor(t * 2) % 2 ? C.green : '#2fb56b'; g.fillRect(r.x, r.y, r.w, r.h);
     drawText(g, 'UPDATE READY! TAP TO RESTART', VIEW_W / 2, r.y + 4, C.ink, { align: 'center' });
   }
-  drawMsg(322);
-  drawText(g, 'A PIXEL STEALTH GAME', VIEW_W / 2, 336, C.dgray, { align: 'center' });
-  drawText(g, 'M: SOUND', VIEW_W / 2, 348, C.dgray, { align: 'center' });
+  drawMsg(362);
 }
-const updateRect = () => ({ x: 30, y: 126, w: VIEW_W - 60, h: 13 });
+const updateRect = () => ({ x: 30, y: 112, w: VIEW_W - 60, h: 13 });
 
 function updateTitle() {
   if (updateReady && (hit(input.tapPos, updateRect()) || input.pressed('u'))) { applyUpdate(); return; }
-  const pick = menuPick(7, TITLE_Y, TITLE_GAP);
-  if (pick === 0) {
-    if (save.unlocked === 0 && !save.story.intro) startStory(INTRO, () => { save.story.intro = true; persist(); start(0); });
-    else start(unlockedMax());
-  } else if (pick === 1) { prevMode = 'title'; setMode('levels'); sel = unlockedMax(); }
+  const n = TITLE_RECTS.length;
+  if (input.pressed('ArrowUp') || input.pressed('w') || input.pressed('ArrowLeft') || input.pressed('a')) sel = (sel + n - 1) % n;
+  if (input.pressed('ArrowDown') || input.pressed('s') || input.pressed('ArrowRight') || input.pressed('d')) sel = (sel + 1) % n;
+  let pick = TITLE_RECTS.findIndex((r) => hit(input.tapPos, r, 1));
+  if (pick >= 0) sel = pick;
+  else if (input.pressed('Enter') || input.pressed(' ') || input.pressed('e')) pick = sel;
+  if (pick < 0) return;
+  sfx.unlock();
+  if (pick === 0) begin(unlockedMax());
+  else if (pick === 1) { prevMode = 'title'; setMode('levels'); sel = unlockedMax(); }
   else if (pick === 2) setMode('house');
   else if (pick === 3) { shopScreen.sel = 0; setMode('store'); }
   else if (pick === 4) { charScreen.sel = CHAR_ORDER.indexOf(save.char); setMode('chars'); }
@@ -320,58 +377,48 @@ function updateTitle() {
   else if (pick === 6) { prevMode = 'title'; setMode('options'); }
 }
 
-// ---- level select -------------------------------------------------------------
-const ROW_H = 38, ROWS_Y = 36, VISIBLE = 7;
-const rowRect = (i) => ({ x: 14, y: ROWS_Y + (i - scroll) * ROW_H, w: VIEW_W - 28, h: ROW_H - 4 });
-const backRect = () => buttonRect(0, 332, 22, 100);
+// ---- level select: the barangay map -----------------------------------------------------
+let mapLay = null;
+const lay = () => (mapLay ||= mapLayout(levels));
+const isOpen = (i) => i <= save.unlocked || dev.on;
+const backRect = () => ({ x: 70, y: 340, w: 100, h: 17 });
+const pageUp = () => ({ x: 16, y: 340, w: 44, h: 17 });
+const pageDown = () => ({ x: 180, y: 340, w: 44, h: 17 });
 
 function updateLevels() {
   const n = levels.length;
   if (input.pressed('ArrowUp') || input.pressed('w')) sel = (sel + n) % (n + 1);
   if (input.pressed('ArrowDown') || input.pressed('s')) sel = (sel + 1) % (n + 1);
   if (input.pressed('Escape')) { setMode(prevMode); return; }
-  scroll = Math.max(0, Math.min(Math.max(0, n - VISIBLE), sel - 3));
+  const want = mapScrollFor(lay(), Math.min(sel, n - 1));
+  scroll = age < 0.05 ? want : scroll + (want - scroll) * 0.25;
   let pick = -1;
   const tp = input.tapPos;
   if (tp) {
     if (hit(tp, backRect())) pick = n;
-    else for (let i = scroll; i < Math.min(n, scroll + VISIBLE); i++) if (hit(tp, rowRect(i))) pick = i;
+    else if (hit(tp, pageUp())) { sel = Math.max(0, Math.min(sel, n - 1) - 3); sfx.click(); return; }
+    else if (hit(tp, pageDown())) { sel = Math.min(n - 1, sel + 3); sfx.click(); return; }
+    else for (const node of lay().nodes) { const r = mapNodeRect(node, scroll); if (mapVisible(r) && hit(tp, r, 0)) pick = node.i; }
     if (pick >= 0) sel = pick;
   }
   if (pick < 0 && (input.pressed('Enter') || input.pressed(' ') || input.pressed('e'))) pick = sel;
   if (pick < 0) return;
   sfx.unlock();
   if (pick === n) setMode(prevMode);
-  else if (pick <= save.unlocked || dev.on) start(pick);
+  else if (isOpen(pick)) begin(pick);
   else sfx.creak();
 }
 
 function drawLevels() {
-  g.fillStyle = C.ink; g.fillRect(0, 0, VIEW_W, VIEW_H);
-  drawText(g, 'CHOOSE A LEVEL', VIEW_W / 2, 14, C.gold, { scale: 2, align: 'center', shadow: C.gold2 });
-  if (dev.on) drawText(g, 'DEV: ALL UNLOCKED', VIEW_W / 2, 28, C.red, { align: 'center' });
   const n = levels.length;
-  for (let i = scroll; i < Math.min(n, scroll + VISIBLE); i++) {
-    const r = rowRect(i), lock = i > save.unlocked && !dev.on, on = sel === i, L = levels[i];
-    g.fillStyle = on ? C.gold : C.ink; g.fillRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4);
-    g.fillStyle = lock ? C.dgray : C.wallD; g.fillRect(r.x, r.y, r.w, r.h);
-    drawText(g, String(i + 1), r.x + 6, r.y + 6, lock ? C.gray : C.gold, { scale: 3 });
-    drawText(g, lock ? 'LOCKED' : L.name, r.x + 28, r.y + 6, lock ? C.gray : C.white);
-    if (L.boss) drawText(g, 'BOSS', r.x + 28 + (lock ? 28 : L.name.length * 4) + 5, r.y + 6, lock ? C.dgray : C.red);
-    const best = save.best[L.id];
-    if (!lock) drawText(g, best ? `BEST ${Math.floor(best)}S  PAR ${L.par}S` : `PAR ${L.par}S`, r.x + 28, r.y + 18, C.gray);
-    if (!lock) for (let k = 0; k < 3; k++) drawStar(g, r.x + r.w - 50 + k * 15, r.y + 6, k < (save.stars[L.id] || 0));
-    if (!lock && L.alkansya) { // found the secret alkansya? (outline until you do)
-      if (save.alkansya[L.id]) drawObj(g, 'alkansya', r.x + r.w - 10, r.y + 24);
-      else { g.fillStyle = C.dgray; g.fillRect(r.x + r.w - 13, r.y + 20, 6, 8); drawText(g, '?', r.x + r.w - 11, r.y + 22, C.gray); }
-    }
-  }
-  if (scroll > 0) drawText(g, '^', VIEW_W / 2, 26, C.gray, { align: 'center' });
-  if (scroll + VISIBLE < n) drawText(g, 'V', VIEW_W / 2, 322, C.gray, { align: 'center' });
+  drawMap(g, levels, lay(), { save, sel, scroll, isOpen, t: performance.now() / 1000 });
+  if (dev.on) drawText(g, 'DEV: ALL UNLOCKED', VIEW_W - 6, 4, C.red, { align: 'right' });
+  drawButton(g, pageUp(), '^', false);
   drawButton(g, backRect(), 'BACK', sel === n);
+  drawButton(g, pageDown(), 'V', false);
 }
 
-// ---- how to play (two pages) ------------------------------------------------------
+// ---- how to play (four pages) -----------------------------------------------------
 const HELP = [[
   ['GOAL', 'TAKE THE COINS, THEN REACH THE EXIT.'],
   ['MOVE', 'DRAG ANYWHERE OR WASD. DRAG FAR / SHIFT RUNS, BUT RUNNING IS LOUD.'],
@@ -387,13 +434,22 @@ const HELP = [[
   ['DOORS', 'DOORS BLOCK SIGHT. KEYS OPEN LOCKS. LEVERS OPEN GATES.'],
   ['KAIN NA', 'THE ORANGE BAR IS DINNER TIME. WHEN IT RUNS OUT MAMA CALLS YOU IN AND THE LEVEL IS OVER, CHANCES OR NOT. THE GREEN NOTCH IS PAR TIME.'],
   ['SECRET', 'EVERY LEVEL HIDES ONE ALKANSYA FOR BONUS COINS.'],
-  ['STARS', 'CLEAR: 1. UNDER PAR TIME: +1. SILENT: +1 IF NOBODY\'S METER FILLS PAST A THIRD AND YOU ARE NEVER CAUGHT. A QUICK ? IS FINE, A ! OR A BARK IS NOT.'],
+  ['STARS', 'EVERY LEVEL HAS THREE MISSIONS, ONE STAR EACH (PAUSE TO SEE THEM). A STAR STAYS EARNED, SO COME BACK FOR THE ONES YOU MISSED. NO ALARM MEANS NOBODY\'S METER FILLS PAST A THIRD: A QUICK ? IS FINE, A ! OR A BARK IS NOT.'],
 ], [
+  ['COVER', 'WARDROBES, MARKET STALLS AND HANGING LAUNDRY BLOCK EVERY EYE. YOU CAN WALK RIGHT THROUGH LAUNDRY, AND NOBODY SEES YOU IN IT.'],
+  ['BUSY', 'ADULTS HAVE CHORES. COOKING, WASHING UP, DOZING OR ON THE PHONE THEY SEE NOTHING: LOOK FOR THE GREEN MARK. SWEEPING OR WATCHING TV THEY SEE LESS. ANY NOISE MAKES THEM LOOK UP.'],
+  ['CROWD', 'AT A PARTY, WALK BESIDE A GUEST AND YOU BLEND IN: NOBODY NOTICES YOU UNLESS THEY ARE VERY CLOSE. RUNNING BREAKS IT.'],
+  ['VIDEOKE', 'WHILE SOMEONE IS SINGING, NOTHING YOU DO NEAR THE MACHINE CAN BE HEARD. THUNDER DOES THE SAME FOR THE WHOLE YARD.'],
+  ['KUTING', 'FINISH THE STORY AND TIGRE FOLLOWS YOU ON EVERY KUPIT. HE IS ONLY HERE TO WATCH.'],
+], [
+  ['KITTENS', "YOUR COINS BUY WHAT MINGMING AND HER KITTENS NEED AT ALING NENA'S. THE HIDEOUT CHANGES WITH EVERY ONE."],
+  ['CREW', 'BING, KUYA RAMIL AND NENE JOIN AS THE STORY GOES ON. PICK WHO YOU PLAY UNDER THE CREW.'],
+  ['MILK', 'A FULL BOWL OF MILK SPILLS IF YOU RUN. IN A STORM, THUNDER COVERS YOUR NOISE.'],
   ['CREDITS', 'KUPIT IS A PIXEL STEALTH GAME MADE IN PLAIN JAVASCRIPT: NO ENGINE, NO DOWNLOADS. THE ART, THE MUSIC AND THE FONT ARE ALL DRAWN AND PLAYED IN CODE.'],
-  ['WORDS', 'KUPIT: TO POCKET SOMETHING SNEAKILY. TAGO: HIDE. BUKAS / SARA: OPEN / CLOSE. HULI: CAUGHT. KAIN NA: DINNER IS READY.'],
+  ['WORDS', 'KUPIT: TO POCKET SOMETHING SNEAKILY. HINGI: TO ASK FOR IT. TAGO: HIDE. BUKAS / SARA: OPEN / CLOSE. HULI: CAUGHT. KAIN NA: DINNER IS READY.'],
   ['MORE', 'TSINELAS: SLIPPERS. ALKANSYA: PIGGY BANK. BAYONG: WOVEN BAG. PANDESAL: BREAD ROLL. SARI-SARI: CORNER STORE. TANOD: VILLAGE WATCHMAN.'],
   ['SAVES', 'YOUR PROGRESS STAYS ON THIS DEVICE. OPTIONS > COPY SAVE CODE MOVES IT TO ANOTHER ONE.'],
-  ['OFFLINE', 'INSTALL IT FROM THE BROWSER MENU AND IT PLAYS WITHOUT INTERNET. UPDATE READY ON THE TITLE SCREEN MEANS A NEW VERSION IS WAITING.'],
+  ['OFFLINE', 'INSTALL IT FROM THE BROWSER MENU AND IT PLAYS WITHOUT INTERNET.'],
   ['THANKS', 'SALAMAT SA PAGLALARO!'],
 ]];
 let helpPage = 0;
@@ -603,11 +659,12 @@ function devKeys() {
 
 // ---- pause ------------------------------------------------------------------------
 const PAUSE_Y = 140;
-const pauseItems = () => ['RESUME', 'RESTART', 'HOW TO PLAY', 'OPTIONS', 'LEVELS', 'TITLE', ...(dev.on ? ['DEV TOOLS'] : [])];
+const pauseItems = () => ['RESUME', 'RESTART', 'HOW TO PLAY', 'OPTIONS', 'MAP', 'HIDEOUT', ...(dev.on ? ['DEV TOOLS'] : [])];
 function drawPaused() {
   play.draw(g);
   dim(0.75);
-  drawText(g, 'PAUSED', VIEW_W / 2, 90, C.gold, { scale: 5, align: 'center', shadow: C.gold2 });
+  drawText(g, 'PAUSED', VIEW_W / 2, 40, C.gold, { scale: 5, align: 'center', shadow: C.gold2 });
+  if (!cur.hingi) play.drawMissions(g, 88, run ? 0 : save.missions[cur.id] | 0);
   drawMenu(g, pauseItems(), sel, PAUSE_Y);
 }
 
@@ -640,7 +697,7 @@ function drawCaught() {
     else if (play.world.lives > 1) drawText(g, `CAUGHT ${play.world.catches} TIMES. NO CHANCES LEFT!`, VIEW_W / 2, 165, C.orange, { align: 'center' });
   }
   drawText(g, `COINS ${play.world.coins}/${cur.quota}   TIME ${Math.floor(play.world.time)}S`, VIEW_W / 2, 177, C.gray, { align: 'center' });
-  if (age > 0.5) drawMenu(g, run ? ['TRY AGAIN', 'NEW HOUSE', 'HOUSE MENU'] : ['TRY AGAIN', 'LEVELS', 'TITLE'], sel, END_Y);
+  if (age > 0.5) drawMenu(g, run ? ['TRY AGAIN', 'NEW HOUSE', 'HOUSE MENU'] : ['TRY AGAIN', 'MAP', 'HIDEOUT'], sel, END_Y);
 }
 
 function updateCaught() {
@@ -652,8 +709,8 @@ function updateCaught() {
 
 const clearItems = () => {
   const last = !run && idx === levels.length - 1;
-  if (run?.daily) return ['COPY RESULT', 'PLAY AGAIN', 'HOUSE MENU', 'STORE'];
-  return [run ? 'NEW HOUSE' : last ? 'TITLE' : 'NEXT LEVEL', 'PLAY AGAIN', run ? 'HOUSE MENU' : 'LEVELS', 'STORE'];
+  if (run?.daily) return ['COPY RESULT', 'PLAY AGAIN', 'HOUSE MENU', "ALING NENA'S"];
+  return [run ? 'NEW HOUSE' : last ? 'HIDEOUT' : 'NEXT LEVEL', 'PLAY AGAIN', run ? 'HOUSE MENU' : 'MAP', "ALING NENA'S"];
 };
 
 function drawClear() {
@@ -661,17 +718,23 @@ function drawClear() {
   dim(0.75);
   const r = play.result;
   const last = !run && idx === levels.length - 1;
-  drawText(g, run ? 'HOUSE CLEARED!' : last ? 'ALL DONE!' : cur.boss ? 'BOSS BEATEN!' : 'NICE KUPIT!', VIEW_W / 2, 70, C.gold, { scale: (cur.boss && !last) || run ? 4 : 5, align: 'center', shadow: C.gold2 });
-  for (let i = 0; i < 3; i++) { // stars pop in one by one
-    const at = 0.6 + i * 0.35, on = i < r.stars && age > at;
-    if (on && !starShown[i]) { starShown[i] = true; sfx.coin(); }
-    if (on && age < at + 0.12) { g.fillStyle = C.white; g.fillRect(VIEW_W / 2 - 24 + i * 15, 116, 9, 9); }
-    drawStar(g, VIEW_W / 2 - 22 + i * 15, 118, on);
+  const head = run ? 'HOUSE CLEARED!' : cur.clearText || (cur.boss ? 'BOSS BEATEN!' : 'NICE KUPIT!');
+  drawText(g, head, VIEW_W / 2, 70, C.gold, { scale: head.length > 13 ? 3 : head.length > 9 ? 4 : 5, align: 'center', shadow: C.gold2 });
+  const ids = missionIds(cur);
+  for (let i = 0; i < 3 && !cur.epilogue; i++) { // the three missions: stars pop in one by one
+    const at = 0.6 + i * 0.35, now = r.missions[i], had = !!((starsBefore >> i) & 1), on = (now || had) && age > at;
+    const y = 102 + i * 11, x = VIEW_W / 2 - 80;
+    if (on && !starShown[i]) { starShown[i] = true; if (now && !had) sfx.coin(); }
+    if (on && now && !had && age < at + 0.12) { g.fillStyle = C.white; g.fillRect(x - 2, y - 2, 9, 9); }
+    drawStar(g, x, y, on);
+    drawText(g, missionLabel(cur, ids[i]), x + 10, y + 1, on ? (now && !had ? C.gold : C.white) : C.dgray);
+    if (age > at) drawText(g, now && !had ? 'NEW!' : had ? 'DONE' : 'NOT YET', x + 160, y + 1, now && !had ? C.green : had ? C.gray : C.dgray, { align: 'right' });
   }
-  drawText(g, `COINS ${r.coins}   TIME ${Math.floor(r.time)}S${r.catches ? `   CAUGHT ${r.catches}X` : ''}`, VIEW_W / 2, 138, C.white, { align: 'center' });
+  drawText(g, `${cur.giveBack ? 'PUT BACK' : cur.hingi ? 'GIVEN' : 'COINS'} ${r.coins}   TIME ${Math.floor(r.time)}S${r.catches ? `   CAUGHT ${r.catches}X` : ''}`, VIEW_W / 2, 138, C.white, { align: 'center' });
   if (run) drawText(g, `HOUSE ${cur.seed}   LEVEL ${run.diff}${run.daily ? '   DAILY' : ''}${run.mutators.length ? `   X${mutatorMult(run.mutators)}` : ''}`, VIEW_W / 2, 150, C.gray, { align: 'center' });
   else drawText(g, newBest ? 'NEW BEST TIME! (GHOST SAVED)' : `BEST ${Math.floor(save.best[cur.id] || r.time)}S`, VIEW_W / 2, 150, newBest ? C.green : C.gray, { align: 'center' });
-  drawText(g, `${r.fast ? 'FAST + ' : `PAR ${cur.par}S  `}${r.stealth ? 'SILENT' : r.catches ? 'GOT CAUGHT' : 'SPOTTED A BIT'}`, VIEW_W / 2, 162, C.gray, { align: 'center' });
+  if (cur.epilogue) drawText(g, 'YOU ONLY HAD TO ASK.', VIEW_W / 2, 162, C.pink, { align: 'center' });
+  else if (!run && starsOf(save.missions[cur.id] | 0) < 3) drawText(g, 'STARS STAY EARNED: COME BACK FOR THE REST', VIEW_W / 2, 162, C.gray, { align: 'center' });
   drawText(g, `+${earned} COINS   BANK ${save.bank}`, VIEW_W / 2, 178, C.gold, { align: 'center' });
   let y = 190;
   if (bossBonus) { drawText(g, `BOSS BONUS +${bossBonus}`, VIEW_W / 2, y, C.green, { align: 'center' }); y += 11; }
@@ -695,8 +758,8 @@ function updateClear() {
   }
   if (pick === 0) {
     if (run) startHouse(newSeed(), run.diff);
-    else if (last) { if (!save.story.ending) startStory(ENDING, () => { save.story.ending = true; persist(); setMode('title'); }); else setMode('title'); }
-    else start(idx + 1);
+    else if (last) { if (!save.story.epilogue) startStory(EPILOGUE, () => { save.story.epilogue = true; persist(); setMode('title'); }); else setMode('title'); }
+    else begin(idx + 1);
   } else if (pick === 1) restart();
   else if (pick === 2) { if (run) setMode('house'); else { prevMode = 'title'; setMode('levels'); sel = Math.min(idx + 1, levels.length - 1); } }
 }
@@ -720,7 +783,7 @@ function afterPlay() {
   starShown = [false, false, false];
   const r = play.result, today = dailyId();
   if (run) { // Random House: pays coins (scaled), but no level unlocks or records (except the daily)
-    bossBonus = 0;
+    bossBonus = 0; starsBefore = 0;
     if (run.daily) {
       const prev = save.daily?.id === today ? save.daily.stars : 0;
       earned = housePayout({ coins: r.coins, stars: r.stars, diff: run.diff, daily: true, prevStars: prev });
@@ -742,19 +805,29 @@ function afterPlay() {
     const id = cur.id, t = r.time, first = save.stars[id] === undefined, prevStars = save.stars[id] || 0;
     newBest = !save.best[id] || t < save.best[id];
     if (newBest) { save.best[id] = t; if (play.rec) storeGhost(id, play.rec); }
-    save.stars[id] = Math.max(prevStars, r.stars);
+    // Stars are missions, and a mission done once stays done: this run's are added to the ones already earned.
+    starsBefore = cur.epilogue ? 0 : save.missions[id] | 0;
+    const mask = cur.epilogue ? 0 : starsBefore | maskOf(r.missions);
+    save.missions[id] = mask;
+    const stars = starsOf(mask), coins = cur.giveBack ? 0 : r.coins; // the epilogue has no stars; coins put back are not income
+    save.stars[id] = stars;
     save.unlocked = Math.max(save.unlocked, Math.min(idx + 1, levels.length - 1));
     bossBonus = cur.boss && first ? cur.boss.bonus : 0; // first clear only
     const alk = r.bonus && !save.alkansya[id] ? r.bonus : 0;
     if (r.bonus) save.alkansya[id] = true;
-    earned = campaignPayout({ coins: r.coins, stars: r.stars, prevStars, first, bossBonus, alkansya: alk });
+    earned = campaignPayout({ coins, stars, prevStars, first, bossBonus, alkansya: alk });
   }
   save.bank += earned;
   unlocked = grantUnlocks(save, { pasko: isPasko() });
   persist();
+  // The storm: the moment Jun is through the door with the kittens, he is caught. The ending plays before the results.
+  if (!run && cur.ending && !save.story.ending) {
+    startStory(ENDING, () => { save.story.ending = true; persist(); setMode('clear'); starShown = [false, false, false]; sfx.clear(); });
+  }
 }
 
 const shopCtx = { get save() { return save; }, persist, back: () => setMode('title'), go: (m) => { cosmeticsScreen.sel = 0; if (grantUnlocks(save, { pasko: isPasko() }).length) persist(); setMode(m); } };
+const upgradesCtx = { get save() { return save; }, persist, back: () => setMode('store'), go: () => {} };
 const cosmeticsCtx = { get save() { return save; }, persist, back: () => setMode('store'), go: () => {} };
 
 // Pick the music for the current screen. The chase track needs a real chase (not a flicker) to start,
@@ -815,6 +888,7 @@ function frame(now) {
   const screens = { title: [updateTitle, drawTitle], levels: [updateLevels, drawLevels], help: [updateHelp, drawHelp],
     options: [updateOptions, drawOptions], story: [updateStory, drawStory],
     store: [() => shopScreen.update(input, shopCtx, dt), () => shopScreen.draw(g, shopCtx)],
+    upgrades: [() => upgradesScreen.update(input, upgradesCtx, dt), () => upgradesScreen.draw(g, upgradesCtx)],
     cosmetics: [() => cosmeticsScreen.update(input, cosmeticsCtx, dt), () => cosmeticsScreen.draw(g, cosmeticsCtx)],
     chars: [() => charScreen.update(input, shopCtx, dt), () => charScreen.draw(g, shopCtx)],
     house: [updateHouse, drawHouse],
@@ -853,6 +927,7 @@ for (const ev of ['dblclick', 'gesturestart', 'contextmenu']) document.addEventL
 
 Promise.all([loadLevels(), loadAtlas()]).then(([l]) => {
   levels = l;
+  if (grantSiblings(save, levelIds()).length) persist(); // saves from before the story: the crew they already earned
   setMode('title');
   const q = new URLSearchParams(location.search);
   const jump = Number(q.get('level')); // ?level=2 jumps to level 2
@@ -869,7 +944,8 @@ let loadError = null;
 requestAnimationFrame(frame);
 
 // Debug hook for automated checks: window.__kupit
-window.__kupit = { get play() { return play; }, get mode() { return mode; }, start, startHouse, startDaily, input, get save() { return save; }, get cur() { return cur; }, get run() { return run; }, get loadError() { return loadError; } };
+window.__kupit = { get play() { return play; }, get mode() { return mode; }, start, startHouse, startDaily, input,
+  story: (panels, i = 0) => { startStory(panels, () => setMode('title')); story.i = i; age = 99; }, go: (m) => setMode(m), /* for tools/qa/shot.mjs */ get save() { return save; }, get cur() { return cur; }, get run() { return run; }, get loadError() { return loadError; } };
 
 // ---- installable + offline (PWA) --------------------------------------------------------
 // The service worker serves one consistent, versioned copy of the game. When a new version has downloaded

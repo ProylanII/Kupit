@@ -29,6 +29,10 @@
       "sleep",
       "alert",
       "eat"
+    ],
+    "cat": [
+      "sit",
+      "sleep"
     ]
   },
   "kinds": {
@@ -49,6 +53,10 @@
     ],
     "dog": [
       "aso"
+    ],
+    "cat": [
+      "pusa",
+      "kuting"
     ]
   },
   "height": {
@@ -67,6 +75,10 @@
     "portrait": [
       30,
       30
+    ],
+    "cat": [
+      7,
+      14
     ]
   },
   "palette": [
@@ -152,5 +164,11 @@
     "#ffd84d",
     "#ffe36b",
     "#ffffff"
+  ],
+  "moods": [
+    "happy",
+    "sad",
+    "angry",
+    "shock"
   ]
 }

@@ -60,6 +60,8 @@ export const sfx = {
   buy: () => { beep(660, 0.07); beep(990, 0.07, { at: 0.07 }); beep(1320, 0.14, { at: 0.14 }); },
   phase: () => [196, 262, 330].forEach((f, i) => beep(f, 0.18, { at: i * 0.12, type: 'sawtooth', vol: 0.06 })),
   // kupit noises: each stash sounds different
+  meow: () => { beep(700, 0.09, { slide: 500, type: 'triangle', vol: 0.05 }); beep(1100, 0.16, { at: 0.09, slide: -400, type: 'triangle', vol: 0.05 }); },
+  thunder: () => { beep(70, 0.9, { slide: -30, type: 'sawtooth', vol: 0.09 }); beep(50, 1.4, { at: 0.2, slide: -15, type: 'triangle', vol: 0.12 }); },
   clasp: () => beep(1400, 0.03, { vol: 0.05 }),
   zipper: () => beep(500, 0.22, { slide: 900, type: 'sawtooth', vol: 0.03 }),
   rustle: () => beep(220 + Math.random() * 80, 0.06, { type: 'triangle', vol: 0.04 }),

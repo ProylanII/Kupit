@@ -25,6 +25,7 @@ export class Player {
     this.stunT = 0;
     this.items = []; // throwables, last picked is thrown first
     this.keys = new Set();
+    this.carry = null; // a full bowl of milk (a Target): slower, and running spills it
   }
 
   get tx() { return Math.floor(this.x / TILE); }
@@ -41,7 +42,7 @@ export class Player {
     if (frozen || (mv.mag === 0 && !dash)) return null;
     const run = mv.run && !dash;
     const mx = mv.mag === 0 ? this.fx : mv.x, my = mv.mag === 0 ? this.fy : mv.y;
-    const speed = dash ? DASH_SPEED : this.speedMul * (run ? RUN_SPEED : SNEAK_SPEED * (0.5 + 0.5 * Math.min(1, mv.mag / 0.9)));
+    const speed = dash ? DASH_SPEED : this.speedMul * (this.carry ? 0.85 : 1) * (run ? RUN_SPEED : SNEAK_SPEED * (0.5 + 0.5 * Math.min(1, mv.mag / 0.9)));
     const dx = mx * speed * dt, dy = my * speed * dt;
     if (!map.blocked(this.x + dx, this.y, this.r)) this.x += dx;
     if (!map.blocked(this.x, this.y + dy, this.r)) this.y += dy;

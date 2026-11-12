@@ -1,404 +1,410 @@
 {
-  "id": "boss4-fiesta",
-  "name": "NINANG'S FIESTA",
-  "hint": "GUESTS BLOCK THE VIEW. WALK BEHIND THEM",
-  "boss": {
-    "title": "NINANG'S FIESTA",
-    "index": 0,
-    "bonus": 22,
-    "phases": [
-      {
-        "at": 2,
-        "banner": "MORE NINANGS ARRIVE!",
-        "spawn": [
-          {
-            "type": "ninang",
-            "route": [
-              [
-                2,
-                7,
-                1
-              ],
-              [
-                12,
-                7,
-                1
-              ]
-            ],
-            "cfg": {
-              "checksHides": true
-            }
-          }
-        ]
-      },
-      {
-        "at": 4,
-        "banner": "KUYA SPOTS EVERYTHING!",
-        "spawn": [
-          {
-            "type": "kuya",
-            "route": [
-              [
-                4,
-                12
-              ],
-              [
-                10,
-                12
-              ],
-              [
-                10,
-                10
-              ],
-              [
-                4,
-                10
-              ]
-            ]
-          }
-        ]
-      },
-      {
-        "at": 6,
-        "banner": "NINANG WANTS HER PAMASKO!",
-        "escape": 25,
-        "adult": {
-          "index": 0,
-          "hunt": {
-            "every": 4,
-            "spread": 24
-          },
-          "speed": 28
-        }
+ "id": "boss4-fiesta",
+ "name": "NINANG'S FIESTA",
+ "hint": "WALK WITH A GUEST TO BLEND IN. VIDEOKE HIDES NOISE",
+ "missions": [
+  "noHide",
+  "noCatch"
+ ],
+ "boss": {
+  "title": "NINANG'S FIESTA",
+  "index": 0,
+  "bonus": 22,
+  "phases": [
+   {
+    "at": 2,
+    "banner": "MORE NINANGS ARRIVE!",
+    "spawn": [
+     {
+      "type": "ninang",
+      "route": [
+       [
+        2,
+        7,
+        1
+       ],
+       [
+        12,
+        7,
+        1
+       ]
+      ],
+      "cfg": {
+       "checksHides": true
       }
+     }
     ]
-  },
-  "tiles": [
-    "###############",
-    "#.............#",
-    "#.TTTT...TTTT.#",
-    "#.............#",
-    "#.............#",
-    "#.............#",
-    "#..SS.....SS..#",
-    "#.............#",
-    "#.............#",
-    "#.TTTT...TTTT.#",
-    "#.............#",
-    "#.............#",
-    "#.............#",
-    "######...######",
-    "#.............#",
-    "#.............#",
-    "#.............#",
-    "#.............#",
-    "#.............#",
-    "#.............#",
-    "#.............#",
-    "###############"
-  ],
-  "spawn": [
-    7,
-    19
-  ],
-  "exit": [
-    13,
-    1
-  ],
-  "quota": 6,
-  "par": 120,
-  "targets": [
-    {
-      "kind": "purse",
-      "at": [
-        2,
-        4
-      ],
-      "coins": 2,
-      "time": 1.6
-    },
-    {
-      "kind": "purse",
-      "at": [
-        12,
-        7
-      ],
-      "coins": 2,
-      "time": 1.6
-    },
-    {
-      "kind": "purse",
-      "at": [
-        7,
-        10
-      ],
-      "coins": 2,
-      "time": 1.6
-    }
-  ],
-  "items": [
-    {
-      "kind": "tsinelas",
-      "at": [
-        2,
-        14
-      ]
-    },
-    {
-      "kind": "tsinelas",
-      "at": [
-        12,
-        14
-      ]
-    }
-  ],
-  "devices": [
-    {
-      "kind": "radio",
-      "at": [
-        1,
-        7
-      ],
-      "dur": 10
-    },
-    {
-      "kind": "tv",
-      "at": [
-        13,
-        10
-      ],
-      "dur": 9
-    }
-  ],
-  "hide": [
-    {
-      "kind": "curtain",
-      "at": [
-        13,
-        4
-      ]
-    },
-    {
-      "kind": "box",
-      "at": [
-        7,
-        7
-      ]
-    },
-    {
-      "kind": "basket",
-      "at": [
-        1,
-        12
-      ]
-    },
-    {
-      "kind": "box",
-      "at": [
-        13,
-        12
-      ]
-    }
-  ],
-  "traps": [
-    {
-      "kind": "creak",
-      "at": [
-        7,
-        8
-      ]
-    },
-    {
-      "kind": "creak",
-      "at": [
+   },
+   {
+    "at": 4,
+    "banner": "KUYA SPOTS EVERYTHING!",
+    "spawn": [
+     {
+      "type": "kuya",
+      "route": [
+       [
         4,
-        5
+        12
+       ],
+       [
+        10,
+        12
+       ],
+       [
+        10,
+        10
+       ],
+       [
+        4,
+        10
+       ]
       ]
-    },
-    {
-      "kind": "lego",
-      "at": [
-        8,
-        4
-      ]
+     }
+    ]
+   },
+   {
+    "at": 6,
+    "banner": "NINANG WANTS HER PAMASKO!",
+    "escape": 25,
+    "adult": {
+     "index": 0,
+     "hunt": {
+      "every": 4,
+      "spread": 24
+     },
+     "speed": 28
     }
-  ],
-  "alkansya": {
-    "at": [
-      13,
-      14
-    ],
-    "coins": 8
-  },
-  "adults": [
-    {
-      "type": "ninang",
-      "route": [
-        [
-          1,
-          1
-        ],
-        [
-          6,
-          1
-        ],
-        [
-          6,
-          3
-        ],
-        [
-          1,
-          3
-        ]
-      ],
-      "cfg": {
-        "checksHides": true
-      }
-    },
-    {
-      "type": "ninang",
-      "route": [
-        [
-          13,
-          3
-        ],
-        [
-          8,
-          3
-        ],
-        [
-          8,
-          1
-        ],
-        [
-          13,
-          1
-        ]
-      ],
-      "cfg": {
-        "checksHides": true
-      }
-    },
-    {
-      "type": "ninang",
-      "route": [
-        [
-          1,
-          8
-        ],
-        [
-          6,
-          8
-        ],
-        [
-          6,
-          10
-        ],
-        [
-          1,
-          10
-        ]
-      ],
-      "cfg": {
-        "checksHides": true
-      }
-    },
-    {
-      "type": "tita",
-      "at": [
-        7,
-        5
-      ],
-      "face": 1.5708,
-      "sweep": 0.4
-    },
-    {
-      "type": "tatay",
-      "route": [
-        [
-          2,
-          11,
-          1
-        ],
-        [
-          12,
-          11,
-          1
-        ],
-        [
-          12,
-          12
-        ],
-        [
-          2,
-          12
-        ]
-      ]
-    },
-    {
-      "type": "bisita",
-      "route": [
-        [
-          2,
-          4,
-          1
-        ],
-        [
-          12,
-          4,
-          1
-        ]
-      ]
-    },
-    {
-      "type": "bisita",
-      "route": [
-        [
-          8,
-          8,
-          1
-        ],
-        [
-          13,
-          8,
-          1
-        ],
-        [
-          13,
-          10,
-          1
-        ],
-        [
-          8,
-          10,
-          1
-        ]
-      ]
-    },
-    {
-      "type": "bisita",
-      "route": [
-        [
-          3,
-          16,
-          1
-        ],
-        [
-          11,
-          16,
-          1
-        ],
-        [
-          11,
-          18,
-          1
-        ],
-        [
-          3,
-          18,
-          1
-        ]
-      ]
-    }
+   }
   ]
+ },
+ "tiles": [
+  "###############",
+  "#.............#",
+  "#.TTTT...TTTT.#",
+  "#.............#",
+  "#.............#",
+  "#.............#",
+  "#..SS.....SS..#",
+  "#.............#",
+  "#.............#",
+  "#.TTTT...TTTT.#",
+  "#.............#",
+  "#.............#",
+  "#.............#",
+  "###..#####..###",
+  "#.............#",
+  "#.....HTTH....#",
+  "#.............#",
+  "#.P.........P.#",
+  "#.............#",
+  "#.............#",
+  "#..A.......K..#",
+  "###############"
+ ],
+ "spawn": [
+  7,
+  19
+ ],
+ "exit": [
+  13,
+  1
+ ],
+ "quota": 6,
+ "par": 120,
+ "targets": [
+  {
+   "kind": "purse",
+   "at": [
+    2,
+    4
+   ],
+   "coins": 2,
+   "time": 1.6
+  },
+  {
+   "kind": "purse",
+   "at": [
+    12,
+    7
+   ],
+   "coins": 2,
+   "time": 1.6
+  },
+  {
+   "kind": "purse",
+   "at": [
+    7,
+    10
+   ],
+   "coins": 2,
+   "time": 1.6
+  }
+ ],
+ "items": [
+  {
+   "kind": "tsinelas",
+   "at": [
+    2,
+    14
+   ]
+  },
+  {
+   "kind": "tsinelas",
+   "at": [
+    12,
+    14
+   ]
+  }
+ ],
+ "devices": [
+  {
+   "kind": "radio",
+   "at": [
+    1,
+    7
+   ],
+   "dur": 10
+  },
+  {
+   "kind": "videoke",
+   "at": [
+    7,
+    9
+   ],
+   "r": 92,
+   "on": 9,
+   "off": 6
+  }
+ ],
+ "hide": [
+  {
+   "kind": "curtain",
+   "at": [
+    13,
+    4
+   ]
+  },
+  {
+   "kind": "box",
+   "at": [
+    7,
+    7
+   ]
+  },
+  {
+   "kind": "basket",
+   "at": [
+    1,
+    12
+   ]
+  },
+  {
+   "kind": "box",
+   "at": [
+    13,
+    12
+   ]
+  }
+ ],
+ "traps": [
+  {
+   "kind": "creak",
+   "at": [
+    7,
+    8
+   ]
+  },
+  {
+   "kind": "creak",
+   "at": [
+    4,
+    5
+   ]
+  },
+  {
+   "kind": "lego",
+   "at": [
+    8,
+    4
+   ]
+  }
+ ],
+ "alkansya": {
+  "at": [
+   13,
+   14
+  ],
+  "coins": 8
+ },
+ "adults": [
+  {
+   "type": "ninang",
+   "route": [
+    [
+     1,
+     1
+    ],
+    [
+     6,
+     1
+    ],
+    [
+     6,
+     3
+    ],
+    [
+     1,
+     3
+    ]
+   ],
+   "cfg": {
+    "checksHides": true
+   }
+  },
+  {
+   "type": "ninang",
+   "route": [
+    [
+     13,
+     3
+    ],
+    [
+     8,
+     3
+    ],
+    [
+     8,
+     1
+    ],
+    [
+     13,
+     1
+    ]
+   ],
+   "cfg": {
+    "checksHides": true
+   }
+  },
+  {
+   "type": "ninang",
+   "route": [
+    [
+     1,
+     8
+    ],
+    [
+     6,
+     8
+    ],
+    [
+     6,
+     10
+    ],
+    [
+     1,
+     10
+    ]
+   ],
+   "cfg": {
+    "checksHides": true
+   }
+  },
+  {
+   "type": "tita",
+   "at": [
+    7,
+    5
+   ],
+   "face": 1.5708,
+   "sweep": 0.4
+  },
+  {
+   "type": "tatay",
+   "route": [
+    [
+     2,
+     11,
+     1
+    ],
+    [
+     12,
+     11,
+     1
+    ],
+    [
+     12,
+     12
+    ],
+    [
+     2,
+     12
+    ]
+   ]
+  },
+  {
+   "type": "bisita",
+   "route": [
+    [
+     2,
+     4,
+     1
+    ],
+    [
+     12,
+     4,
+     1
+    ]
+   ]
+  },
+  {
+   "type": "bisita",
+   "route": [
+    [
+     8,
+     8,
+     1
+    ],
+    [
+     13,
+     8,
+     1
+    ],
+    [
+     13,
+     10,
+     1
+    ],
+    [
+     8,
+     10,
+     1
+    ]
+   ]
+  },
+  {
+   "type": "bisita",
+   "route": [
+    [
+     3,
+     16,
+     1
+    ],
+    [
+     11,
+     16,
+     1
+    ],
+    [
+     11,
+     18,
+     1
+    ],
+    [
+     3,
+     18,
+     1
+    ]
+   ]
+  }
+ ]
 }

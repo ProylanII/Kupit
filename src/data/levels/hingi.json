@@ -1,0 +1,151 @@
+{
+ "id": "hingi",
+ "name": "HINGI",
+ "hingi": true,
+ "epilogue": true,
+ "clearText": "SALAMAT PO!",
+ "hint": "NO MORE SNEAKING. WALK UP AND ASK: HINGI!",
+ "tiles": [
+  "###############",
+  "#.A.........K.#",
+  "#..SSS....TT..#",
+  "#.........TT..#",
+  "#.............#",
+  "#.H...........#",
+  "#.....RRR.....#",
+  "#.....RRR...P.#",
+  "#.............#",
+  "######...######",
+  "#,,,,,,,,,,,,,#",
+  "#,CCCC,,,,,FF,#",
+  "#,,,,,,,,,,,,,#",
+  "#,,,,,,,,,,,,,#",
+  "#,,,,HTTH,,,,,#",
+  "#,,,,,TT,,,,W,#",
+  "#,,,,,,,,,,,,,#",
+  "######...######",
+  "#;;;;;;;;;;;;;#",
+  "#;;;;;;;;;;;;;#",
+  "#;P;;;;LL;;;;;#",
+  "###############"
+ ],
+ "spawn": [
+  7,
+  4
+ ],
+ "exit": [
+  12,
+  19
+ ],
+ "quota": 10,
+ "par": 120,
+ "targets": [
+  {
+   "kind": "regalo",
+   "at": [
+    4,
+    3
+   ],
+   "coins": 2,
+   "time": 1,
+   "from": 0,
+   "say": "PARA SA KUTING, APO."
+  },
+  {
+   "kind": "regalo",
+   "at": [
+    11,
+    5
+   ],
+   "coins": 2,
+   "time": 1,
+   "from": 1,
+   "say": "ISDA! MAGSABI KA LANG."
+  },
+  {
+   "kind": "regalo",
+   "at": [
+    4,
+    12
+   ],
+   "coins": 3,
+   "time": 1,
+   "from": 2,
+   "say": "GATAS? HINGI KA LANG."
+  },
+  {
+   "kind": "regalo",
+   "at": [
+    10,
+    13
+   ],
+   "coins": 2,
+   "time": 1,
+   "from": 3,
+   "say": "O, PANG-VET NILA."
+  },
+  {
+   "kind": "regalo",
+   "at": [
+    4,
+    19
+   ],
+   "coins": 1,
+   "time": 1,
+   "from": 4,
+   "say": "SARDINAS! LIBRE NA."
+  }
+ ],
+ "adults": [
+  {
+   "type": "lola",
+   "at": [
+    3,
+    3
+   ],
+   "face": 0
+  },
+  {
+   "type": "tatay",
+   "at": [
+    12,
+    5
+   ],
+   "face": 3.14159
+  },
+  {
+   "type": "mama",
+   "at": [
+    3,
+    12
+   ],
+   "face": 0
+  },
+  {
+   "type": "tita",
+   "at": [
+    11,
+    13
+   ],
+   "face": 3.14159
+  },
+  {
+   "type": "nena",
+   "at": [
+    3,
+    19
+   ],
+   "face": 0
+  }
+ ],
+ "cats": [
+  {
+   "kind": "pusa",
+   "at": [
+    6,
+    7
+   ],
+   "pose": "sleep"
+  }
+ ]
+}

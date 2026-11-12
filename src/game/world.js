@@ -7,6 +7,7 @@ import { Target } from '../entities/target.js';
 import { computeMods } from './progression.js';
 import { soundField, heardDistance } from '../world/sound.js';
 import { mulberry32, hashStr } from '../core/rng.js';
+import { MISSIONS, missionIds } from './missions.js';
 
 export const REACH = 18;          // interact distance (px)
 export const THROW_SPEED = 140, THROW_MAX = 72;
@@ -18,6 +19,7 @@ export const GRACE_TIME = 2;      // after respawning, nobody can see you for th
 export const CATCH_PENALTY = 1 / 3; // share of your coins Mama takes back each time you're caught
 export const STEALTH_ALERT = 0.3;   // the SILENT star is lost once any adult's suspicion meter reaches this (or you're caught)
 export const SPAWN_GRACE = 1.2;     // an adult who joins mid-level (boss phase) stands blind for a moment: never spawned onto you
+export const BLEND_R = 20;          // walk (don't run) this close to a party guest and you are one more kid in the crowd
 
 const at = (p) => ({ x: p[0] * TILE + TILE / 2, y: p[1] * TILE + TILE / 2, tx: p[0], ty: p[1] });
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -59,7 +61,14 @@ export class World {
     this.exit = at(level.exit);
     this.items = (level.items || []).filter((i) => !this.noThrow || i.kind === 'key').map((i) => ({ ...at(i.at), kind: i.kind, color: i.color, noPickT: 0 }));
     this.hides = (level.hide || []).map((h) => ({ ...at(h.at), kind: h.kind || 'box' }));
-    this.devices = (level.devices || []).map((d) => ({ ...at(d.at), kind: d.kind || 'tv', dur: d.dur ?? 8, r: d.r ?? 110, on: false, t: 0, pulse: 0 }));
+    this.devices = (level.devices || []).filter((d) => d.kind !== 'videoke').map((d) => ({ ...at(d.at), kind: d.kind || 'tv', dur: d.dur ?? 8, r: d.r ?? 110, on: false, t: 0, pulse: 0 }));
+    // Videoke: it plays by itself, a song then a break. While someone is singing, nothing you do near it can be heard.
+    this.videokes = (level.devices || []).filter((d) => d.kind === 'videoke').map((d) => ({ ...at(d.at), kind: 'videoke', r: d.r ?? 76, on: d.on ?? 9, off: d.off ?? 6, t: d.phase ?? 0, singing: false }));
+    this.cover = null;  // what is drowning out your noise right now: 'thunder' | 'videoke' | null
+    this.stats = { throws: 0, hides: 0, runT: 0, loudRunT: 0, skills: 0, traps: 0, barks: 0, devices: 0, spills: 0 }; // for the missions
+    this.alkansyaWasFound = !!loadout.alkansyaFound;
+    this.missionIds = missionIds(level);
+    this.missionLost = this.missionIds.map(() => false); // strict missions already failed this run
     this.traps = (level.traps || []).map((t) => ({ ...at(t.at), kind: t.kind }));
     this.switches = (level.switches || []).map((s) => ({ ...at(s.at), gates: s.gates, time: s.time || 0, timer: 0, on: false }));
     this.projectiles = [];
@@ -88,6 +97,8 @@ export class World {
   }
 
   makeAdult(d) {
+    // HINGI (the epilogue): nobody is watching for you any more, they are just family in their house
+    if (this.level.hingi) d = { ...d, cfg: { ...d.cfg, harmless: true, cover: false } };
     const a = new Adult(d, this.map, this.locks);
     a.covers = this.adults; // guests and vehicles in this list block sight
     return a;
@@ -95,9 +106,19 @@ export class World {
 
   get patience() { return this.level.patience ? this.level.patience + this.mods.patienceBonus : 0; }
   get bossPhases() { return this.level.boss?.phases || []; }
-  get open() { return this.coins >= this.level.quota; }
+  get open() { return this.coins >= this.level.quota && !this.missing; }
+  // a must-have (the milk) that is not in your hands yet
+  get missing() { return this.targets.find((t) => t.must && !t.done) || null; }
   get livesLeft() { return this.lives - this.catches; }
-  emit(e) { this.events.push(e); }
+  emit(e) { if (e.type === 'bark') this.stats.barks++; this.events.push(e); }
+  // Is a sound made at (x, y) drowned out? Thunder covers the whole map, a videoke only what is near it.
+  masked(x, y) {
+    if (this.thunder) return 'thunder';
+    for (const v of this.videokes) if (v.singing && Math.hypot(v.x - x, v.y - y) < v.r) return 'videoke';
+    return null;
+  }
+  // Mission state right now: [{ id, ok, lost }]. ok is final only when the level is cleared.
+  missionState() { return this.missionIds.map((id, i) => ({ id, ok: !this.missionLost[i] && MISSIONS[id].ok(this), lost: this.missionLost[i] })); }
   noise(n) { this.noises.push(n); this.emit({ type: 'ring', x: n.x, y: n.y, r: n.r, lure: !!n.lure, tattle: !!n.tattle }); }
   talk(text, t = 1.2) { this.say = { text, t }; }
 
@@ -129,7 +150,7 @@ export class World {
       return best;
     };
     let o = near(this.targets, (t) => !t.done);
-    if (o) return { kind: 'steal', obj: o, label: 'KUPIT', detail: o.profile.tip };
+    if (o) return { kind: 'steal', obj: o, label: o.profile.verb || 'KUPIT', detail: o.profile.tip };
     o = near(this.hides);
     if (o) return { kind: 'hide', obj: o, label: 'TAGO' };
     const doors = [];
@@ -189,6 +210,7 @@ export class World {
         p.hidden = c.obj;
         p.hideT = 0;
         p.x = c.obj.x; p.y = c.obj.y;
+        if (this.hides.includes(c.obj)) this.stats.hides++;
         if (seen) this.talk('NAKITA AKO!', 1.4);
         else if (this.calm && this.hides.includes(c.obj)) this.addCheckpoint(c.obj.x, c.obj.y, c.obj);
         this.emit({ type: 'hide', seen });
@@ -211,6 +233,7 @@ export class World {
       case 'switch': this.toggleSwitch(c.obj, true); break;
       case 'device':
         c.obj.on = true; c.obj.t = 0; c.obj.pulse = 0;
+        this.stats.devices++;
         this.emit({ type: 'device' });
         break;
     }
@@ -251,6 +274,7 @@ export class World {
       default: return false;
     }
     this.abilityCd = sk.cd;
+    this.stats.skills++;
     this.emit({ type: 'ability' });
     return true;
   }
@@ -316,6 +340,7 @@ export class World {
     const [fx, fy] = p.facing();
     const m = Math.hypot(fx, fy) || 1;
     this.projectiles.push({ kind, x: p.x, y: p.y - 2, vx: (fx / m) * THROW_SPEED, vy: (fy / m) * THROW_SPEED, d: 0 });
+    this.stats.throws++;
     this.emit({ type: 'throw' });
   }
 
@@ -345,6 +370,7 @@ export class World {
   hearNoises(dt) {
     const map = this.map;
     for (const nz of this.noises) {
+      if (!nz.tattle && !nz.from && this.masked(nz.x, nz.y)) continue; // thunder or a videoke chorus: nobody hears a thing you do
       let field = null;
       for (const a of this.adults) {
         if (a === nz.from || a.cfg.harmless) continue;
@@ -372,6 +398,20 @@ export class World {
     if (this.status !== 'play') return;
     const p = this.player, map = this.map;
     this.time += dt; // par time keeps running through the "caught" beat
+    // Storm: lightning flashes, and for a moment the thunder drowns out every sound you make.
+    const st = this.level.storm;
+    if (st) {
+      const ph = this.time % st.every, was = this.thunder;
+      if (ph < dt) this.emit({ type: 'lightning' });
+      this.thunder = ph >= 0.5 && ph < 0.5 + st.dur;
+      if (this.thunder && !was) this.emit({ type: 'thunder' });
+    }
+    for (const v of this.videokes) {
+      const was = v.singing;
+      v.t += dt;
+      v.singing = v.t % (v.on + v.off) < v.on;
+      if (v.singing && !was) this.emit({ type: 'videoke', x: v.x, y: v.y });
+    }
     if (this.events.length > 512) this.events.length = 0; // nobody is reading them (headless runs)
     if (this.say && (this.say.t -= dt) <= 0) this.say = null;
 
@@ -401,11 +441,18 @@ export class World {
 
     // --- player move
     const n = p.update(dt, map, input.mv, stealing || !!p.hidden);
+    // crowd blending: walking right beside a party guest, you are just another kid at the fiesta
+    p.blend = !p.hidden && !p.running && !(p.dashT > 0) && this.adults.some((a) => a.cfg.cover && !a.cfg.vehicle && dist(a, p) < BLEND_R);
+    this.cover = this.masked(p.x, p.y);
+    if (p.running) { this.stats.runT += dt; if (!this.cover) this.stats.loudRunT += dt; }
     if (n) {
       n.cont = true; // running: a sound every frame, so its effect is per second
       this.noises.push(n);
       if ((this.runRingT -= dt) <= 0) { this.emit({ type: 'ring', x: n.x, y: n.y, r: n.r, lure: false }); this.runRingT = 0.35; }
     }
+
+    // --- carrying the milk: run, dash or get knocked over and it spills (and goes back where it came from)
+    if (p.carry && (p.running || p.dashT > 0 || p.stunT > 0)) this.spill();
 
     // --- scent trail
     if (!p.hidden && (this.trailT -= dt) <= 0) {
@@ -435,6 +482,8 @@ export class World {
         if (t.progress >= 1) {
           t.done = true; t.progress = 1;
           if (pf.end) { this.noise({ x: t.x, y: t.y, r: pf.end.r }); if (pf.end.say) this.talk(pf.end.say, 0.8); }
+          if (t.carry) p.carry = t;
+          if (t.say) (this.adults[t.from] || this).talk(t.say, 2.6);
           if (t.bonus) { this.bonus += t.coins; this.emit({ type: 'alkansya', x: t.x, y: t.y, n: t.coins }); }
           else { this.coins += t.coins; this.stolen.push({ t, n: t.coins }); }
           this.emit({ type: 'coin', x: t.x, y: t.y, n: t.coins, kind: t.kind });
@@ -463,6 +512,7 @@ export class World {
     if (tk !== this.lastTile) {
       this.lastTile = tk;
       const tr = this.traps.find((t) => t.tx === p.tx && t.ty === p.ty);
+      if (tr) this.stats.traps++;
       if (tr?.kind === 'creak') { this.noise({ x: p.x, y: p.y, r: 64, lure: true }); this.talk('KREEK...'); this.emit({ type: 'creak' }); }
       if (tr?.kind === 'lego') { this.noise({ x: p.x, y: p.y, r: 80, lure: true }); p.stunT = 0.8; this.talk('ARAY!'); this.emit({ type: 'ouch' }); }
       if (map.ch(p.tx, p.ty) === 'd' && this.calm) this.addCheckpoint(p.tx * TILE + 8, p.ty * TILE + 8);
@@ -527,6 +577,12 @@ export class World {
       return;
     }
 
+    // a strict mission that can no longer be done this run: say so once (no surprises on the clear screen)
+    for (let i = 1; i < this.missionIds.length; i++) {
+      const m = MISSIONS[this.missionIds[i]];
+      if (m.strict && !this.missionLost[i] && !m.ok(this)) { this.missionLost[i] = true; this.emit({ type: 'missionLost', id: this.missionIds[i], i }); }
+    }
+
     if (this.open && !p.hidden && dist(p, this.exit) < 10) this.finish();
   }
 
@@ -546,6 +602,17 @@ export class World {
     this.emit({ type: 'ouch' });
   }
 
+  spill() {
+    const p = this.player, t = p.carry;
+    if (!t) return;
+    p.carry = null;
+    this.stats.spills++;
+    t.done = false; t.progress = 0; t.started = false;
+    this.noise({ x: p.x, y: p.y, r: 70, lure: true });
+    this.talk('NATAPON!', 1.4);
+    this.emit({ type: 'spill', x: p.x, y: p.y });
+  }
+
   fail(reason, who) {
     this.status = 'caught'; this.reason = reason; this.catcher = who;
     this.emit({ type: 'caught', final: true });
@@ -556,7 +623,9 @@ export class World {
   caught(a) {
     this.catches++;
     if (this.catches >= this.lives) { this.fail('seen', a); return; }
-    let lost = Math.min(this.coins, Math.ceil(this.coins * CATCH_PENALTY));
+    this.spill();
+    // (putting coins back: what is back stays back)
+    let lost = this.level.giveBack ? 0 : Math.min(this.coins, Math.ceil(this.coins * CATCH_PENALTY));
     this.coins -= lost;
     const back = lost;
     while (lost > 0 && this.stolen.length) { // coins go back where they came from, newest first
@@ -595,12 +664,13 @@ export class World {
   finish() {
     this.status = 'clear';
     const fast = this.time <= this.level.par, stealth = this.stealthOk;
-    this.result = { coins: this.coins, time: this.time, stars: 1 + fast + stealth, fast, stealth, catches: this.catches, spotted: this.spotted, bonus: this.bonus };
+    const missions = this.missionIds.map((id, i) => !this.missionLost[i] && !!MISSIONS[id].ok(this)); // [clear, mission 2, mission 3]
+    this.result = { coins: this.coins, time: this.time, stars: missions.filter(Boolean).length, missions, fast, stealth, catches: this.catches, spotted: this.spotted, bonus: this.bonus };
     this.emit({ type: 'clear' });
   }
 
   // ---- dev helpers (used by the dev menu and tests)
-  devFillQuota() { this.coins = Math.max(this.coins, this.level.quota); }
+  devFillQuota() { this.coins = Math.max(this.coins, this.level.quota); for (const t of this.targets) if (t.must) t.done = true; }
   // Drop the player on a free tile next to the exit (walk in to finish).
   devGoToExit() {
     const p = this.player, e = this.exit;

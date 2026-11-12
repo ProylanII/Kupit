@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { TILE } from '../src/world/tilemap.js';
 import { World } from '../src/game/world.js';
 import {
-  computeMods, buyUpgrade, upgradeCost, pickChar, UPGRADES, UPGRADE_ORDER, CHARACTERS, CHAR_ORDER,
+  computeMods, buyUpgrade, upgradeCost, pickChar, grantSiblings, UPGRADES, UPGRADE_ORDER, CHARACTERS, CHAR_ORDER,
 } from '../src/game/progression.js';
 
 const c = (t) => t * TILE + TILE / 2;
@@ -62,16 +62,19 @@ test('buying upgrades spends coins, caps at max and refuses when poor', () => {
   for (const id of UPGRADE_ORDER) assert.ok(UPGRADES[id].costs.length >= 1);
 });
 
-test('characters: buy once, then switch for free', () => {
+test('characters: siblings join through the story, never for coins', () => {
   const s = fresh();
-  assert.equal(pickChar(s, 'bing'), 'poor');
   s.bank = 40;
-  assert.equal(pickChar(s, 'bing'), 'bought');
-  assert.equal(s.bank, 40 - CHARACTERS.bing.cost);
+  assert.equal(pickChar(s, 'bing'), 'locked');
+  assert.equal(s.char, 'jun');
+  s.story = { seen: { '04-bakuran': true } }; // the scene where Bing finds the kittens has played
+  assert.deepEqual(grantSiblings(s, []), ['bing']);
+  assert.equal(pickChar(s, 'bing'), 'selected');
   assert.equal(s.char, 'bing');
   assert.equal(pickChar(s, 'jun'), 'selected');
-  assert.equal(pickChar(s, 'bing'), 'selected');
-  assert.equal(s.bank, 40 - CHARACTERS.bing.cost);
+  assert.equal(s.bank, 40, 'no coins spent on family');
+  const old = fresh(); old.unlocked = 9; // a save from before the story, already past two of the scenes
+  assert.deepEqual(grantSiblings(old, ['01-sala', 'x', 'x', 'x', '04-bakuran', 'x', 'x', 'x', '05-gabi', 'x', 'x', 'x', '08-palengke']), ['bing', 'ramil']);
   for (const id of CHAR_ORDER) assert.ok(CHARACTERS[id].skill.cd > 0);
 });
 

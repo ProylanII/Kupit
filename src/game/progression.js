@@ -3,28 +3,66 @@
 export const CHAR_ORDER = ['jun', 'bing', 'ramil', 'nene'];
 
 // skill ids are implemented in World.useAbility. cd = cooldown seconds.
+// joins: the sibling finds out about the kittens in the story scene before this level (never bought with coins).
 export const CHARACTERS = {
   jun: {
-    name: 'JUN', cost: 0, look: 'jun',
+    name: 'JUN', look: 'jun',
     skill: { id: 'dash', label: 'DASH', cd: 5 },
     lines: ['SNEAKY STEP: SILENT DASH', 'BALANCED. NO WEAKNESS.'],
   },
   bing: {
-    name: 'BING', cost: 15, look: 'bing', speed: 0.88, alertRate: 0.7, radius: 3,
+    name: 'BING', joins: '04-bakuran', look: 'bing', speed: 0.88, alertRate: 0.7, radius: 3,
     skill: { id: 'hide', label: 'TAGO', cd: 10 },
     lines: ['TAGO: HIDE ANYWHERE FOR 3S', 'TINY: HARD TO SPOT, SLOWER.'],
   },
   ramil: {
-    name: 'KUYA RAMIL', cost: 25, look: 'ramil', throwRange: 1.6, runNoise: 1.25,
+    name: 'KUYA RAMIL', joins: '05-gabi', look: 'ramil', throwRange: 1.6, runNoise: 1.25,
     skill: { id: 'shout', label: 'YELL', cd: 8 },
     lines: ['SIGAW: YELL TO LURE AHEAD', 'STRONG: THROWS FAR, LOUD RUN.'],
   },
   nene: {
-    name: 'NENE', cost: 30, look: 'nene', stealTime: 0.75,
+    name: 'NENE', joins: '08-palengke', look: 'nene', stealTime: 0.75,
     skill: { id: 'charm', label: 'CUTE', cd: 14 },
     lines: ['PA-CUTE: FREEZE WATCHERS 3S', 'CHARMER: KUPIT MUCH FASTER.'],
   },
 };
+
+// ---- what the coins are for: Mingming and her kittens ---------------------------------
+// Each need is bought once at Aling Nena's store. The hideout under the house changes with every one, and the
+// kittens grow (catStage). Once Aling Nena learns who the sardines are for (story flag 'nena'), she gives a discount.
+export const NEED_ORDER = ['gatas', 'sardinas', 'kumot', 'kahon', 'vet'];
+export const NEEDS = {
+  gatas:    { name: 'GATAS',        desc: 'A BOWL OF MILK FOR MINGMING',     cost: 6,  got: 'MINGMING DRINKS AND DRINKS.' },
+  sardinas: { name: 'SARDINAS',     desc: 'REAL FOOD. SHE IS SO THIN',       cost: 10, got: 'THE KITTENS OPEN THEIR EYES!' },
+  kumot:    { name: 'KUMOT',        desc: 'A WARM BLANKET FOR COLD NIGHTS',  cost: 12, got: 'THREE KITTENS IN A WARM PILE.' },
+  kahon:    { name: 'BAGONG KAHON', desc: 'A BIGGER BOX. THEY ARE GROWING',  cost: 16, got: 'ROOM TO TUMBLE AND PLAY!' },
+  vet:      { name: 'BAKUNA',       desc: 'A VISIT TO THE VET FOR ALL FOUR', cost: 26, got: 'HEALTHY, LOUD AND HUNGRY.' },
+};
+export const NENA_DISCOUNT = 0.75;
+export const hasNeed = (save, id) => !!(save.needs && save.needs[id]);
+export const needCost = (save, id) => Math.ceil(NEEDS[id].cost * (save.story?.nena ? NENA_DISCOUNT : 1));
+export const catStage = (save) => NEED_ORDER.filter((id) => hasNeed(save, id)).length; // 0 newborn ... 5 thriving
+export function buyNeed(save, id) {
+  if (!NEEDS[id] || hasNeed(save, id)) return 'owned';
+  const cost = needCost(save, id);
+  if (save.bank < cost) return 'poor';
+  save.bank -= cost;
+  save.needs = { ...save.needs, [id]: true };
+  return 'bought';
+}
+
+// Siblings who should be in the crew by now: their story scene has played, or (for saves from before the story
+// existed) the campaign is already past it. Returns the ids newly added.
+export function grantSiblings(save, levelIds = []) {
+  const got = [];
+  for (const id of CHAR_ORDER) {
+    const j = CHARACTERS[id].joins;
+    if (!j || save.chars.includes(id)) continue;
+    const at = levelIds.indexOf(j);
+    if (save.story?.seen?.[j] || (at >= 0 && save.unlocked > at)) { save.chars = [...save.chars, id]; got.push(id); }
+  }
+  return got;
+}
 
 export const UPGRADE_ORDER = ['quiet', 'hands', 'pockets', 'shadow', 'pasensya', 'stash'];
 
@@ -112,7 +150,7 @@ export const OUTFITS = {
   barong:   { name: 'MINI BARONG', how: { mutator: 'bisita' }, top: ['#f3ead2', '#d9cba6'], bottom: ['#5a5468', '#46415a'] },
   glow:     { name: 'GLOW SHIRT', how: { mutator: 'brownout' }, top: ['#7fd7ff', '#4f8fff'], bottom: ['#2a3560', '#1d2448'] },
   pasko:    { name: 'PAMASKONG DAMIT', how: { pasko: true }, top: ['#d94a4a', '#a83a3a'], bottom: ['#2fa55b', '#227a43'] },
-  ginto:    { name: 'GINTONG KUPIT', how: { stars: 42 }, top: ['#ffd84d', '#c9962b'], bottom: ['#ffd84d', '#c9962b'] },
+  ginto:    { name: 'GINTONG KUPIT', how: { stars: 48 }, top: ['#ffd84d', '#c9962b'], bottom: ['#ffd84d', '#c9962b'] },
 };
 // Title-screen skyline decorations.
 export const DECOR_ORDER = ['pusa', 'alitaptap', 'parol', 'banderitas', 'jeep', 'paputok'];
@@ -124,7 +162,8 @@ export const DECOR = {
   jeep:       { name: 'JEEPNEY', how: { stars: 20 } },
   paputok:    { name: 'PAPUTOK', how: { stars: 30 } },
 };
-export const STAR_MILESTONES = [10, 20, 30, 42].map((stars) => ({
+export const MAX_STARS = 48; // 16 levels with stars (the epilogue has none)
+export const STAR_MILESTONES = [10, 20, 30, MAX_STARS].map((stars) => ({
   stars,
   rewards: [
     ...OUTFIT_ORDER.filter((id) => OUTFITS[id].how.stars === stars).map((id) => ({ kind: 'outfit', id, name: OUTFITS[id].name })),
@@ -181,13 +220,9 @@ export function housePayout({ coins, stars, diff, housesToday = 0, daily = false
   return Math.max(1, Math.round(base * day));
 }
 
-// Buy (if needed) and select a character. Returns 'selected' | 'bought' | 'poor'.
+// Select a kid. Siblings join through the story, so one who hasn't yet is 'locked'. Returns 'selected' | 'locked'.
 export function pickChar(save, id) {
-  if (owns(save, id)) { save.char = id; return 'selected'; }
-  const cost = CHARACTERS[id].cost;
-  if (save.bank < cost) return 'poor';
-  save.bank -= cost;
-  save.chars = [...save.chars, id];
+  if (!owns(save, id)) return 'locked';
   save.char = id;
-  return 'bought';
+  return 'selected';
 }

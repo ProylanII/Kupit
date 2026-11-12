@@ -1,252 +1,262 @@
 {
-  "id": "boss2-mama",
-  "name": "MAMA SA KUSINA",
-  "hint": "MAMA ONLY TURNS AWAY TO STIR THE POT. DODGE THE SANDOK!",
-  "boss": {
-    "title": "MAMA SA KUSINA",
-    "index": 0,
-    "bonus": 18,
-    "phases": [
-      {
-        "at": 2,
-        "banner": "MAMA IS SUSPICIOUS!",
-        "adult": {
-          "index": 0,
-          "speed": 32,
-          "ranged": {
-            "range": 104,
-            "cd": 2.2
-          }
-        }
-      },
-      {
-        "at": 5,
-        "banner": "KUYA IS HELPING MAMA!",
-        "spawn": [
-          {
-            "type": "kuya",
-            "route": [
-              [
-                5,
-                12,
-                1
-              ],
-              [
-                10,
-                12,
-                1
-              ],
-              [
-                10,
-                15,
-                1
-              ],
-              [
-                5,
-                15,
-                1
-              ]
-            ]
-          }
-        ]
-      },
-      {
-        "at": 7,
-        "banner": "KAIN NA! MAMA IS COMING!",
-        "escape": 22,
-        "adult": {
-          "index": 0,
-          "cycle": null,
-          "cook": false,
-          "hunt": {
-            "every": 4,
-            "spread": 24
-          },
-          "speed": 40
-        }
-      }
-    ]
-  },
-  "tiles": [
-    "###############",
-    "#CCCC,,FF,CCC,#",
-    "#,,,,,,,,,,,,,#",
-    "#,,,,,,,,,,,,,#",
-    "#,,TTTT,,,,,,,#",
-    "#,,TTTT,,,,,,,#",
-    "#,,,,,,,,,,,,,#",
-    "#,,,,,,,,,,,,,#",
-    "#,,,,CC,,,,,,,#",
-    "#,,,,,,,,,,,,,#",
-    "#,,,,,,,,,,,,,#",
-    "####.......####",
-    "#.............#",
-    "#.............#",
-    "#.............#",
-    "#.............#",
-    "#.PP.......PP.#",
-    "#.............#",
-    "#.............#",
-    "#.............#",
-    "#.............#",
-    "###############"
-  ],
-  "spawn": [
-    2,
-    19
-  ],
-  "exit": [
-    12,
-    20
-  ],
-  "quota": 7,
-  "par": 110,
-  "targets": [
-    {
-      "kind": "purse",
-      "at": [
-        10,
-        2
-      ],
-      "coins": 3,
-      "time": 1.6
-    },
-    {
-      "kind": "wallet",
-      "at": [
-        2,
-        7
-      ],
-      "coins": 2,
-      "time": 1.3
-    },
-    {
-      "kind": "piggy",
-      "at": [
-        12,
-        8
-      ],
-      "coins": 2,
-      "time": 1.4
+ "id": "boss2-mama",
+ "name": "MAMA SA KUSINA",
+ "hint": "MAMA ONLY TURNS AWAY TO STIR THE POT. DODGE THE SANDOK!",
+ "missions": [
+  "noCatch",
+  "noHide"
+ ],
+ "boss": {
+  "title": "MAMA SA KUSINA",
+  "index": 0,
+  "bonus": 18,
+  "phases": [
+   {
+    "at": 2,
+    "banner": "MAMA IS SUSPICIOUS!",
+    "adult": {
+     "index": 0,
+     "speed": 32,
+     "ranged": {
+      "range": 104,
+      "cd": 2.2
+     }
     }
-  ],
-  "items": [
-    {
-      "kind": "tsinelas",
-      "at": [
-        3,
-        13
-      ]
-    },
-    {
-      "kind": "tsinelas",
-      "at": [
-        13,
-        13
-      ]
-    }
-  ],
-  "devices": [
-    {
-      "kind": "radio",
-      "at": [
-        1,
-        3
-      ],
-      "dur": 9
-    }
-  ],
-  "hide": [
-    {
-      "kind": "box",
-      "at": [
-        1,
-        6
-      ]
-    },
-    {
-      "kind": "basket",
-      "at": [
-        13,
-        10
-      ]
-    },
-    {
-      "kind": "curtain",
-      "at": [
-        13,
-        5
-      ]
-    },
-    {
-      "kind": "box",
-      "at": [
-        1,
-        10
-      ]
-    }
-  ],
-  "traps": [
-    {
-      "kind": "creak",
-      "at": [
-        7,
-        7
-      ]
-    },
-    {
-      "kind": "lego",
-      "at": [
-        9,
-        10
-      ]
-    },
-    {
-      "kind": "creak",
-      "at": [
-        7,
-        2
-      ]
-    }
-  ],
-  "alkansya": { "at": [1, 12], "coins": 8 },
-  "adults": [
-    {
-      "type": "mama",
+   },
+   {
+    "at": 5,
+    "banner": "KUYA IS HELPING MAMA!",
+    "spawn": [
+     {
+      "type": "kuya",
       "route": [
-        [
-          3,
-          3,
-          1
-        ],
-        [
-          11,
-          3,
-          1
-        ],
-        [
-          11,
-          9,
-          1
-        ],
-        [
-          3,
-          9,
-          1
-        ]
-      ],
-      "cfg": {
-        "cycle": {
-          "on": 8,
-          "off": 3
-        },
-        "cook": true,
-        "ranged": {
-          "range": 96,
-          "cd": 3
-        },
-        "checksHides": true
-      }
+       [
+        5,
+        12,
+        1
+       ],
+       [
+        10,
+        12,
+        1
+       ],
+       [
+        10,
+        15,
+        1
+       ],
+       [
+        5,
+        15,
+        1
+       ]
+      ]
+     }
+    ]
+   },
+   {
+    "at": 7,
+    "banner": "KAIN NA! MAMA IS COMING!",
+    "escape": 22,
+    "adult": {
+     "index": 0,
+     "cycle": null,
+     "cook": false,
+     "hunt": {
+      "every": 4,
+      "spread": 24
+     },
+     "speed": 40
     }
+   }
   ]
+ },
+ "tiles": [
+  "###############",
+  "#CCCC,,FF,CCC,#",
+  "#,,,,,,,,,,,,,#",
+  "#,,,,,,,,,,,,,#",
+  "#,,TTTT,,,H,,,#",
+  "#,,TTTT,,,,,,,#",
+  "#,,,,,,,,,W,,,#",
+  "#,,,,,,,,,,,,,#",
+  "#,,,,CC,,,,,,,#",
+  "#,,,,,,,,,,,,,#",
+  "#,,,,,H,,,,,,,#",
+  "####..###..####",
+  "#.............#",
+  "#.............#",
+  "#...HTTH...A..#",
+  "#.............#",
+  "#.PP.......PP.#",
+  "#......K......#",
+  "#.............#",
+  "#.............#",
+  "#.............#",
+  "###############"
+ ],
+ "spawn": [
+  2,
+  19
+ ],
+ "exit": [
+  12,
+  20
+ ],
+ "quota": 7,
+ "par": 110,
+ "targets": [
+  {
+   "kind": "purse",
+   "at": [
+    10,
+    2
+   ],
+   "coins": 3,
+   "time": 1.6
+  },
+  {
+   "kind": "wallet",
+   "at": [
+    2,
+    7
+   ],
+   "coins": 2,
+   "time": 1.3
+  },
+  {
+   "kind": "piggy",
+   "at": [
+    12,
+    8
+   ],
+   "coins": 2,
+   "time": 1.4
+  }
+ ],
+ "items": [
+  {
+   "kind": "tsinelas",
+   "at": [
+    3,
+    13
+   ]
+  },
+  {
+   "kind": "tsinelas",
+   "at": [
+    13,
+    13
+   ]
+  }
+ ],
+ "devices": [
+  {
+   "kind": "radio",
+   "at": [
+    1,
+    3
+   ],
+   "dur": 9
+  }
+ ],
+ "hide": [
+  {
+   "kind": "box",
+   "at": [
+    1,
+    6
+   ]
+  },
+  {
+   "kind": "basket",
+   "at": [
+    13,
+    10
+   ]
+  },
+  {
+   "kind": "curtain",
+   "at": [
+    13,
+    5
+   ]
+  },
+  {
+   "kind": "box",
+   "at": [
+    1,
+    10
+   ]
+  }
+ ],
+ "traps": [
+  {
+   "kind": "creak",
+   "at": [
+    7,
+    7
+   ]
+  },
+  {
+   "kind": "lego",
+   "at": [
+    9,
+    10
+   ]
+  },
+  {
+   "kind": "creak",
+   "at": [
+    7,
+    2
+   ]
+  }
+ ],
+ "alkansya": {
+  "at": [
+   1,
+   12
+  ],
+  "coins": 8
+ },
+ "adults": [
+  {
+   "type": "mama",
+   "route": [
+    [
+     3,
+     3,
+     1
+    ],
+    [
+     11,
+     3,
+     1
+    ],
+    [
+     11,
+     9,
+     1
+    ],
+    [
+     3,
+     9,
+     1
+    ]
+   ],
+   "cfg": {
+    "cycle": {
+     "on": 8,
+     "off": 3
+    },
+    "cook": true,
+    "ranged": {
+     "range": 96,
+     "cd": 3
+    },
+    "checksHides": true
+   }
+  }
+ ]
 }

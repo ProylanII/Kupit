@@ -6,6 +6,7 @@ import { C } from '../render/palette.js';
 import { VIEW_W } from '../core/input.js';
 import { sfx } from '../core/audio.js';
 import {
+  NEEDS, NEED_ORDER, hasNeed, needCost, buyNeed,
   UPGRADES, UPGRADE_ORDER, CHARACTERS, CHAR_ORDER, OUTFITS, OUTFIT_ORDER, DECOR, DECOR_ORDER,
   upgradeCost, buyUpgrade, pickChar, owns, upgradeStat, buyCosmetic, totalStars,
 } from '../game/progression.js';
@@ -67,9 +68,39 @@ function price(g, cost, x, y, afford) {
   drawCoin(g, x - 7 - String(cost).length * 4, y - 1);
 }
 
+// Aling Nena's: what Mingming and the kittens need comes first; gear and looks are one tap further in.
 export const shopScreen = makeList({
-  title: 'SARI-SARI STORE',
-  items: [...UPGRADE_ORDER, 'more'],
+  title: "ALING NENA'S STORE",
+  items: [...NEED_ORDER, 'gear', 'more'],
+  rowH: 38,
+  drawRow(g, id, r, { save }) {
+    if (id === 'gear' || id === 'more') {
+      drawText(g, id === 'gear' ? 'SNEAKING GEAR  >' : 'OUTFITS + DECOR  >', r.x + r.w / 2, r.y + 8, C.white, { align: 'center' });
+      drawText(g, id === 'gear' ? 'QUIET TSINELAS, QUICK HANDS, POCKETS...' : 'LOOKS ONLY: THEY NEVER CHANGE THE GAME', r.x + r.w / 2, r.y + 20, C.gray, { align: 'center' });
+      return;
+    }
+    const n = NEEDS[id], own = hasNeed(save, id), cost = needCost(save, id);
+    drawText(g, n.name, r.x + 6, r.y + 4, own ? C.pink : C.white);
+    drawText(g, own ? n.got : n.desc, r.x + 6, r.y + 14, own ? C.green : C.gray);
+    if (own) drawText(g, 'GIVEN', r.x + r.w - 5, r.y + 4, C.green, { align: 'right' });
+    else {
+      price(g, cost, r.x + r.w - 5, r.y + 4, save.bank >= cost);
+      drawText(g, save.story.nena ? `SUKI PRICE (WAS ${n.cost})` : 'FOR MINGMING AND THE KITTENS', r.x + 6, r.y + 24, save.story.nena ? C.yellow : C.dgray);
+    }
+  },
+  pick(id, ctx, s) {
+    if (id === 'gear') { ctx.go('upgrades'); return; }
+    if (id === 'more') { ctx.go('cosmetics'); return; }
+    const res = buyNeed(ctx.save, id);
+    if (res === 'bought') { ctx.persist(); sfx.buy(); s.say(NEEDS[id].got, C.green); }
+    else if (res === 'owned') { sfx.click(); s.say('THEY ALREADY HAVE IT', C.green); }
+    else { sfx.creak(); s.say('NOT ENOUGH COINS', C.orange); }
+  },
+});
+
+export const upgradesScreen = makeList({
+  title: 'SNEAKING GEAR',
+  items: [...UPGRADE_ORDER],
   rowH: 40,
   drawRow(g, id, r, { save }) {
     if (id === 'more') {
@@ -146,7 +177,7 @@ export const cosmeticsScreen = makeList({
 });
 
 export const charScreen = makeList({
-  title: 'CHOOSE YOUR KID',
+  title: 'THE CREW',
   items: CHAR_ORDER,
   rowH: 56,
   drawRow(g, id, r, { save }) {
@@ -158,15 +189,15 @@ export const charScreen = makeList({
     drawText(g, c.name, r.x + 34, r.y + 6, C.white);
     if (cur) drawText(g, 'SELECTED', r.x + r.w - 5, r.y + 6, C.green, { align: 'right' });
     else if (own) drawText(g, 'TAP TO PICK', r.x + r.w - 5, r.y + 6, C.gray, { align: 'right' });
-    else price(g, c.cost, r.x + r.w - 5, r.y + 6, save.bank >= c.cost);
+    else drawText(g, 'JOINS IN THE STORY', r.x + r.w - 5, r.y + 6, C.dgray, { align: 'right' });
     drawText(g, c.lines[0], r.x + 34, r.y + 20, C.yellow);
     drawText(g, c.lines[1], r.x + 34, r.y + 32, C.gray);
     drawText(g, `SKILL: ${c.skill.label}  COOLDOWN ${c.skill.cd}S`, r.x + 34, r.y + 42, C.gray);
   },
   pick(id, ctx, s) {
     const res = pickChar(ctx.save, id);
-    if (res === 'poor') { sfx.creak(); s.say('NOT ENOUGH COINS', C.orange); return; }
+    if (res === 'locked') { sfx.creak(); s.say(`${CHARACTERS[id].name} DOES NOT KNOW THE SECRET YET`, C.orange); return; }
     ctx.persist();
-    if (res === 'bought') { sfx.buy(); s.say(`${CHARACTERS[id].name} UNLOCKED!`, C.green); } else { sfx.click(); s.say(`PLAYING AS ${CHARACTERS[id].name}`, C.white); }
+    sfx.click(); s.say(`PLAYING AS ${CHARACTERS[id].name}`, C.white);
   },
 });

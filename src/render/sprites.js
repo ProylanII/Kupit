@@ -120,7 +120,12 @@ export const VARIANTS = {
   bisita:  { base: 'tita', map: { '#2fa59b': '#ff9a3c', '#22807a': '#d9762a', '#7fe0d4': '#ffe36b', '#ff7eb6': '#2a1f33', '#d9578f': '#1b1424', '#ffb0d4': '#4a3d5c' } },
   tanod:   { base: 'kuya', map: { '#46a0e0': '#c9a46a', '#3580b8': '#a6824a', '#2f5fbf': '#3a3550', '#24488f': '#2a2640', '#5a5468': '#3a3550', '#46415a': '#2a2640' } },
   tindera: { base: 'nena', map: { '#4f7fd0': '#46e08a', '#3a62a8': '#2fa55b', '#6b3a5a': '#a8433f', '#4f2a44': '#7a2a2a', '#9a94a8': '#2a1f33', '#7a7488': '#1b1424', '#c4bfd0': '#4a3d5c' } },
+  // the three kittens are one sprite in three coats
+  tigre:   { base: 'kuting', map: {} },
+  puti:    { base: 'kuting', map: { '#ff9a3c': '#f6f1e7', '#d9762a': '#cfc7b8', '#a8433f': '#9a94a8' } },
+  muning:  { base: 'kuting', map: { '#ff9a3c': '#9a94a8', '#d9762a': '#7a7488', '#a8433f': '#5a5468' } },
 };
+export const KITTEN_LOOKS = ['tigre', 'puti', 'muning'];
 
 // kind -> { base, map } for swapped kinds, else null
 function swapOf(kind) {
@@ -185,7 +190,7 @@ export function getSprite(kind, dir, frame) {
     cache.set(key, cv);
     return cv;
   }
-  const look = LOOKS[kind];
+  const look = LOOKS[kind] || LOOKS.kid;
   const view = dir === 3 ? 'back' : dir === 0 ? 'front' : 'side';
   let body = (view === 'back' ? BACK : view === 'front' ? FRONT : SIDE).slice();
   if (look.longHair) {
@@ -214,12 +219,14 @@ export function drawActor(g, kind, x, y, dir, frame, { dim = false } = {}) {
   return py; // top of sprite, for placing icons
 }
 
-// 28x28 bust from the sprite sheet (menus, boss banners). Returns false when the sheet has none.
-export function drawPortrait(g, kind, x, y, scale = 1) {
-  const key = `portrait|${kind}`;
+// 28x28 bust from the sprite sheet (menus, boss banners, story panels). mood: happy | sad | angry | shock
+// (falls back to the neutral face). Returns false when the sheet has none.
+export function drawPortrait(g, kind, x, y, scale = 1, mood = '') {
+  const key = `portrait|${kind}|${mood || ''}`;
   let s = cache.get(key);
   if (!s) {
-    const sw = swapOf(kind), art = atlasSprite(`portrait|${sw ? sw.base : kind}`);
+    const sw = swapOf(kind), base = sw ? sw.base : kind;
+    const art = (mood && atlasSprite(`portrait|${base}|${mood}`)) || atlasSprite(`portrait|${base}`);
     if (!art) return false;
     s = sw ? recolor(art, sw.map) : art;
     cache.set(key, s);
@@ -254,7 +261,28 @@ const ALKANSYA = [ // bamboo coin bank with a slot on top
   '..ss..', 'aAAAAa', 'aAAAAa', 'nnnnnn', 'aAAAAa', 'aAAAAa', 'nnnnnn', 'aAAAAa',
 ];
 
+const GATAS = ['.bb.', '.ww.', 'wWWw', 'wWWw', 'wWWw', 'wwww']; // a bottle of fresh milk
+const KUTING = ['o..o....', 'oooo....', 'oeoe..o.', 'ooooooo.', '.oooooo.', '.o.o.o..'];
+const REGALO = ['.yy.yy.', '..yyy..', 'rrryrrr', 'rrryrrr', 'RRRyRRR', 'RRRyRRR'];
+const STORY_TARGETS = {
+  gatas: [GATAS, { b: '#4f8fff', w: '#cfd6e0', W: '#ffffff' }],
+  kuting: [KUTING, { o: '#e8a04a', e: '#1a1626' }],
+  regalo: [REGALO, { y: '#ffd84d', r: '#d94a4a', R: '#a83a3a' }],
+};
+
 export function drawTarget(g, kind, x, y, done) {
+  if (STORY_TARGETS[kind]) { // taken = gone (the milk is in your hands, the kitten is in your shirt)
+    if (done) return;
+    if (kind === 'kuting' && atlasSprite('kuting|0|sit')) { // a real kitten, one of the three coats
+      const k = getSprite(KITTEN_LOOKS[(Math.round(x / 16) + Math.round(y / 16)) % 3], 0, 'sit');
+      g.drawImage(k, Math.round(x) - Math.floor(k.width / 2), Math.round(y) - Math.floor(k.height / 2) + 1);
+      return;
+    }
+    const s = mapSprite(kind, ...STORY_TARGETS[kind]);
+    g.drawImage(s, Math.round(x) - Math.floor(s.width / 2), Math.round(y) - Math.floor(s.height / 2) + 1);
+    return;
+  }
+  if (kind === 'ibalik') { kind = 'purse'; done = !done; } // putting coins back: empty until you fill it
   const pal = done
     ? { g: C.dgray, p: C.dgray, P: C.gray, c: C.gray, w: C.gray, W: C.dgray, i: C.gray, e: C.dgray, l: C.dgray, G: C.gray, r: C.gray, y: C.gray, b: C.gray, a: C.dgray, A: C.gray, n: C.dgray, s: C.ink }
     : { g: C.purse, p: C.purse, P: C.purse2, c: C.gold, w: '#d9c27a', W: '#b99a4a', i: C.pink, e: C.ink, l: C.red, G: '#9fd8e8', r: C.red, y: C.gold, b: '#4f8fff', a: '#7fae4a', A: '#a7cf6a', n: '#d9c27a', s: C.ink };
@@ -305,6 +333,11 @@ export const OBJ = {
     '.bwwwwwwwwwwbrrrssr.', '.bbbbbbbbbbbbrrrrrrr', '.BBBBBBBBBBBBrrrrrr.', '..kk......kk....kk..',
     '.kggk....kggk..kggk.', '..kk......kk....kk..',
   ],
+  // videoke machine: a speaker tower with a little screen and a mic on top
+  videoke: [
+    '....mm....', '...mggm...', 'kkkkkkkkkk', 'kssssssssk', 'kspsssyssk', 'kssssssssk', 'kkkkkkkkkk',
+    'kWWWkkWWWk', 'kWkWkkWkWk', 'kWWWkkWWWk', 'kkkkkkkkkk', '.k......k.',
+  ],
   // action-button icons
   hand: ['..h.h..', '.hhhhh.', '.hhhhhh', 'hhhhhh.', '.hhhhh.', '..hhh..'],
   door: ['dddd', 'dDDd', 'dDDd', 'dDyd', 'dDDd', 'dDDd'],
@@ -324,6 +357,7 @@ const OBJ_PAL = {
   pandesal: { p: '#a8642c', P: '#e0a35a' },
   tv: { m: C.ink, s: '#3a4a6a', a: C.gray, W: C.table2, w: C.table, k: C.gold },
   radio: { m: C.dgray, g: C.gray, s: C.gold, a: C.gray },
+  videoke: { m: C.dgray, g: C.gray, k: '#3a3550', s: '#4f8fff', p: C.pink, y: C.yellow, W: C.gray },
   leverOff: { h: C.gray, b: C.dgray, B: C.red },
   leverOn: { h: C.gray, b: C.dgray, B: C.green },
   sandok: { s: C.gray, h: C.table2 },

@@ -19,6 +19,13 @@ node tools/qa/pwa.mjs http://localhost:8080     # service worker caches the whol
                                                 # OFFLINE boot + level + Daily House, manifest/icons installable
 ```
 
+Two more scripts for the same server:
+
+```
+node tools/qa/ending.mjs http://localhost:8080  # clears the storm on a fresh save: HULI KA! scene, then the results, once only
+node tools/qa/shot.mjs http://localhost:8080 out level:14@6 story:ENDING:0 clear:2 paused:2 title map   # screenshots to look at
+```
+
 `?sw=1` is what makes the service worker run on localhost (it is skipped there otherwise so edits show up).
 Nothing is downloaded: `puppeteer-core` drives the browser already installed (`CHROME=<path>` to point at one).
 

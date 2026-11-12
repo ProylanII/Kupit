@@ -23,8 +23,26 @@ export const ADULT_TYPES = {
   trike: { name: 'TRICYCLE', speed: 52, range: 0, fov: 0, rate: 0, harmless: true, cover: true, vehicle: true, shout: 'BEEP BEEP!' },
 };
 
+// Routines: a route point can name what the adult does while waiting there: [x, y, waitSeconds, faceRadians, 'luto'].
+// Busy people watch less: range/fov are multipliers on their normal cone (0 = sees nothing at all), deaf = hears
+// nothing. Any noise makes them look up for a moment, and the routine ends the second they are suspicious.
+// pose: sprite pose while busy. say: the bubble when they start.
+export const ACTIVITIES = {
+  luto:   { name: 'COOKING',   range: 0,    fov: 1,    pose: 'reach', say: 'LUTO MUNA...',     prop: 'pot' },
+  hugas:  { name: 'WASHING UP', range: 0,   fov: 1,    pose: 'reach', say: 'HUGAS PINGGAN...' },
+  sampay: { name: 'HANGING LAUNDRY', range: 0, fov: 1, pose: 'reach', say: 'SAMPAY MUNA...' },
+  walis:  { name: 'SWEEPING',  range: 0.5,  fov: 1,    pose: null,    say: 'WALIS, WALIS...' },
+  dilig:  { name: 'WATERING',  range: 0.5,  fov: 0.8,  pose: 'reach', say: 'DILIG MUNA...' },
+  tv:     { name: 'WATCHING TV', range: 1.1, fov: 0.4, pose: null,    say: 'TELESERYE NA!' },
+  kwento: { name: 'CHATTING',  range: 0.8,  fov: 0.45, pose: null,    say: 'ALAM MO BA, MARE...' },
+  bilang: { name: 'COUNTING',  range: 0.4,  fov: 1,    pose: 'reach', say: 'ISA, DALAWA, TATLO...' },
+  phone:  { name: 'ON THE PHONE', range: 0, fov: 1,    pose: 'phone', say: 'HELLO? MARE!', deaf: true },
+  idlip:  { name: 'DOZING',    range: 0,    fov: 1,    pose: 'sleep', say: 'IDLIP LANG...' },
+  kanta:  { name: 'SINGING',   range: 0,    fov: 1,    pose: 'alert', say: 'MY WAAAY!', deaf: true },
+};
+
 const mapPts = (route) => route.map((p) => ({
-  x: p[0] * TILE + TILE / 2, y: p[1] * TILE + TILE / 2, tx: p[0], ty: p[1], wait: p[2], face: p[3],
+  x: p[0] * TILE + TILE / 2, y: p[1] * TILE + TILE / 2, tx: p[0], ty: p[1], wait: p[2], face: p[3], act: p[4],
 }));
 
 const RAYS = 32;
@@ -32,6 +50,7 @@ const SEARCH_TIME = 2.5;
 const CHASE_MULT = 1.5;
 const CATCH_DIST = 10;
 const COVER_R = 6; // half-width of a person standing in the way
+export const BLEND_SEE = 30; // a kid walking with a guest is only noticed from this close
 
 const RETRY = 0.5; // seconds a blocked adult waits before planning its route again
 
@@ -93,7 +112,13 @@ export class Adult {
     this.barkAt = null;    // sound-tracking dog: bark toward a noise it heard
     this.alarm = false;    // hair-trigger alert raised inside hear(); announced on the next update
     this.covers = null;    // the level's adult list (set by World): guests in it block sight
+    this.busy = null;      // the routine being done right now (an ACTIVITIES entry), or null
+    this.woken = 0;        // times a noise woke this sleeper
   }
+
+  // What the eyes can do right now: the normal cone, narrowed or switched off by a routine.
+  get range() { return this.cfg.range * (this.busy ? this.busy.range : 1); }
+  get fov() { return this.cfg.fov * (this.busy ? this.busy.fov : 1); }
 
   get home() { return this.pts[0]; }
   // where the eyes point: walking direction plus the flashlight sweep
@@ -192,6 +217,7 @@ export class Adult {
     const c = this.cfg.cycle;
     if (c) this.t = Math.floor(this.t / (c.on + c.off)) * (c.on + c.off);
     this.awake = true;
+    this.woken++;
   }
 
   // Called by the level for every noise in earshot.
@@ -199,6 +225,7 @@ export class Adult {
   hear(n, d = Math.hypot(n.x - this.x, n.y - this.y), delay = 0) {
     const c = this.cfg;
     if (c.harmless || this.state === 'chase' || this.state === 'eat') return;
+    if (this.busy && this.busy.deaf && !n.tattle) return; // on the phone, or belting out a song
     const goal = n.goal || n;
     if (!this.awake) {
       if (!c.sleepy) return;
@@ -280,18 +307,20 @@ export class Adult {
     if (player.graceT > 0) return false; // just respawned: a moment to get your bearings
     if (player.hidden && !this.sawHide) return false;
     const dx = player.x - this.x, dy = player.y - this.y, dist = Math.hypot(dx, dy);
-    return dist < this.cfg.range && Math.abs(angDiff(Math.atan2(dy, dx) - this.va)) < this.cfg.fov &&
+    if (player.blend && this.state !== 'chase' && dist > BLEND_SEE) return false; // one more kid in the crowd
+    return dist < this.range && Math.abs(angDiff(Math.atan2(dy, dx) - this.va)) < this.fov &&
       hasLos(this.map, this, player) && !this.covered(player.x, player.y);
   }
 
   // The drawn cone stops at guests too, so what you see is what they see.
   clipCone() {
     if (!this.covers) return;
-    const { fov } = this.cfg, va = this.va;
+    const fov = this.fov, va = this.va;
+    if (fov <= 0 || this.range <= 0) return;
     for (const o of this.covers) {
       if (o === this || !o.cfg.cover) continue;
       const dx = o.x - this.x, dy = o.y - this.y, d = Math.hypot(dx, dy);
-      if (d < 4 || d > this.cfg.range + COVER_R) continue;
+      if (d < 4 || d > this.range + COVER_R) continue;
       const rel = angDiff(Math.atan2(dy, dx) - va), half = Math.atan2(COVER_R, d);
       if (rel + half < -fov || rel - half > fov) continue;
       const i0 = Math.max(0, Math.ceil(((rel - half + fov) / (2 * fov)) * RAYS));
@@ -305,6 +334,11 @@ export class Adult {
     this.moving = false;
     if (this.say && (this.say.t -= dt) <= 0) this.say = null;
     this.barkT = Math.max(0, this.barkT - dt);
+    // in the middle of a routine? (only on a calm patrol, standing at the point that names it, with nothing heard)
+    const at = this.pts.length > 1 ? this.pts[(this.i + this.pts.length - 1) % this.pts.length] : this.pts[0];
+    const act = this.state === 'patrol' && this.hearT <= 0 && this.alert < 0.3 && (this.pts.length > 1 ? this.wait > 0 : Math.hypot(at.x - this.x, at.y - this.y) < 3) ? ACTIVITIES[at.act] : null;
+    if (act && this.busy !== act && act.say && !this.say) this.talk(act.say, 1.6);
+    this.busy = act || null;
 
     // guests and vehicles just follow their route
     if (c.harmless) {
@@ -489,7 +523,7 @@ export class Adult {
       this.scanT += dt;
       this.lookOff = Math.sin(this.scanT * c.scan.speed) * c.scan.amp;
     } else this.lookOff *= Math.max(0, 1 - dt * 6);
-    castCone(this.map, this.x, this.y, this.va, c.fov, c.range, RAYS, this.rays);
+    castCone(this.map, this.x, this.y, this.va, this.fov, this.range, RAYS, this.rays);
     this.clipCone();
   }
 

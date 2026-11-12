@@ -8,9 +8,10 @@
     "start": "npx --yes serve . -l 8080",
     "test": "node --test \"tests/*.test.mjs\"",
     "build": "node tools/build-precache.mjs",
-    "qa": "node tools/qa/smoke.mjs http://localhost:8080 && node tools/qa/pwa.mjs http://localhost:8080",
+    "qa": "node tools/qa/smoke.mjs http://localhost:8080 && node tools/qa/pwa.mjs http://localhost:8080 && node tools/qa/ending.mjs http://localhost:8080",
     "art:blender": "node tools/blender/run.mjs",
-    "art:code": "py -3 tools/art/make_art.py"
+    "art:code": "py -3 tools/art/make_art.py",
+    "lint:levels": "node tools/level-lint.mjs"
   },
   "devDependencies": {
     "puppeteer-core": "^24.43.1"

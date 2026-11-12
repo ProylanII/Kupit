@@ -3,22 +3,22 @@
 // (just the quota, 2 stars, no alkansya), against what the store sells. Goal: the store can only be emptied in the
 // second half of the campaign, never early.
 import { readFileSync } from 'node:fs';
-import { UPGRADES, CHARACTERS, OUTFITS, DECOR, campaignPayout } from '../src/game/progression.js';
+import { UPGRADES, NEEDS, OUTFITS, DECOR, campaignPayout } from '../src/game/progression.js';
 
 const dir = new URL('../src/data/levels/', import.meta.url);
 const levels = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8')).map((f) => JSON.parse(readFileSync(new URL(f, dir), 'utf8')));
 
 const upgrades = Object.values(UPGRADES).reduce((s, u) => s + u.costs.reduce((a, b) => a + b, 0), 0);
-const kids = Object.values(CHARACTERS).reduce((s, c) => s + c.cost, 0);
+const kids = Object.values(NEEDS).reduce((s, c) => s + c.cost, 0); // the kittens' needs (siblings join for free)
 const cosmetics = [...Object.values(OUTFITS), ...Object.values(DECOR)].reduce((s, c) => s + (c.how.cost || 0), 0);
 const store = upgrades + kids;
 
 const players = {
-  careful: (L) => campaignPayout({ coins: L.targets.reduce((s, t) => s + t.coins, 0), stars: 3, first: true, bossBonus: L.boss?.bonus || 0, alkansya: L.alkansya?.coins || 0 }),
-  typical: (L) => campaignPayout({ coins: L.quota, stars: 2, first: true, bossBonus: L.boss?.bonus || 0 }),
+  careful: (L) => campaignPayout({ coins: L.giveBack ? 0 : L.targets.reduce((s, t) => s + t.coins, 0), stars: L.epilogue ? 0 : 3, first: true, bossBonus: L.boss?.bonus || 0, alkansya: L.alkansya?.coins || 0 }),
+  typical: (L) => campaignPayout({ coins: L.giveBack ? 0 : L.quota, stars: L.epilogue ? 0 : 2, first: true, bossBonus: L.boss?.bonus || 0 }),
 };
 
-console.log(`store: upgrades ${upgrades} + kids ${kids} = ${store} coins (cosmetics ${cosmetics} more, optional)\n`);
+console.log(`store: upgrades ${upgrades} + kittens ${kids} = ${store} coins (cosmetics ${cosmetics} more, optional)\n`);
 console.log('#  level                  careful  total |  typical  total');
 const tot = { careful: 0, typical: 0 }, emptied = {};
 levels.forEach((L, i) => {

@@ -79,3 +79,47 @@ was not done without the owner.
   `sheet.png` + `atlas.json` are the source of truth.
 - Fixed two bugs in the never-run render script while at it: direction 2 rendered the LEFT view (the camera's
   +X is screen right), and the sun was back-lighting the characters.
+
+## Story pass (2026-11-11)
+
+- **Coins are for the cats.** Siblings are no longer bought (15 + 25 + 30 = 70 coins); the kittens' five needs
+  cost the same 70 in total, so the economy curve is unchanged. Needs gate nothing: they change the hideout only.
+- **Siblings join in scenes** before 04-bakuran (Bing), 05-gabi (Ramil) and 08-palengke (Nene). Saves from before
+  the story get the siblings their progress already passed.
+- **Aling Nena is an ally.** The sari-sari boss level is gone; the finale is BAGYO (storm, escape timer). Her
+  adult type stays for Random Houses. From the palengke scene on, cat needs cost 25% less.
+- **HINGI replaces KUPIT only in the epilogue level.** Earlier levels stay replayable as they were.
+- **IBALIK pays no coins** (you are returning them), only stars; a catch there takes nothing back out.
+- **The epilogue has no stars**, so the total is 16 x 3 = 48 (the last milestone moved from 42 to 48).
+- **Save v3** remaps the "furthest level" index onto the new level order and clears the old ending flag.
+
+## Redesign pass (2026-11-11, later the same day)
+
+- **The ending is a catch, not a confession.** The owner corrected the story: Jun is caught, and only then does the
+  family realise the coins were for his pets, so they do not scold him. The earlier version (they knew all along and
+  were waiting) is gone, along with its hints (the saucer, the fish left out, Lola's coins); in their place Mama
+  counts her purse and Tatay misses his fish, so the suspicion grows toward the storm.
+- **The ending plays the moment the storm is cleared**, before the results, and opens like the game's own caught
+  screen (red frame, HULI KA!, the caught sting). A level flag (`"ending": true`) marks the level; the epilogue
+  still plays it for saves that got past the storm another way. The storm's own fanfare is held back that once.
+- **The shipped sprite sheet is the code-drawn one again**, redrawn: the owner was not satisfied with the
+  characters, and the Blender toys were black-haired boxes at game size. 12×9 heads, sparkle eyes for kids, hand-drawn
+  heads per character and view, Mingming and a kitten as real sprites, and four portrait moods. The style lock's
+  palette was regenerated in the same change, on purpose.
+- **Stars are missions, and they accumulate.** Each level names two besides "clear it"; a star earned stays earned
+  (a bit mask per level). Old saves keep their star counts (n stars = the first n missions). Random and Daily
+  Houses keep fast + silent and are scored per run as before, so the daily share card means the same thing.
+- **Coins, quotas, boss phases and bonuses were not touched** in the room redesign, so the economy is unchanged.
+  `tools/redesign-levels.mjs` is the record of what moved and why.
+- **Blending is all or nothing**: beside a walking guest you are unseen beyond 30 px unless already chased. A softer
+  "noticed slower" rule was harder to read on screen. Guests walk at half your sneak speed, so it costs time.
+- **The videoke masks, it does not lure.** It runs on its own clock (a song, then a break) and cannot be switched
+  on, so it is a rhythm to play to, like the thunder, not a second radio.
+- **Routines end at the first noise.** A busy adult who hears anything looks up with her full cone. That keeps
+  "she is cooking" from being a free pass: quiet is still the rule.
+- **The kitten is company, not a mechanic.** Tigre follows after the story is over and nobody can see him; three
+  follow in the epilogue. Nothing depends on them.
+- **Wardrobe tops are drawn over the tile behind them**, so the validator keeps everything you need to see out of
+  that tile. Credits moved to page 4 of How To Play (page 3 is the new rules).
+- **Not done here**: softer cones were tuned by eye from screenshots only, and none of the new rooms, routines or
+  missions has been played by a person. The bot proves each level can be finished, not that it is fair or fun.

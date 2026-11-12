@@ -2,12 +2,13 @@
 // validateLevel(L) -> array of error strings (empty = valid and solvable).
 import { TileMap } from '../world/tilemap.js';
 import { findPath } from '../world/pathfind.js';
-import { ADULT_TYPES } from '../entities/adult.js';
+import { ADULT_TYPES, ACTIVITIES } from '../entities/adult.js';
+import { MISSIONS } from './missions.js';
 import { World } from './world.js';
 
 export const KINDS = {
   items: ['tsinelas', 'pandesal', 'key'], hide: ['box', 'curtain', 'basket'],
-  devices: ['tv', 'radio'], traps: ['creak', 'lego'], targets: ['purse', 'bayong', 'wallet', 'piggy', 'candy'],
+  devices: ['tv', 'radio', 'videoke'], traps: ['creak', 'lego'], targets: ['purse', 'bayong', 'wallet', 'piggy', 'candy', 'gatas', 'kuting', 'ibalik', 'regalo'],
 };
 
 // Player reachability with keys and switch-operated gates, iterated to a fixpoint.
@@ -68,6 +69,19 @@ export function validateLevel(L) {
     if (map.tileSolid(p[0], p[1]) || 'dgDG'.includes(c)) bad(`${what} ${p} must be on plain floor (got '${c}')`);
   };
   if (L.hint && L.hint.length > 58) bad(`hint is ${L.hint.length} chars (max 58 fits the screen)`);
+  if (L.missions) {
+    if (!Array.isArray(L.missions) || L.missions.length !== 2 || L.missions[0] === L.missions[1]) bad('missions must be two different mission ids');
+    else for (const id of L.missions) if (!MISSIONS[id] || id === 'clear') bad(`unknown mission ${id}`);
+    const has = (id) => (L.missions || []).includes(id);
+    if (has('alkansya') && !L.alkansya) bad('mission alkansya needs an alkansya');
+    if (has('noSpill') && !L.targets.some((t) => t.carry)) bad('mission noSpill needs something to carry');
+    if (has('thunder') && !L.storm) bad('mission thunder needs a storm');
+    if (has('noBark') && !L.adults.some((a) => a.type === 'aso')) bad('mission noBark needs a dog');
+    if (has('noWake') && !L.adults.some((a) => a.type === 'lola' || a.sleepy || a.cfg?.sleepy)) bad('mission noWake needs a sleeper');
+    if (has('noDevice') && !(L.devices || []).some((d) => d.kind !== 'videoke')) bad('mission noDevice needs a tv or radio');
+    if (has('noTrap') && !(L.traps || []).length) bad('mission noTrap needs traps');
+    if (has('noHide') && !(L.hide || []).length) bad('mission noHide needs hiding spots');
+  }
   floor(L.spawn, 'spawn');
   floor(L.exit, 'exit');
   const used = new Map();
@@ -102,6 +116,13 @@ export function validateLevel(L) {
   for (const t of L.targets) doorCheck(t.at, `target:${t.kind}`);
   if (L.alkansya) doorCheck(L.alkansya.at, 'alkansya');
 
+  // a wardrobe's top half is drawn over the tile behind it: nothing you need to see may sit there
+  const behind = (p, what) => { if (map.ch(p[0], p[1] + 1) === 'K') bad(`${what} ${p} is hidden behind the wardrobe at ${p[0]},${p[1] + 1}`); };
+  behind(L.spawn, 'spawn'); behind(L.exit, 'exit');
+  for (const k of ['targets', 'hide', 'items', 'devices', 'switches', 'traps']) for (const o of L[k] || []) behind(o.at, k);
+  if (L.alkansya) behind(L.alkansya.at, 'alkansya');
+  for (const c of L.cats || []) { if (map.tileSolid(c.at[0], c.at[1])) bad(`cat ${c.at} must be on floor`); behind(c.at, 'cat'); }
+
   const reach = solve(L, map);
   if (!reach.has(L.exit.join())) bad('exit unreachable');
   if (L.alkansya && !reach.has(L.alkansya.at.join())) bad(`alkansya ${L.alkansya.at} unreachable`);
@@ -116,7 +137,7 @@ export function validateLevel(L) {
   for (const a of L.adults) {
     if (!ADULT_TYPES[a.type]) { bad(`unknown adult type ${a.type}`); continue; }
     const pts = a.route || [a.at];
-    for (const p of pts) floor(p, `${a.type} point`);
+    for (const p of pts) { floor(p, `${a.type} point`); if (p[4] !== undefined && !ACTIVITIES[p[4]]) bad(`${a.type}: unknown routine ${p[4]}`); }
     for (let i = 0; i < pts.length && pts.length > 1; i++) {
       const p = pts[i], q = pts[(i + 1) % pts.length];
       if (!findPath(map, p[0], p[1], q[0], q[1], pass)) bad(`${a.type} route ${p}->${q} has no path`);

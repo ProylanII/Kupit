@@ -15,7 +15,11 @@ and that standing still at the spawn for 4 s is safe. The same validator checks 
 | `,` | kitchen tile floor | | |
 | `;` | grass (yard) | | |
 | `R` | rug | | |
+| `:` | concrete (street, market, plaza) | | |
 | `T S B P C F` | table, sofa, bed, plant, counter, fridge | yes | no |
+| `H W A` | bangko (stool or monobloc chair), water drum, estante (low shelf) | yes | no |
+| `K M` | aparador (wardrobe), market stall under an awning | yes | **yes** |
+| `L` | hanging laundry: you walk through it, nobody sees through it or into it | no | **yes** |
 | `D` | door (closed; player/adults open it) | yes | yes |
 | `G` | gate (closed; opened by a switch) | yes | no (bars) |
 
@@ -26,27 +30,85 @@ and that standing still at the spawn for 4 s is safe. The same validator checks 
   "id": "05-gabi", "name": "GABI",
   "tutorial": true,            // level 1 only: step-by-step coaching line, skill tip held back
   "hint": "SHORT TIP",         // shown for the first 8s (max 58 chars, checked)
+  "missions": ["silent", "allCoins"], // the level's second and third star (the first is always "clear it"); see Missions
+  "ending": true,              // the story's ending plays the first time this level is cleared (the storm)
+  "cats": [{ "kind": "pusa", "at": [x,y], "pose": "sleep" }], // optional: cats that simply live in the room
   "night": true,               // dark tint
   "tiles": ["###...", ...],
   "spawn": [5, 1], "exit": [12, 20],
   "quota": 6,                  // coins needed to unlock the exit
-  "par": 120,                  // seconds for the speed star
+  "par": 120,                  // seconds for the "fast" mission
   "patience": 160,             // optional: "KAIN NA!" timer, caught when it runs out
-  "targets": [{ "kind": "purse|bayong|wallet|piggy|candy", "at": [x,y], "coins": 3, "time": 1.6 }], // time 0.5..4
+  "storm": { "every": 7, "dur": 2.4 }, // optional: lightning every N s, then thunder that masks all your noise for dur s
+  "giveBack": true,            // optional: targets are filled, not emptied (kind "ibalik"); pays stars only
+  "hingi": true, "epilogue": true, // optional: every adult is harmless; no stars are recorded
+  "clearText": "KITTENS SAFE!", // optional: headline on the clear screen
+  "targets": [{ "kind": "purse|bayong|wallet|piggy|candy|gatas|kuting|ibalik|regalo", "at": [x,y], "coins": 3, "time": 1.6 }], // time 0.5..4
+  // story targets: "carry": true (in your hands; running spills it), "must": true (exit stays shut without it),
+  //                "from": adultIndex + "say": "LINE" (HINGI: who gives it and what they say)
   "alkansya": { "at": [x,y], "coins": 5 }, // optional secret bonus stash (tools/place-alkansya.mjs suggests a spot)
   "items":   [{ "kind": "tsinelas|pandesal|key", "at": [x,y], "color": "red|blue|green|gold" }],
   "locks":   [{ "at": [x,y], "key": "blue" }],          // on a D tile
   "switches":[{ "at": [x,y], "gates": [[x,y]], "time": 6 }], // time = auto-close seconds (optional)
   "devices": [{ "kind": "tv|radio", "at": [x,y], "dur": 9 }], // lures adults while on
+  //          { "kind": "videoke", "at": [x,y], "r": 92, "on": 9, "off": 6 }: plays by itself; while a song is on,
+  //          nothing the player does within r px of it is heard (not a lure, not something you switch on)
   "hide":    [{ "kind": "box|curtain|basket", "at": [x,y] }],
   "traps":   [{ "kind": "creak|lego", "at": [x,y] }],
   "adults": [
-    { "type": "mama", "route": [[x,y], [x,y, waitSec, faceRadians], ...] },
+    { "type": "mama", "route": [[x,y], [x,y, waitSec, faceRadians, "luto"], ...] }, // 5th value: a routine (see Routines)
     { "type": "lola", "at": [x,y], "face": 1.57, "sweep": 0.6, "phase": 3, "cycle": { "on": 9, "off": 9 } },
     { "type": "aso", "route": [...], "cycle": { "on": 9, "off": 6 }, "sleepy": true }
   ]
 }
 ```
+
+## Missions
+
+Stars are missions (`src/game/missions.js`). `missions` names two; without it a level gets `fast` and `silent`
+(Random Houses do). A star stays earned across runs (`save.missions[id]` is a bit mask, `save.stars[id]` its count).
+
+| Id | Star for | Lost mid-run? |
+|---|---|---|
+| `fast` | finishing within `par` seconds | yes |
+| `silent` | no adult's meter ever reaching 0.3, and no catch | yes |
+| `ghost` | nobody even glancing (no meter past 0.12) | yes |
+| `noCatch` | never being caught | yes |
+| `allCoins` | emptying every stash | no (read at the exit) |
+| `alkansya` | finding the secret alkansya (this run or an earlier one) | no |
+| `noThrow` `noHide` `noRun` `noSkill` `noDevice` | not using that tool at all | yes |
+| `noTrap` | stepping on no creak or lego | yes |
+| `noWake` | no noise ever waking a sleeper | yes |
+| `noBark` | the dog never barking | yes |
+| `noSpill` | never spilling the milk | yes |
+| `thunder` | only running while something covers your noise | yes |
+
+The validator refuses a mission the level cannot offer (`noBark` without a dog, `alkansya` without one...).
+
+## Routines
+
+A route point can name what the adult does while waiting there: `[x, y, waitSeconds, faceRadians, "luto"]`
+(`ACTIVITIES` in `src/entities/adult.js`). Busy people watch less, a bubble says what they are starting, and any
+noise (or seeing something) ends the routine at once.
+
+| Routine | Eyes | Notes |
+|---|---|---|
+| `luto` `hugas` `sampay` | see nothing | cooking, washing up, hanging laundry (reach pose) |
+| `idlip` | see nothing | dozing (sleep pose) |
+| `phone` `kanta` | see nothing, hear nothing | on the phone, singing |
+| `walis` `dilig` `bilang` | half range or less | sweeping, watering plants, counting money |
+| `tv` `kwento` | a narrow cone | watching TV, chatting |
+
+## Cover, crowds and wardrobes
+
+- `K` and `M` are furniture that blocks sight; `L` blocks sight but not movement, so a kid standing in the
+  washing is invisible (and an adult walking through it is blind for a step). Sound ignores all three.
+- A wardrobe's top half is drawn over the tile behind it. The validator rejects a spawn, exit, stash, item, hiding
+  spot, switch, device or trap placed there.
+- Party guests (`bisita`) block sight as before, and now also hide you: walk (don't run) within 20 px of one and
+  adults who are not already chasing only notice you from 30 px.
+- `node tools/level-lint.mjs` prints, per level: bare floor, islands to walk around, sides to stand at per stash,
+  and the bot's time against par. `tests/redesign.test.mjs` holds every campaign level to those numbers.
 
 ## Stashes (targets)
 

@@ -71,7 +71,7 @@ export function playBot(L, { run = false, maxT = 900, lives = 3, god = true } = 
           else if (!ctx || ctx.kind !== 'door') inp.mv = dirTo(n);
         } else {
           inp.mv = dirTo(n);
-          inp.mv.run = run || (w.switches.some((s) => s.timer > 0) && !near(obj)); // a timed gate: hurry
+          inp.mv.run = (run || (w.switches.some((s) => s.timer > 0) && !near(obj))) && !p.carry; // nobody runs with a full bowl of milk // a timed gate: hurry
           if (Math.hypot(n.x - p.x, n.y - p.y) < 2) path.shift();
         }
       }

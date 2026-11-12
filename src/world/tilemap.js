@@ -1,12 +1,17 @@
 // Tile grid. DOM-free so it can be unit-tested in Node.
 export const TILE = 16;
 
-// '#' wall | '.' wood floor | ',' tile floor | 'R' rug (walkable)
-// solid furniture: T table, S sofa, B bed, P plant, C counter, F fridge
+// '#' wall | '.' wood floor | ',' tile floor | ';' grass | ':' concrete | 'R' rug (walkable)
+// low furniture (solid, you can see over it): T table, S sofa, B bed, P plant, C counter, F fridge,
+//                                             H bangko (stool/bench), W water drum, A estante (low shelf)
+// tall furniture (solid AND blocks sight):    K aparador (wardrobe), M market stall with an awning
+// 'L' hanging laundry: walkable, but nobody sees through it (or into it)
 // dynamic: D closed door (solid, blocks sight) / d open door,
 //          G closed gate (solid, see-through bars) / g open gate
-const SOLID = new Set('#TSBPCFDG');
-const OPAQUE = new Set('#D');
+const SOLID = new Set('#TSBPCFHWAKMDG');
+const OPAQUE = new Set('#DKML');
+export const FURNITURE = 'TSBPCFHWAKM';
+export const FLOORS = '.,;:';
 
 export class TileMap {
   constructor(rows) {
@@ -26,7 +31,7 @@ export class TileMap {
   }
   tileSolid(tx, ty) { return SOLID.has(this.ch(tx, ty)); }
   isSolidAt(px, py) { return this.tileSolid(Math.floor(px / TILE), Math.floor(py / TILE)); }
-  // Walls and closed doors stop sight; furniture and gate bars do not.
+  // Walls, closed doors, wardrobes, stalls and hanging laundry stop sight; low furniture and gate bars do not.
   blocksLosAt(px, py) { return OPAQUE.has(this.ch(Math.floor(px / TILE), Math.floor(py / TILE))); }
   // Axis-aligned box of half-size r centred on (x,y) overlaps something solid?
   blocked(x, y, r) {

@@ -2,9 +2,10 @@
 // forward on load, unknown or broken fields fall back to defaults, and every access is wrapped in try/catch
 // (private mode, full storage, blocked site data). Save codes let players move a save to another device.
 import { hashStr } from './rng.js';
+import { maskFromStars, starsOf } from '../game/missions.js';
 
 const KEY = 'kupit.save.v1'; // the storage key never changes; the schema version is inside the save
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 export const DEFAULT_OPTS = { music: 0.75, sfx: 1, shake: 1, flash: true, pulse: true, left: false, ghost: true };
 
@@ -20,7 +21,10 @@ export const fresh = () => ({
   mutators: [], mutatorClears: {},
   streak: { last: null, n: 0, best: 0 },
   houseDay: { id: null, n: 0 }, // Random Houses cleared today (diminishing payouts)
-  story: { intro: false, ending: false },
+  story: { intro: false, ending: false, epilogue: false, nena: false, seen: {} }, // seen: level id -> its scene has played
+  // v3
+  needs: {},                // what has been bought for Mingming and the kittens (progression.js NEEDS)
+  missions: {},             // level id -> bit mask of its missions done so far (stars[id] = how many bits are set)
 });
 
 // version -> function that upgrades a save of that version by one step
@@ -28,6 +32,16 @@ const MIGRATIONS = {
   1: (s) => { // v1 had no options, cosmetics or tips; the haptics flag moves into the options too
     s.opts = { ...DEFAULT_OPTS };
     s.v = 2;
+    return s;
+  },
+  2: (s) => { // v3: the cat story. Three levels were added and the sari-sari boss became the storm, so the
+    // "furthest level" index moves; the old ending is not the new one; kids are no longer bought.
+    const NEW_INDEX = [0, 1, 2, 3, 4, 5, 7, 8, 9, 11, 12, 13, 14, 15];
+    const u = Math.max(0, Math.floor(Number(s.unlocked) || 0));
+    s.unlocked = NEW_INDEX[Math.min(u, NEW_INDEX.length - 1)];
+    for (const k of ['stars', 'best', 'alkansya']) if (s[k] && typeof s[k] === 'object') delete s[k]['boss5-sarisari'];
+    if (s.story && typeof s.story === 'object') s.story.ending = false;
+    s.v = 3;
     return s;
   },
 };
@@ -52,10 +66,16 @@ export function migrate(raw) {
   out.streak = { ...def.streak, ...(isObj(s.streak) ? s.streak : {}) };
   out.houseDay = { ...def.houseDay, ...(isObj(s.houseDay) ? s.houseDay : {}) };
   out.story = { ...def.story, ...(isObj(s.story) ? s.story : {}) };
+  if (!isObj(out.story.seen)) out.story.seen = {};
   if (!out.chars.includes('jun')) out.chars = ['jun', ...out.chars];
   if (!out.chars.includes(out.char)) out.char = 'jun';
   if (!out.outfits.includes('basic')) out.outfits = ['basic', ...out.outfits];
   if (!out.outfits.includes(out.outfit)) out.outfit = 'basic';
+  // stars are missions now: a save that only has a star count gets that many missions ticked, and the two always agree
+  for (const [id, n] of Object.entries(out.stars)) {
+    if (!Number.isInteger(out.missions[id])) out.missions[id] = maskFromStars(n);
+    out.stars[id] = starsOf(out.missions[id]);
+  }
   out.bank = Math.max(0, Math.floor(Number(out.bank) || 0));
   out.unlocked = Math.max(0, Math.floor(Number(out.unlocked) || 0));
   return out;

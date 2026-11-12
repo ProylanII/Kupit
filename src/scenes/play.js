@@ -2,8 +2,9 @@
 import { TILE } from '../world/tilemap.js';
 import { angDiff } from '../world/los.js';
 import { World } from '../game/world.js';
-import { buildBackground } from '../render/tiles.js';
-import { drawActor, drawTarget, drawCoin, drawObj, drawPortrait, getSprite, KEY_COLORS } from '../render/sprites.js';
+import { buildBackground, drawLaundry, drawTallTop } from '../render/tiles.js';
+import { drawActor, drawTarget, drawCoin, drawObj, drawPortrait, getSprite, drawStar, KEY_COLORS } from '../render/sprites.js';
+import { MISSIONS, missionLabel } from '../game/missions.js';
 import { C, hexToRgb } from '../render/palette.js';
 import { drawText, textWidth } from '../ui/font.js';
 import { sfx } from '../core/audio.js';
@@ -70,12 +71,17 @@ const TIPS = {
   locked: 'LOCKED! FIND THE KEY OF THE SAME COLOR',
   switch: 'LEVERS OPEN GATES. SOME SHUT AGAIN SOON',
   device: 'TV OR RADIO: TURN IT ON TO PULL ADULTS AWAY',
+  thunder: 'THUNDER COVERS YOUR NOISE. RUN WHILE IT ROLLS!',
+  videoke: 'VIDEOKE! WHILE THEY SING, NOBODY HEARS YOU',
+  blend: 'WALK BESIDE A GUEST: YOU BLEND INTO THE CROWD',
+  laundry: 'LAUNDRY HIDES YOU. NOBODY SEES THROUGH IT',
+  routine: 'BUSY ADULTS SEE LESS. WATCH WHAT THEY ARE DOING',
   kain: 'KAIN NA BAR: GET OUT BEFORE DINNER TIME!',
   caught: (p) => `CAUGHT! SOME COINS WENT BACK. ${p.world.livesLeft} CHANCES LEFT`,
   dog: 'ASO BARKS WHEN HE SEES YOU. PANDESAL BRIBES HIM',
   tanod: "TANOD'S FLASHLIGHT SWEEPS. HIS WHISTLE CALLS ALL",
   tindera: 'TINDERA SHOUTS, BUT NEVER LEAVES HER STALL',
-  bisita: 'GUESTS BLOCK THE VIEW. HIDE BEHIND THEM',
+  bisita: 'GUESTS BLOCK THE VIEW. WALK WITH ONE TO BLEND IN',
   trike: 'TRICYCLE! IT KNOCKS YOU DOWN. TIME YOUR CROSSING',
   seenHide: 'THEY SAW YOU HIDE! THE EYE MEANS: NOT SAFE HERE',
 };
@@ -112,6 +118,13 @@ export class Play {
     this.actors = [];
     this.castT = 0;          // kid's skill pose
     this.barks = new Map();  // adult -> seconds left of the bark pose
+    this.notes = [];         // music notes floating up from a videoke
+    // kittens trotting after you (the epilogue, and Tigre once the story is over): they follow your footsteps
+    this.crumbs = [];
+    this.kittens = Array.from({ length: opts.kitten | 0 }, (_, i) => ({ x: this.world.player.x, y: this.world.player.y, look: ['tigre', 'puti', 'muning'][i % 3], dir: 0, stepT: 0, moving: false }));
+    this.cardT = level.tutorial || level.hingi ? 0 : 5; // the mission card at the start of a level
+    // cats that simply live in this room (the epilogue: Mingming asleep on the rug)
+    this.cats = (level.cats || []).map((c) => ({ look: c.kind || 'pusa', x: c.at[0] * TILE + TILE / 2, y: c.at[1] * TILE + TILE / 2, dir: c.dir ?? 2, pose: c.pose || 'sit' }));
     this.updateCamera(1);
   }
 
@@ -181,10 +194,15 @@ export class Play {
     this.input.itemEnabled = new Set(w.player.items).size > 1;
     w.update(dt, this.input.poll());
     this.steps++;
-    if (!this.stealthLost && !w.stealthOk) { // once per run, so the star rule is never a surprise on the clear screen
-      this.stealthLost = true;
-      if (!w.scold && w.status === 'play') this.toast = { text: 'SPOTTED! NO SILENT STAR THIS RUN', col: C.orange, t: 2.2 };
-    }
+    this.cardT = Math.max(0, this.cardT - dt);
+    this.updateKittens(dt);
+    if (w.cover === 'videoke') this.showTip('videoke');
+    if (w.player.blend) this.showTip('blend');
+    if (w.map.ch(w.player.tx, w.player.ty) === 'L') this.showTip('laundry');
+    if (w.time > 1 && w.adults.some((a) => a.busy && this.onScreen(a.x, a.y))) this.showTip('routine');
+    for (const v of w.videokes) if (v.singing && this.onScreen(v.x, v.y, 20) && Math.random() < dt * 4) this.notes.push({ x: v.x + Math.random() * 16 - 8, y: v.y - 10, l: 1.2, k: Math.random() < 0.5 });
+    for (const n of this.notes) { n.y -= 14 * dt; n.x += Math.sin(n.l * 6) * 10 * dt; n.l -= dt; }
+    keep(this.notes, (n) => n.l > 0);
     if (this.rec && this.steps % GHOST_EVERY === 0 && w.status === 'play') this.rec.push([w.player.x, w.player.y, !!w.player.hidden]);
     this.updateCamera(dt * 9);
     for (const e of w.events) this.onEvent(e, dt);
@@ -234,12 +252,19 @@ export class Play {
       case 'stealTick':
         if ((this.tickT -= dt) <= 0) { sfx.steal(); this.tickT = 0.22; }
         break;
-      case 'stealNoise': ({ wallet: sfx.zipper, bayong: sfx.rustle, piggy: sfx.jingle, candy: sfx.jingle, alkansya: sfx.jingle }[e.kind] || sfx.clasp)(); break;
+      case 'stealNoise': ({ wallet: sfx.zipper, bayong: sfx.rustle, piggy: sfx.jingle, candy: sfx.jingle, alkansya: sfx.jingle, kuting: sfx.meow }[e.kind] || sfx.clasp)(); break;
       case 'coin':
         if (e.kind === 'purse') sfx.clasp();
         sfx.coin(); this.buzz(15, C.gold);
         for (let i = 0; i < e.n * 2; i++) this.parts.push({ x: e.x + (Math.random() * 14 - 7), y: e.y - 4, vy: -50 - Math.random() * 40, l: 1 });
         break;
+      case 'lightning': if (settings.flash) this.bolt = 0.3; break;
+      case 'videoke': if (this.onScreen(e.x, e.y, 40)) sfx.music(); break;
+      case 'missionLost': // once per mission, so the stars are never a surprise on the clear screen
+        if (!w.scold && w.status === 'play' && !this.level.hingi) this.toast = { text: `STAR LOST: ${missionLabel(this.level, e.id)}`, col: C.orange, t: 2.4 };
+        break;
+      case 'thunder': sfx.thunder(); this.kick(2); this.showTip('thunder'); break;
+      case 'spill': sfx.ouch(); this.buzz(50); this.toast = { text: 'THE MILK SPILLED! GET IT AGAIN', col: C.orange, t: 2.4 }; break;
       case 'alkansya': this.toast = { text: `ALKANSYA! +${e.n} BONUS`, col: C.green, t: 2.2 }; break;
       case 'spotted': case 'bark':
         sfx.alert(); this.buzz(40); this.kick(2);
@@ -254,7 +279,7 @@ export class Play {
         }
         break;
       case 'respawn': sfx.hide(); for (let i = 0; i < 10; i++) this.dust.push({ x: e.x + Math.random() * 12 - 6, y: e.y + Math.random() * 6, vx: Math.random() * 20 - 10, l: 0.6 }); break;
-      case 'clear': sfx.clear(); this.buzz([30, 30, 30], C.green); break;
+      case 'clear': if (!this.opts.quietClear) sfx.clear(); this.buzz([30, 30, 30], C.green); break;
       case 'door': case 'switch': sfx.click(); break;
       case 'creak': case 'locked': sfx.creak(); break;
       case 'ouch': sfx.ouch(); this.buzz(60); this.kick(3); if (w.adults.some((a) => a.cfg.vehicle && a.say)) sfx.horn(); break;
@@ -281,34 +306,79 @@ export class Play {
   }
 
   // ---------------------------------------------------------------- drawing
+  // Vision cones: a soft wash of light that fades with distance and toward its edges, with a crisp rim so the
+  // exact boundary is never in doubt. Calm = pale yellow, suspicious = stronger and dotted, about to chase = red
+  // and solid: the state reads by brightness and texture as well as by colour.
   drawCones(g) {
     const d = this.coneData.data, cx = this.cx, cy = this.cy;
     d.fill(0);
     for (const a of this.world.adults) {
       if (!a.awake || a.freezeT > 0 || a.cfg.harmless) continue; // charmed adults see nothing, so no cone
-      const { range, fov } = a.cfg, va = a.va;
+      const range = a.range, fov = a.fov, va = a.va;
+      if (range <= 0 || fov <= 0) continue; // busy with a routine that takes their eyes off the room
       const N = a.rays.length - 1;
       const t = Math.min(1, a.alert * 1.4);
       const col = [0, 1, 2].map((i) => Math.round(YELLOW[i] + (RED[i] - YELLOW[i]) * t));
+      const base = 62 + 110 * t; // calm cones stay out of the way of the room art
       const x0 = Math.max(cx, Math.floor(a.x - range)), x1 = Math.min(cx + VIEW_W - 1, Math.ceil(a.x + range));
       const y0 = Math.max(cy, Math.floor(a.y - range)), y1 = Math.min(cy + VIEW_H - 1, Math.ceil(a.y + range));
       for (let py = y0; py <= y1; py++) {
         for (let px = x0; px <= x1; px++) {
-          // the dither pattern changes with alert level too, so the state reads without colour
-          if (a.alert < 0.35 ? (px + py) & 1 : a.alert < 0.7 ? (px & 1) && (py & 1) : 0) continue;
           const dx = px + 0.5 - a.x, dy = py + 0.5 - a.y;
           const dist = Math.hypot(dx, dy);
           if (dist > range) continue;
           const rel = angDiff(Math.atan2(dy, dx) - va);
           if (rel < -fov || rel > fov) continue;
-          if (dist > a.rays[Math.round(((rel + fov) / (2 * fov)) * N)]) continue;
+          const ray = a.rays[Math.round(((rel + fov) / (2 * fov)) * N)];
+          if (dist > ray) continue;
+          const edge = Math.min(ray - dist, (fov - Math.abs(rel)) * dist); // px to the nearest boundary
+          let al;
+          if (edge < 1.2 && dist > 6) al = base + 70;                                  // the rim
+          else {
+            al = base * (1 - 0.55 * (dist / range)) * Math.min(1, 0.45 + edge / 14);   // soft falloff
+            if (a.alert >= 0.3 && a.alert < 0.7 && ((px + py) & 3) === 0) al += 60;    // suspicious: dotted
+          }
           const o = ((py - cy) * VIEW_W + (px - cx)) * 4;
-          d[o] = col[0]; d[o + 1] = col[1]; d[o + 2] = col[2]; d[o + 3] = 255;
+          if (al <= d[o + 3]) continue; // overlapping cones: the stronger one wins
+          d[o] = col[0]; d[o + 1] = col[1]; d[o + 2] = col[2]; d[o + 3] = Math.min(255, al);
         }
       }
     }
     this.coneG.putImageData(this.coneData, 0, 0);
     g.drawImage(this.coneCv, cx, cy);
+  }
+
+  // Kittens follow the trail of your footsteps, each a little further behind, and sit when you stop.
+  updateKittens(dt) {
+    if (!this.kittens.length) return;
+    const p = this.world.player, cr = this.crumbs, last = cr[cr.length - 1];
+    if (!last || Math.hypot(p.x - last.x, p.y - last.y) > 3) { cr.push({ x: p.x, y: p.y }); if (cr.length > 80) cr.shift(); }
+    this.kittens.forEach((k, i) => {
+      const tg = cr[Math.max(0, cr.length - 1 - (i + 1) * 5)] || p;
+      const dx = tg.x - k.x, dy = tg.y - k.y, d = Math.hypot(dx, dy);
+      k.moving = d > 2;
+      if (!k.moving) return;
+      const sp = Math.min(d, (d > 40 ? 90 : 46) * dt);
+      k.x += (dx / d) * sp; k.y += (dy / d) * sp; k.stepT += dt * 9;
+      k.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 1 : 2) : (dy < 0 ? 3 : 0);
+    });
+  }
+
+  // Hanging laundry is drawn over anyone standing in it (only the tiles on screen).
+  drawOverlayTiles(g) {
+    const map = this.world.map, t = performance.now() / 1000;
+    const tx0 = Math.max(0, Math.floor(this.cx / TILE)), ty0 = Math.max(0, Math.floor(this.cy / TILE));
+    const tx1 = Math.min(map.w - 1, Math.ceil((this.cx + VIEW_W) / TILE)), ty1 = Math.min(map.h - 1, Math.ceil((this.cy + MAP_H) / TILE));
+    for (let ty = ty0; ty <= Math.min(map.h - 1, ty1 + 1); ty++) for (let tx = tx0; tx <= tx1; tx++) {
+      const c = map.ch(tx, ty);
+      if (c !== 'L' && c !== 'K') continue;
+      if (c === 'L') drawLaundry(g, map, tx, ty, t); else drawTallTop(g, map, tx, ty);
+      if (this.level.night) { // these are drawn after the darkness, so they get their own share of it
+        g.globalAlpha = this.level.brownout ? 0.7 : 0.55; g.fillStyle = '#0c1230';
+        if (c === 'L') g.fillRect(tx * TILE, ty * TILE - 5, TILE, 19); else if (map.ch(tx, ty - 1) !== 'K') g.fillRect(tx * TILE, ty * TILE - 10, TILE, 10);
+        g.globalAlpha = 1;
+      }
+    }
   }
 
   // Night: a dark layer with pools of light cut out (kid's eyes adjusting, TV glow, moonlight, the open exit).
@@ -336,7 +406,8 @@ export class Play {
     light(p.x, p.y, brown ? 18 : 24);
     if (!brown) for (const wi of this.bg.windows || []) light(wi.x, wi.y + 4, 15, this.level.pasko ? C.gold : '#9fc0ff');
     for (const d of w.devices) if (d.on) light(d.x, d.y, 34 + (Math.floor(now * 9) % 3), '#7fd7ff');
-    for (const a of w.adults) if (a.type === 'tanod' && a.awake) light(a.x + Math.cos(a.va) * 30, a.y + Math.sin(a.va) * 30, 22, C.yellow); // flashlight
+    for (const t of w.targets) if (!t.done && t.kind === 'kuting') light(t.x, t.y, 9 + (Math.floor(now * 2) % 2), C.yellow); // a kitten's eyes catch the light
+    for (const a of w.adults) if (a.cfg.scan && a.awake) light(a.x + Math.cos(a.va) * 30, a.y + Math.sin(a.va) * 30, 22, C.yellow); // flashlight
     if (w.open) light(w.exit.x, w.exit.y, 20, C.green);
     n.globalCompositeOperation = 'source-over'; n.globalAlpha = 1;
     g.drawImage(this.nightCv, cx, cy);
@@ -422,6 +493,10 @@ export class Play {
         drawText(g, Math.floor(performance.now() / 300) % 2 ? '*' : '+', d.x + 6, d.y - 12, C.pink, { shadow: C.ink });
       }
     }
+    for (const v of w.videokes) {
+      drawObj(g, 'videoke', v.x, v.y - 2);
+      if (v.singing) { g.globalAlpha = 0.5; ring(g, Math.round(v.x), Math.round(v.y), v.r, Math.floor(now / 300) % 2 ? C.pink : C.teal, 4); g.globalAlpha = 1; }
+    }
     for (const t of w.targets) {
       drawTarget(g, t.kind, t.x, t.y, t.done);
       if (t.bonus && !t.done && Math.floor(now / 400) % 3 === 0) { g.fillStyle = C.white; g.fillRect(Math.round(t.x) + 3, Math.round(t.y) - 5, 1, 1); } // glint
@@ -443,16 +518,25 @@ export class Play {
     const actors = this.actors;
     actors.length = 0;
     for (const a of w.adults) actors.push(a);
-    if (!p.hidden) actors.push(p);
+    for (const c of this.cats) actors.push(c);
+    if (!p.hidden) { actors.push(p); for (const k of this.kittens) actors.push(k); }
     actors.sort((u, v) => u.y - v.y);
     const blink = p.graceT > 0 && Math.floor(now / 100) % 2;
     for (const e of actors) {
-      if (e === p) {
+      if (e.look) drawActor(g, e.look, e.x, e.y, e.dir, e.pose || (e.moving ? Math.floor(e.stepT) % 4 : 'sit'));
+      else if (e === p) {
         // kid poses: caught > skill cast > kupit (reach) > walk cycle (sneak 8 fps, run 13.6 fps) > idle
         if (!blink) drawActor(g, this.look, p.x, p.y, p.dir, w.status === 'caught' || w.scold ? 'caught' : this.castT > 0 ? 'cast' : p.stealing ? 'reach' : p.moving ? Math.floor(p.stepT * 8) % 4 : 0);
       } else this.drawAdult(g, e);
     }
     for (const h of w.hides) if (h.kind === 'curtain') drawObj(g, 'curtain', h.x, h.y - 1);
+    this.drawOverlayTiles(g);
+    for (const n of this.notes) drawText(g, '*', Math.round(n.x), Math.round(n.y), n.k ? C.pink : C.yellow, { shadow: C.ink });
+    if (p.blend && !p.hidden) { // one more kid in the crowd: a little green "unseen" mark over your head
+      const by = Math.round(p.y) - 24 - (Math.floor(now / 300) % 2);
+      g.fillStyle = C.ink; g.fillRect(Math.round(p.x) - 4, by - 1, 9, 5);
+      g.fillStyle = C.green; g.fillRect(Math.round(p.x) - 3, by, 3, 3); g.fillRect(Math.round(p.x) + 1, by, 3, 3);
+    }
     if (p.hidden) { // peeking eyes
       const b = Math.floor(performance.now() / 700) % 4 === 0;
       if (!b) { g.fillStyle = C.white; g.fillRect(p.x - 3, p.y - 3, 2, 2); g.fillRect(p.x + 1, p.y - 3, 2, 2); g.fillStyle = C.ink; g.fillRect(p.x - 2, p.y - 2, 1, 1); g.fillRect(p.x + 2, p.y - 2, 1, 1); }
@@ -486,6 +570,9 @@ export class Play {
     if (w.say) bubble(g, w.say.text, p.x, Math.round(p.y) - 30, this.cx);
     for (const a of w.adults) if (a.say) bubble(g, a.say.text, a.x, Math.round(a.y) - 34, this.cx, C.ink, a.state === 'chase' || w.scold?.who === a ? C.red : C.white);
     g.restore();
+    if (p.carry) drawTarget(g, 'gatas', p.x - this.cx + sx, p.y - this.cy + sy - 21, false);
+    if (this.level.storm) this.drawStorm(g, fd);
+    this.drawCover(g);
     if (this.flash > 0) { g.globalAlpha = this.flash * 0.5; g.fillStyle = C.red; g.fillRect(0, 0, VIEW_W, MAP_H); g.globalAlpha = 1; }
     if (this.pulse > 0) { // visual stand-in for vibration
       g.globalAlpha = Math.min(1, this.pulse * 2.5); g.fillStyle = this.pulseCol;
@@ -565,6 +652,38 @@ export class Play {
   }
 
   // Step-by-step coaching for the tutorial level, driven by what the player is doing.
+  // Typhoon: slanting rain, a white flash for lightning, and a cue while the thunder covers your noise.
+  drawStorm(g, fd) {
+    const t = performance.now() / 1000;
+    g.globalAlpha = 0.4; g.fillStyle = '#9fb8e8';
+    for (let i = 0; i < 80; i++) {
+      const x = (i * 37 + t * 90 + i * i) % VIEW_W, y = (i * 53 + t * 420) % MAP_H;
+      g.fillRect(Math.round(x), Math.round(y), 1, 4);
+    }
+    g.globalAlpha = 1;
+    if (this.bolt > 0) { g.globalAlpha = Math.min(0.7, this.bolt * 3); g.fillStyle = C.white; g.fillRect(0, 0, VIEW_W, MAP_H); g.globalAlpha = 1; this.bolt -= fd; }
+  }
+
+  // While thunder rolls or the videoke is belting out a chorus over you: nobody can hear a thing you do.
+  drawCover(g) {
+    const c = this.world.cover;
+    if (!c) return;
+    g.globalAlpha = 0.8; g.fillStyle = C.ink; g.fillRect(VIEW_W / 2 - 56, 32, 112, 11); g.globalAlpha = 1;
+    drawText(g, c === 'thunder' ? 'KULOG! NOBODY CAN HEAR YOU' : 'VIDEOKE! NOBODY CAN HEAR YOU', VIEW_W / 2, 35, C.green, { align: 'center' });
+  }
+
+  // The level's three missions, shown for the first seconds of a run (and on the pause screen).
+  drawMissions(g, y, earned = 0) {
+    const w = this.world, st = w.missionState();
+    g.globalAlpha = 0.82; g.fillStyle = C.ink; g.fillRect(VIEW_W / 2 - 84, y, 168, 36); g.globalAlpha = 1;
+    st.forEach((m, i) => {
+      const had = (earned >> i) & 1;
+      drawStar(g, VIEW_W / 2 - 78, y + 4 + i * 10, !!had);
+      drawText(g, missionLabel(this.level, m.id), VIEW_W / 2 - 68, y + 5 + i * 10, m.lost ? C.dgray : had ? C.gold : C.white);
+      if (m.lost) { g.fillStyle = C.red; g.fillRect(VIEW_W / 2 - 69, y + 7 + i * 10, textWidth(missionLabel(this.level, m.id)) + 2, 1); }
+    });
+  }
+
   tutorialHint() {
     if (!this.level.tutorial) return null;
     const w = this.world, p = w.player;
@@ -587,11 +706,17 @@ export class Play {
     const napping = !a.awake && a.cfg.sleepy && !eating;
     const barking = (this.barks.get(a) || 0) > 0;
     const shout = this.world.catcher === a || (a.awake && !a.moving && (a.state === 'chase' || a.alert >= 0.6));
+    const busy = a.busy && !a.moving ? a.busy : null;
     const frame = eating ? 'eat' : napping ? 'sleep' : !a.awake && a.cfg.phone ? 'phone' : !a.awake && a.cfg.cook ? 'reach'
-      : barking || shout ? 'alert' : a.moving ? Math.floor(a.stepT * 6) % 4 : 0;
+      : barking || shout ? 'alert' : busy && busy.pose ? busy.pose : a.moving ? Math.floor(a.stepT * 6) % 4 : 0;
     const top = drawActor(g, a.type, a.x, a.y, dir, frame, { dim: napping });
     const cx = Math.round(a.x);
     if (a.cfg.harmless) return;
+    if (busy && a.alert <= 0.12) { // a routine: its prop, and a mark that says "eyes off the room"
+      if (busy.prop) drawObj(g, busy.prop, cx + (dir === 1 ? -9 : 9), Math.round(a.y) - 1);
+      const b = Math.floor(performance.now() / 450) % 2;
+      drawText(g, busy.pose === 'sleep' ? 'Z' : busy === a.busy && busy.range === 0 ? '~' : '.', cx + 5, top - 6 - b, busy.range === 0 ? C.green : C.white, { shadow: C.ink });
+    }
     if (napping) {
       const b = Math.floor(performance.now() / 500) % 2;
       drawText(g, a.cfg.depth && a.depth < 0.35 ? 'Z' : 'ZZ', cx + 4, top - 6 - b, a.cfg.depth && a.depth < 0.35 ? C.orange : C.white, { shadow: C.ink });
@@ -688,7 +813,7 @@ export class Play {
     const coinTxt = `${w.coins}/${this.level.quota}`;
     drawText(g, coinTxt, 13, 6, C.white, sh);
     // chances left: little tsinelas, crossed out once used
-    if (w.lives > 1) {
+    if (w.lives > 1 && !this.level.hingi) { // (nobody is counting chances in the epilogue)
       let x = 16 + textWidth(coinTxt);
       for (let i = 0; i < w.lives; i++) {
         const used = i >= w.livesLeft;
@@ -720,9 +845,11 @@ export class Play {
       drawText(g, line, VIEW_W / 2, 21, this.tip ? C.green : th ? C.white : C.yellow, { align: 'center' });
     }
     if (this.toast) {
-      g.globalAlpha = 0.8; g.fillStyle = C.ink; g.fillRect(VIEW_W / 2 - 70, 140, 140, 15); g.globalAlpha = 1;
+      const tw = Math.max(140, textWidth(this.toast.text) + 12);
+      g.globalAlpha = 0.8; g.fillStyle = C.ink; g.fillRect(VIEW_W / 2 - tw / 2, 140, tw, 15); g.globalAlpha = 1;
       drawText(g, this.toast.text, VIEW_W / 2, 145, this.toast.col, { align: 'center' });
     }
+    if (this.cardT > 0 && !this.banner && !w.scold && w.status === "play") { g.globalAlpha = Math.min(1, this.cardT * 2); this.drawMissions(g, 160, this.opts.earned | 0); g.globalAlpha = 1; }
     if (w.scold) { // the caught beat: who caught you, and what's left
       const a = w.scold.who;
       g.globalAlpha = 0.8; g.fillStyle = C.ink; g.fillRect(0, 96, VIEW_W, 38); g.globalAlpha = 1;
@@ -737,10 +864,14 @@ export class Play {
     g.fillStyle = C.ink; g.fillRect(0, MAP_H, VIEW_W, VIEW_H - MAP_H);
     g.fillStyle = C.wallD; g.fillRect(0, MAP_H, VIEW_W, 1);
     const pr = w.prompt;
-    drawText(g, pr ? pr.label : w.open ? 'GO TO THE EXIT!' : `NEED ${this.level.quota - w.coins} MORE`, tx, MAP_H + 8, pr ? C.gold : w.open ? C.green : C.gray, al);
+    const left = this.level.quota - w.coins, need = left > 0 ? `${this.level.giveBack ? 'PUT BACK' : this.level.hingi ? 'ASK FOR' : 'NEED'} ${left} MORE` : 'GET THE MILK';
+    drawText(g, pr ? pr.label : w.open ? 'GO TO THE EXIT!' : need, tx, MAP_H + 8, pr ? C.gold : w.open ? C.green : C.gray, al);
+    if (w.player.blend) drawText(g, 'BLENDING IN', tx, MAP_H + 17, C.green, al);
     let kx = L ? VIEW_W - 9 : 9;
     for (const k of w.player.keys) { drawObj(g, 'key', kx, MAP_H + 24, k); kx += L ? -10 : 10; }
-    if (!L) drawText(g, this.input.touchUsed ? 'DRAG: MOVE   DRAG FAR: RUN' : 'SHIFT RUN  E ACT  Q THROW  F SKILL', 6, MAP_H + 32, C.dgray);
+    const hints = this.level.tutorial || w.time < 12; // control reminders: the first level, and the first seconds of the rest
+    if (!hints) { /* a clean strip */ }
+    else if (!L) drawText(g, this.input.touchUsed ? 'DRAG: MOVE   DRAG FAR: RUN' : 'SHIFT RUN  E ACT  Q THROW  F SKILL', 6, MAP_H + 32, C.dgray);
     else drawText(g, this.input.touchUsed ? 'DRAG: MOVE' : 'E ACT Q THROW', tx, MAP_H + 32, C.dgray, al);
 
     // character skill button
@@ -759,7 +890,7 @@ export class Play {
     disc(g, BUTTON.x, BUTTON.y, BUTTON.r, C.ink);
     disc(g, BUTTON.x, BUTTON.y, BUTTON.r - 2, pr ? (down ? C.gold : C.gold2) : C.dgray);
     if (pr) this.actIcon(g, pr, BUTTON.x, BUTTON.y - 7);
-    const label = pr ? pr.label : 'KUPIT';
+    const label = pr ? pr.label : this.level.hingi ? 'HINGI' : 'KUPIT';
     drawText(g, label.length > 6 ? label.slice(0, 6) : label, BUTTON.x, BUTTON.y + (pr ? 2 : -2), pr ? C.ink : C.gray, { align: 'center' });
 
     // throw button (hold to aim) + item selector

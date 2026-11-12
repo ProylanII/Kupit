@@ -1,0 +1,230 @@
+{
+ "id": "bagyo",
+ "name": "BAGYO",
+ "night": true,
+ "storm": {
+  "every": 7,
+  "dur": 2.4
+ },
+ "ending": true,
+ "clearText": "KITTENS SAFE!",
+ "hint": "LIGHTNING, THEN THUNDER: RUN WHILE IT ROLLS!",
+ "missions": [
+  "thunder",
+  "noCatch"
+ ],
+ "boss": {
+  "title": "BAGYO: SAVE THE KITTENS",
+  "index": 0,
+  "bonus": 30,
+  "phases": [
+   {
+    "at": 2,
+    "banner": "TATAY IS OUT LOOKING TOO!",
+    "spawn": [
+     {
+      "type": "tatay",
+      "route": [
+       [
+        8,
+        13,
+        1
+       ],
+       [
+        12,
+        16,
+        2
+       ],
+       [
+        9,
+        19,
+        1
+       ]
+      ],
+      "cfg": {
+       "shout": "JUN?! IKAW BA YAN?",
+       "scold": "ANAK! PASOK SA BAHAY!",
+       "scan": {
+        "amp": 0.85,
+        "speed": 1.4
+       },
+       "range": 70
+      }
+     }
+    ]
+   },
+   {
+    "at": 4,
+    "banner": "THE WATER IS RISING! TAKBO!",
+    "escape": 45,
+    "adult": {
+     "index": 0,
+     "speed": 30
+    }
+   }
+  ]
+ },
+ "tiles": [
+  "###############",
+  "#.............#",
+  "#.............#",
+  "####D#####D####",
+  "#;;;;;;;;;;;;;#",
+  "#;;PP;;;;;;;;;#",
+  "#;;;;;;;;;TT;;#",
+  "#;;;;;;;;;;;;;#",
+  "#;;;;;;;;;;;;;#",
+  "#;;;;;PP;;;;;;#",
+  "#;;;;;;;;;;;;;#",
+  "#;;;;;;;;;;;;;#",
+  "###D#######;###",
+  "#......#......#",
+  "#......#......#",
+  "#.............#",
+  "#.............#",
+  "#......#......#",
+  "#......#......#",
+  "#......#......#",
+  "#......#......#",
+  "###############"
+ ],
+ "spawn": [
+  2,
+  1
+ ],
+ "exit": [
+  12,
+  1
+ ],
+ "quota": 4,
+ "par": 150,
+ "targets": [
+  {
+   "kind": "kuting",
+   "at": [
+    1,
+    20
+   ],
+   "coins": 1,
+   "time": 1.6
+  },
+  {
+   "kind": "kuting",
+   "at": [
+    5,
+    18
+   ],
+   "coins": 1,
+   "time": 1.6
+  },
+  {
+   "kind": "kuting",
+   "at": [
+    12,
+    20
+   ],
+   "coins": 1,
+   "time": 1.6
+  },
+  {
+   "kind": "kuting",
+   "at": [
+    9,
+    14
+   ],
+   "coins": 1,
+   "time": 2.2
+  }
+ ],
+ "items": [
+  {
+   "kind": "tsinelas",
+   "at": [
+    7,
+    5
+   ]
+  },
+  {
+   "kind": "tsinelas",
+   "at": [
+    1,
+    16
+   ]
+  }
+ ],
+ "hide": [
+  {
+   "kind": "box",
+   "at": [
+    5,
+    20
+   ]
+  },
+  {
+   "kind": "box",
+   "at": [
+    13,
+    13
+   ]
+  },
+  {
+   "kind": "basket",
+   "at": [
+    12,
+    5
+   ]
+  },
+  {
+   "kind": "box",
+   "at": [
+    1,
+    8
+   ]
+  }
+ ],
+ "alkansya": {
+  "at": [
+   13,
+   17
+  ],
+  "coins": 6
+ },
+ "adults": [
+  {
+   "type": "mama",
+   "route": [
+    [
+     3,
+     7,
+     2
+    ],
+    [
+     11,
+     7,
+     2
+    ],
+    [
+     11,
+     10,
+     2
+    ],
+    [
+     3,
+     10,
+     2
+    ]
+   ],
+   "cfg": {
+    "shout": "JUN?! IKAW BA YAN?",
+    "scold": "ANAK! PASOK SA BAHAY!",
+    "checksHides": true,
+    "speed": 22,
+    "range": 80,
+    "scan": {
+     "amp": 0.8,
+     "speed": 1.2
+    }
+   }
+  }
+ ]
+}

@@ -1,7 +1,9 @@
 # Kupit
 
-A pixel-art stealth game. You're a kid sneaking coins out of Mama's purse, Lola's bayong and Tita's wallet
-without getting caught. (*Kupit* = Filipino slang for sneaking/pocketing something that isn't yours.)
+A pixel-art stealth game with a story. Jun has found a stray cat and her newborn kittens under the house. Mama
+said no more animals, so he keeps them secret and sneaks coins out of Mama's purse, Lola's bayong and Tita's
+wallet to buy them milk. His family works it out long before he does: all he ever had to do was ask.
+(*Kupit* = Filipino slang for sneaking/pocketing something that isn't yours. *Hingi* = to ask for it.)
 
 | | | |
 |---|---|---|
@@ -41,7 +43,7 @@ Collect the coin quota, then reach the exit.
   edge show who is onto you, and pings show noises heard off screen.
 - **Caught?** You get 3 chances per level. Each catch is a short scolding, a third of your coins go back to where
   they came from, and you start again at the last safe spot (a hiding spot or doorway you passed calmly). The third
-  catch ends the level. A catch costs the "silent" star, and par time keeps running.
+  catch ends the level. A catch costs any "never caught" or "no alarm" star, and par time keeps running.
 - **Noise** travels through the rooms: walls stop it and closed doors muffle it. Running, creaky floors, lego (ARAY!)
   and every stash make noise. Purses click, bayongs rustle, wallets zip, and riskier stashes hold more coins. Letting
   go of a half-done kupit keeps most of the progress.
@@ -49,7 +51,7 @@ Collect the coin quota, then reach the exit.
 - **Secret alkansya**: every level hides one bonus stash off the main route.
 - **Bosses** each have a signature rule and finale. Lola's Siesta: a sleep meter that noise drains, then a finale
   where any sound sets her off. Mama sa Kusina: sandok throws. Tatay + Aso: Tatay follows the dog's barks, so
-  pandesal splits them. Ninang's Fiesta: guests are moving cover. Sari-Sari Store: the shutter comes down.
+  pandesal splits them. Ninang's Fiesta: guests are moving cover. Bagyo: the storm, and rising water.
 - **Late levels** add the tanod (sweeping flashlight, whistle), tinderas (shout MAGNANAKAW!, stay by their stall)
   and a tricycle on a timed route.
 - **Random House**: a seeded generator builds a new multi-room house at difficulty 1–5. Mutators (BROWNOUT, WALANG
@@ -57,15 +59,36 @@ Collect the coin quota, then reach the exit.
   each house cleared the same day. The **Daily House** is the same for everyone (it rolls over at midnight Manila
   time). It is easier early in the week and hardest on Sunday, keeps a streak, and has a COPY RESULT share card.
   During Pasko season it's a Noche Buena house.
-- **Kids**: each has a skill (cooldown). Jun: silent dash. Bing: hide anywhere 3s (smaller, slower). Kuya Ramil:
-  yell to lure ahead (throws far, loud run). Nene: freeze watchers 3s (kupit faster).
-- **Store**: upgrades show what they change ("NOISE 48 > 38"), with floors so no combination removes the
-  tension. Outfits (palette swaps) and title-screen decor are looks only. Star milestones at 10/20/30/42 unlock more.
-- **Story**: why Jun needs the coins (a short intro), paid off after the last boss.
+- **The hideout** is the home screen: the space under the house, with Mingming, her kittens and whoever is in on
+  the secret. One big button continues the story; MAP opens the barangay map (levels as houses along a road,
+  grouped into five chapters).
+- **Story**: 17 levels in five chapters (Ang Sikreto, Gatas, Kasabwat, Sa Labas, Bagyo). Scenes play before
+  levels (`src/data/story.js`). The family notices things going missing and grows suspicious. The finale is a
+  typhoon night rescue of the kittens, and the moment Jun is through the door with them he is **caught** ("HULI KA!").
+  Only then do they see what every coin was for, and nobody scolds him. The epilogue level swaps KUPIT for
+  **HINGI**: nobody to hide from, you walk up and ask. Three kittens trot after you there, and Tigre follows you
+  on every level afterwards.
+- **The crew**: Jun leads; Bing, Kuya Ramil and Nene join in story scenes (never bought). Each has a skill
+  (cooldown). Jun: silent dash. Bing: hide anywhere 3s (smaller, slower). Kuya Ramil: yell to lure ahead (throws
+  far, loud run). Nene: freeze watchers 3s (kupit faster).
+- **Aling Nena's store**: coins buy what the cats need (milk, sardines, a blanket, a bigger box, the vet). Each
+  one changes the hideout and the kittens grow. Once Aling Nena learns who the sardines are for she gives a
+  discount. Sneaking gear (upgrades with visible stats and floors) and looks-only outfits and decor are one tap
+  further in. Star milestones at 10/20/30/48 unlock more.
+- **New rules in the story levels**: GATAS: a full bowl of milk must be carried out, and running spills it.
+  IBALIK: Jun took too much, so you sneak the coins *back*. BAGYO: lightning, then thunder, and while it rolls
+  nobody can hear you.
 - **Ghost**: your best run on each level replays as a see-through kid (Options → GHOST).
-- Stars: clear = 1, under par time = +1, **silent** = +1. Silent means no adult's suspicion meter ever filled
-  past a third (a brief `?` is fine, a `!` or a dog's bark is not) and you were never caught. The run tells you the
-  moment it's gone.
+- **Stars are missions.** Every level has three: clear it, plus two of its own (finish under par, never raise an
+  alarm, never get caught, empty every stash, find the alkansya, never hide, throw nothing, never wake a sleeper,
+  the dog never barks, never spill the milk, only run under thunder...). A star stays earned, so you can come back
+  for the ones you missed. The card shows at the start of a level and on the pause screen, the run tells you the
+  moment one is lost, and the map names the next one to go for. "No alarm" means no adult's meter ever filled past
+  a third (a brief `?` is fine, a `!` or a dog's bark is not) and you were never caught.
+- **Cover and routines**: wardrobes, market stalls and hanging laundry block sight (you can walk through laundry).
+  Adults have chores: cooking, washing up, dozing or on the phone they see nothing, sweeping or watching TV they
+  see less, and any noise makes them look up. At the fiesta, walking beside a guest makes you one more kid in the
+  crowd, and while someone sings on the videoke nothing near it can be heard.
 - **KAIN NA!** Some levels have a dinner bar. When it runs out Mama calls you in and the level is over, no matter
   how many chances you have left. The green notch on the bar is par time. Noise comes in two kinds: lures (a
   thrown tsinelas, a creaky board, lego, the TV) make adults walk over to look; glances (running, rummaging in a
@@ -134,6 +157,11 @@ node tools/place-alkansya.mjs   # suggest secret alkansya spots (--write to add 
 - [x] Phase 5: 14 levels (4 new big scrolling ones), camera + objective marker, Random House and Daily House modes
 - [x] Phase 6 (code side): sprite-sheet pipeline, procedural music, PWA, juice
 - [x] Roadmap pass (Nov 2026): failure state, onboarding, threat indicators, explicit actions, path-based sound, economy + cosmetics, kupit profiles, boss signatures + archetypes, accessibility, art lock, alkansya, daily streak/share, mutators, Pasko, story, ghosts, fixed timestep, versioned PWA + save, mobile polish, faster A*, music buffers, soak tests
-- [x] Phase 6 (art): Blender characters rendered through the pipeline inside the locked style (`npm run art:blender`, [docs/ART_SPEC.md](docs/ART_SPEC.md)); the code-drawn sheet stays as `npm run art:code`
+- [x] Phase 6 (art): Blender characters rendered through the pipeline inside the locked style ([docs/ART_SPEC.md](docs/ART_SPEC.md)). Superseded in the redesign pass: the shipped sheet is the code-drawn one again (`npm run art:code`); the Blender toys have no cats or portrait moods
 - [x] Finishing pass (Nov 2026): audit, walkthrough bot, logic review, full pose set, service-worker fix, headless QA ([STATUS.md](STATUS.md))
+- [x] Story pass (Nov 2026): the cat story, hideout hub, barangay map, cat needs replace buying kids, three new
+      level rules (milk carry, put-it-back, thunder), storm finale replaces the sari-sari boss, HINGI epilogue
+- [x] Redesign pass (Nov 2026): the caught-then-forgiven ending, redrawn characters (big heads, readable faces,
+      Mingming and the kittens, portraits with moods), per-level missions, the thirteen older maps rebuilt
+      (cover, loops, routines), fiesta videoke and crowd blending, softer vision cones, a kitten that follows you
 - [ ] Silent playtest with new players ([docs/PLAYTEST.md](docs/PLAYTEST.md))
