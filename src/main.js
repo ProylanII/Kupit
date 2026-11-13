@@ -927,6 +927,7 @@ function afterPlay() {
     bossBonus = cur.boss && first ? cur.boss.bonus : 0; // first clear only
     const alk = r.bonus && !save.alkansya[id] ? r.bonus : 0;
     if (r.bonus) save.alkansya[id] = true;
+    if (r.photo && save.story.photo !== 'in') save.story.photo = r.photo; // NINANG's party: the family photo (with Jun, or without)
     earned = campaignPayout({ coins, stars, prevStars, first, bossBonus, alkansya: alk });
     hinalaShown = null;
     if (first && !cur.hingi) { // HINALA moves on first clears only (retries and replays never change it)

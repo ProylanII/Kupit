@@ -119,6 +119,8 @@ export const KID_SLOTS = { // the top / bottom colours (base, shade) of each kid
 };
 export const VARIANTS = {
   bisita:  { base: 'tita', map: { '#2fa59b': '#ff9a3c', '#22807a': '#d9762a', '#7fe0d4': '#ffe36b', '#ff7eb6': '#2a1f33', '#d9578f': '#1b1424', '#ffb0d4': '#4a3d5c' } },
+  tito:     { base: 'tatay', map: { '#f6f1e7': '#ffd84d', '#cfc7b8': '#e0a92e', '#3a4f8a': '#8a2050', '#2b3b6a': '#6a1840' } }, // Tito Boy: yellow shirt, maroon shorts
+  titanora: { base: 'tita', map: { '#2fa59b': '#4f7fd0', '#22807a': '#3a62a8', '#7fe0d4': '#a8c8ff', '#ff7eb6': '#3a2418', '#d9578f': '#24160f', '#ffb0d4': '#5a3a28' } },  // Tita Nora: blue, dark hair
   kapitbahay: { base: 'tatay', map: { '#f6f1e7': '#e0603a', '#cfc7b8': '#b04428', '#3a4f8a': '#5a5468', '#2b3b6a': '#46415a', '#2a1f33': '#9a94a8', '#1b1424': '#7a7488', '#4a3d5c': '#c4bfd0' } }, // a neighbour: grey hair, red shirt
   tindera: { base: 'nena', map: { '#4f7fd0': '#46e08a', '#3a62a8': '#2fa55b', '#6b3a5a': '#a8433f', '#4f2a44': '#7a2a2a', '#9a94a8': '#2a1f33', '#7a7488': '#1b1424', '#c4bfd0': '#4a3d5c' } },
   // the three kittens are one sprite in three coats

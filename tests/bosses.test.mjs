@@ -168,3 +168,44 @@ test('TATAY finale: carryOut; the 35 s timer starts once you have the quota and 
   step(w);
   assert.ok(w.escapeT > 34);
 });
+
+// ---- 8.4 NINANG'S PARTY
+test('NINANG: a name every 15 s, fan up 2 s before; JUN about one in three and never twice in a row', () => {
+  const w = new World(load('boss4-fiesta'));
+  w.player.hidden = { kind: 'box', x: 0, y: 0 };
+  const ev = [];
+  for (let i = 0; i < 60 * 15 * 30; i++) {
+    step(w);
+    for (const e of w.events) if (e.type === 'fanRaise' || e.type === 'nameCall') ev.push([e.type, w.time, e.jun]);
+    w.events.length = 0;
+    if (w.call?.active) w.call.active = null; // (answer every call: this test is about timing)
+  }
+  const calls = ev.filter((e) => e[0] === 'nameCall'), fans = ev.filter((e) => e[0] === 'fanRaise');
+  assert.ok(calls.length >= 28, `${calls.length} calls`);
+  for (let i = 0; i < calls.length; i++) assert.ok(Math.abs(calls[i][1] - fans[i][1] - 2) < 0.05, 'the fan goes up 2 s before');
+  for (let i = 1; i < calls.length; i++) assert.ok(!(calls[i][2] && calls[i - 1][2]), 'never JUN twice running');
+  const juns = calls.filter((c) => c[2]).length;
+  assert.ok(juns >= 5 && juns <= 14, `${juns} of ${calls.length}`);
+});
+
+test('NINANG: miss a JUN call (no blending, not near her) and the whole room turns to look', () => {
+  const w = new World(load('boss4-fiesta'));
+  const p = w.player; p.x = c(13); p.y = c(19);
+  w.call = { t: 99, last: null, active: { t: 0.05 }, warned: false };
+  step(w, 5);
+  assert.ok(w.adults.filter((a) => !a.cfg.harmless).every((a) => a.alert >= 0.5), 'everyone glances');
+});
+
+test('NINANG finale: photo; in the zone blending = in the photo, out of every cone = not in it, else ISA PA', () => {
+  const L = load('boss4-fiesta');
+  const w = atFinale(L);
+  assert.equal(w.finale.type, 'photo');
+  assert.equal(w.escapeT, 0);
+  const p = w.player;
+  p.x = c(7); p.y = c(2); p.blend = true;
+  assert.equal(w.photoOutcome(), 'in');
+  p.blend = false;
+  assert.equal(w.photoOutcome(), 'miss', 'in the zone but not blending');
+  p.hidden = { kind: 'box', x: c(1), y: c(19) };
+  assert.equal(w.photoOutcome(), 'out', 'hidden: out of every cone');
+});

@@ -312,6 +312,11 @@ export class Play {
       case 'door': case 'switch': sfx.click(); break;
       case 'tune': if (this.onScreen(e.who.x, e.who.y, 60)) sfx.tune(); break;
       case 'jingle': sfx.jingle(); break;
+      case 'fanRaise': sfx.click(); break;
+      case 'nameCall': if (e.jun) { sfx.alert(); this.toast = { text: 'NINANG CALLS YOU! GO TO HER OR BLEND IN', col: C.orange, t: 3 }; } break;
+      case 'glance': sfx.alert(); this.kick(1); break;
+      case 'countdown': sfx.tick(); break;
+      case 'flash': sfx.clasp(); this.photoFlash = settings.flash ? 0.35 : 0.1; break;
       case 'boilWarn': this.boilGlow = { x: e.x, y: e.y, t: 1.2 }; break;
       case 'boil': sfx.whoosh(); this.kick(1); break;
       case 'plate': sfx.clasp(); break;
@@ -590,6 +595,14 @@ export class Play {
     if (sf && Math.floor(now / 300) % 2) { g.fillStyle = C.green; g.fillRect(Math.round(sf.x) - 5, Math.round(sf.y) + 5, 10, 2); } // your place at the table
     if (w.breadBag) { drawTarget(g, 'bilin', w.breadBag.x, w.breadBag.y, false); if (w.breadBag.cd > 0) drawText(g, String(Math.ceil(w.breadBag.cd)), w.breadBag.x, w.breadBag.y - 14, C.gray, { align: 'center', shadow: C.ink }); }
     if (w.player.carry?.scent && Math.floor(now / 180) % 2) { g.fillStyle = C.white; g.globalAlpha = 0.6; g.fillRect(Math.round(w.player.x) - 3, Math.round(w.player.y) - 16, 1, 3); g.fillRect(Math.round(w.player.x) + 2, Math.round(w.player.y) - 18, 1, 3); g.globalAlpha = 1; } // the fish smells
+    if (this.level.photo && w.finale?.type === 'photo') { // the photo zone (dotted) and the tripod
+      const [x0, y0, x1, y1] = this.level.photo.zone, t = this.level.photo.tripod;
+      g.fillStyle = C.gold;
+      for (let x = x0 * TILE; x < (x1 + 1) * TILE; x += 4) { g.fillRect(x, y0 * TILE, 2, 1); g.fillRect(x, (y1 + 1) * TILE - 1, 2, 1); }
+      for (let y = y0 * TILE; y < (y1 + 1) * TILE; y += 4) { g.fillRect(x0 * TILE, y, 1, 2); g.fillRect((x1 + 1) * TILE - 1, y, 1, 2); }
+      g.fillStyle = C.ink; g.fillRect(t[0] * TILE + 4, t[1] * TILE + 2, 8, 5); g.fillRect(t[0] * TILE + 7, t[1] * TILE + 7, 2, 8);
+      g.fillStyle = C.gray; g.fillRect(t[0] * TILE + 6, t[1] * TILE + 3, 3, 3);
+    }
     this.holdRing = w.doorHold ? Math.min(1, w.doorHold.t / 1.5) : 0;
     if (this.holdRing > 0) { // opening a creaky door slowly: a ring of dots fills around your feet
       const n = 16, k = Math.floor(this.holdRing * n);
@@ -666,6 +679,8 @@ export class Play {
     if (p.carry) drawTarget(g, 'gatas', p.x - this.cx + sx, p.y - this.cy + sy - 21, false);
     if (this.level.storm) this.drawStorm(g, fd);
     this.drawCover(g);
+    if (w.finale?.type === 'photo' && w.finale.count > 0) drawText(g, String(Math.ceil(w.finale.count)), VIEW_W / 2, 52, C.gold, { scale: 3, align: 'center', shadow: C.ink }); // PICTURE! 3, 2, 1
+    if (this.photoFlash > 0) { g.globalAlpha = Math.min(0.8, this.photoFlash * 3); g.fillStyle = C.white; g.fillRect(0, 0, VIEW_W, MAP_H); g.globalAlpha = 1; this.photoFlash -= 1 / 60; }
     if (this.flash > 0) { g.globalAlpha = this.flash * 0.5; g.fillStyle = C.orange; g.fillRect(0, 0, VIEW_W, MAP_H); g.globalAlpha = 1; }
     if (this.pulse > 0) { // visual stand-in for vibration
       g.globalAlpha = Math.min(1, this.pulse * 2.5); g.fillStyle = this.pulseCol;
@@ -977,7 +992,7 @@ export class Play {
     g.fillStyle = C.wallD; g.fillRect(0, MAP_H, VIEW_W, 1);
     const pr = w.prompt;
     const left = this.level.quota - w.coins, need = left > 0 ? `${this.level.giveBack ? 'PUT BACK' : this.level.hingi ? 'ASK FOR' : 'NEED'} ${left} MORE` : w.escort ? 'BRING MINGMING TO THE DESK' : w.missing?.kind === 'bilin' ? `ERRAND: ${w.targets.filter((t) => t.must && !t.done).length} LEFT` : 'GET THE MILK';
-    drawText(g, pr ? pr.label : w.open ? (w.escort && !w.escortHere ? 'WAIT FOR MINGMING' : w.escort ? 'TO THE VET DESK!' : w.finale?.type === 'seat' ? 'UPO NA! TO YOUR SEAT' : 'GO TO THE EXIT!') : need, tx, MAP_H + 8, pr ? C.gold : w.open ? C.green : C.gray, al);
+    drawText(g, pr ? pr.label : w.open ? (w.escort && !w.escortHere ? 'WAIT FOR MINGMING' : w.escort ? 'TO THE VET DESK!' : w.finale?.type === 'seat' ? 'UPO NA! TO YOUR SEAT' : w.finale?.type === 'photo' ? 'PICTURE! BLEND IN OR HIDE' : 'GO TO THE EXIT!') : need, tx, MAP_H + 8, pr ? C.gold : w.open ? C.green : C.gray, al);
     if (w.player.blend) drawText(g, 'BLENDING IN', tx, MAP_H + 17, C.green, al);
     let kx = L ? VIEW_W - 9 : 9;
     for (const k of w.player.keys) { drawObj(g, 'key', kx, MAP_H + 24, k); kx += L ? -10 : 10; }

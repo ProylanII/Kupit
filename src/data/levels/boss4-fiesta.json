@@ -1,10 +1,10 @@
 {
  "id": "boss4-fiesta",
  "name": "NINANG'S PARTY",
- "hint": "WALK WITH A GUEST TO BLEND IN. VIDEOKE HIDES NOISE",
+ "hint": "NINANG CALLS JUN? GO TO HER OR BLEND IN WITH A GUEST",
  "missions": [
   "noHide",
-  "noCatch"
+  "inPhoto"
  ],
  "boss": {
   "title": "NINANG'S PARTY",
@@ -13,69 +13,56 @@
   "phases": [
    {
     "at": 2,
-    "banner": "MORE NINANGS ARRIVE!",
-    "spawn": [
-     {
-      "type": "ninang",
-      "route": [
-       [
-        2,
-        7,
-        1
-       ],
-       [
-        12,
-        7,
-        1
-       ]
+    "banner": "NINANG MINGLES!",
+    "adult": {
+     "index": 0,
+     "route": [
+      [
+       1,
+       1,
+       1
       ],
-      "cfg": {
-       "checksHides": true
-      }
-     }
-    ]
+      [
+       12,
+       1,
+       1
+      ],
+      [
+       12,
+       7,
+       1
+      ],
+      [
+       7,
+       10,
+       1
+      ],
+      [
+       1,
+       7,
+       1
+      ]
+     ]
+    }
    },
    {
     "at": 4,
-    "banner": "JOMAR SPOTS EVERYTHING!",
-    "spawn": [
-     {
-      "type": "kuya",
-      "route": [
-       [
-        4,
-        12
-       ],
-       [
-        10,
-        12
-       ],
-       [
-        10,
-        10
-       ],
-       [
-        4,
-        10
-       ]
-      ]
-     }
-    ]
+    "banner": "VIDEOKE: THE CHORUS!",
+    "videoke": {
+     "on": 12,
+     "off": 5
+    }
    },
    {
     "at": 6,
-    "banner": "NINANG COUNTED HER ENVELOPES!",
-    "escape": 25,
-    "adult": {
-     "index": 0,
-     "hunt": {
-      "every": 4,
-      "spread": 24
-     },
-     "speed": 28
+    "banner": "PICTURE! PICTURE!",
+    "finale": {
+     "type": "photo",
+     "countdown": 8
     }
    }
-  ]
+  ],
+  "finale": "photo"
  },
  "tiles": [
   "###############",
@@ -263,64 +250,16 @@
    }
   },
   {
-   "type": "ninang",
-   "route": [
-    [
-     13,
-     3
-    ],
-    [
-     8,
-     3
-    ],
-    [
-     8,
-     1
-    ],
-    [
-     13,
-     1
-    ]
-   ],
-   "cfg": {
-    "checksHides": true
-   }
-  },
-  {
-   "type": "ninang",
-   "route": [
-    [
-     1,
-     8
-    ],
-    [
-     6,
-     8
-    ],
-    [
-     6,
-     10
-    ],
-    [
-     1,
-     10
-    ]
-   ],
-   "cfg": {
-    "checksHides": true
-   }
-  },
-  {
-   "type": "tita",
+   "type": "titanora",
    "at": [
-    7,
-    5
+    12,
+    7
    ],
-   "face": 1.5708,
-   "sweep": 0.4
+   "face": 3.14159,
+   "sweep": 0.5
   },
   {
-   "type": "tatay",
+   "type": "tito",
    "route": [
     [
      2,
@@ -407,5 +346,59 @@
     ]
    ]
   }
- ]
+ ],
+ "calls": {
+  "every": 15,
+  "warn": 2,
+  "window": 5,
+  "names": [
+   "BING",
+   "NENE",
+   "RAMIL",
+   "JUN"
+  ]
+ },
+ "photo": {
+  "zone": [
+   6,
+   1,
+   8,
+   3
+  ],
+  "tripod": [
+   7,
+   6
+  ],
+  "spots": [
+   [
+    6,
+    1
+   ],
+   [
+    8,
+    1
+   ],
+   [
+    6,
+    3
+   ],
+   [
+    8,
+    3
+   ],
+   [
+    7,
+    1
+   ],
+   [
+    6,
+    2
+   ],
+   [
+    8,
+    2
+   ]
+  ]
+ },
+ "notes": "One Ninang. Every 15 s she calls a name (fan up 2 s before); one in three is JUN: go to her or blend within 5 s, or the room turns to look. Photo finale: everyone gathers, 8 s countdown; at the flash be in the zone blending beside a guest (in the photo) or out of every cone (not in it); anything else is a close call and ISA PA. The exit is not used."
 }

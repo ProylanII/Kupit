@@ -23,6 +23,7 @@ export const MISSIONS = {
   underNose: { label: () => 'PUT IT BACK UNDER THEIR NOSE', ok: (w) => w.targets.filter((t) => t.kind === 'ibalik').every((t) => t.done && t.ownerNear) }, // IBALIK: each stash refilled with its owner close by
   catUnseen: { label: () => 'NOBODY SPOTS MINGMING', strict: true, ok: (w) => !(w.stats.catSeen | 0) }, // BARANGAY escort
   noGossip: { label: () => 'NO GOSSIP REACHES MAMA', strict: true, ok: (w) => !(w.stats.gossip | 0) }, // PALENGKE
+  inPhoto: { label: () => 'END UP IN THE PHOTO', ok: (w) => w.photo === 'in' }, // NINANG's finale
   noPuddle: { label: () => 'NOBODY FINDS A PUDDLE', strict: true, ok: (w) => !(w.stats.puddles | 0) },
   thunder:  { label: () => 'ONLY RUN UNDER THUNDER', strict: true, ok: (w) => w.stats.loudRunT < 0.4 },
   // SWELDO: every coin from Tatay's payday wallet taken while he is in the shower

@@ -249,6 +249,51 @@ export class World {
     }
   }
 
+  // NINANG's finale: at the flash, are you in the photo (in the zone, blending beside a guest), or nowhere anyone
+  // can see you? Anything else (in the zone but not blending, or seen anywhere) and she wants one more.
+  photoOutcome() {
+    const P = this.level.photo, p = this.player, [x0, y0, x1, y1] = P.zone;
+    const inZone = !p.hidden && p.tx >= x0 && p.tx <= x1 && p.ty >= y0 && p.ty <= y1;
+    if (inZone && p.blend) return 'in';
+    const seen = this.adults.some((a) => !a.cfg.harmless && a.awake && a.canSee(p));
+    return !inZone && !seen ? 'out' : 'miss';
+  }
+
+  // NINANG calls a kid by name every 15 s (her fan goes up 2 s before). One time in three, never twice running, it is
+  // "JUN!": within 5 s you go to her ("MAMAYA NA!") or blend into the crowd, or the whole room turns to look.
+  ninangCall(dt) {
+    const c = this.level.calls;
+    if (!c || this.finale || this.status !== 'play') return;
+    const n = this.adults[this.level.boss?.index ?? 0], p = this.player;
+    if (!n) return;
+    const k = (this.call ??= { t: c.every, last: null, active: null, warned: false });
+    if (k.active) {
+      if (dist(n, p) < 2 * TILE) { n.talk('MAMAYA NA!', 1.6); k.active = null; this.emit({ type: 'callAnswered' }); return; }
+      if ((k.active.t -= dt) <= 0) {
+        k.active = null;
+        if (p.blend) { this.emit({ type: 'callBlended' }); return; }
+        n.talk('JUN? NASAAN KA?', 1.8);
+        for (const a of this.adults) {
+          if (a.cfg.harmless || !a.awake) continue;
+          a.alert = Math.max(a.alert, 0.55); a.hearT = 1.4; a.faceTo = Math.atan2(p.y - a.y, p.x - a.x);
+        }
+        this.emit({ type: 'glance' });
+      }
+      return;
+    }
+    k.t -= dt;
+    if (!k.warned && k.t <= (c.warn ?? 2)) { k.warned = true; n.talk('EHEM!', 1); this.emit({ type: 'fanRaise', who: n }); }
+    if (k.t > 0) return;
+    k.t = c.every; k.warned = false;
+    const others = (c.names || ['BING', 'NENE', 'RAMIL']).filter((x) => x !== 'JUN');
+    const jun = k.last !== 'JUN' && this.rng() < 1 / 3;
+    const name = jun ? 'JUN' : others[Math.floor(this.rng() * others.length)];
+    k.last = name;
+    n.talk(name + '!', 2);
+    this.emit({ type: 'nameCall', jun });
+    if (jun) k.active = { t: c.window ?? 5 };
+  }
+
   // TATAY's boss: the dog reached the fish. Tatay laughs, the fish goes back to its plate: a close call.
   dogGrab(dog) {
     if (this.god) { dog.state = 'eat'; dog.eatT = 3; this.player.graceT = 1; return; } // (bots and the dev mode: no close calls)
@@ -285,6 +330,29 @@ export class World {
     if (!f || this.status !== 'play') return;
     f.t += dt;
     const boss = this.adults[this.level.boss?.index ?? 0];
+    if (f.type === 'photo') {
+      if (!f.gathered) { // everyone to the photo: the boss to the tripod, the rest into the zone
+        f.gathered = true;
+        const P = this.level.photo, spots = P.spots.slice();
+        for (const a of this.adults) {
+          const s = a === boss ? P.tripod : spots.shift();
+          if (!s) continue;
+          a.retune({ route: [[s[0], s[1], 99, a === boss ? -Math.PI / 2 : Math.PI / 2]], hunt: null }); a.state = 'return'; a.goTo(s[0] * TILE + TILE / 2, s[1] * TILE + TILE / 2);
+        }
+      }
+      const before = Math.ceil(f.count);
+      f.count -= dt;
+      if (Math.ceil(f.count) !== before && f.count > 0 && f.count <= 3) this.emit({ type: 'countdown', n: Math.ceil(f.count) });
+      if (f.count <= 0) {
+        const out = this.photoOutcome();
+        this.emit({ type: 'flash' });
+        if (out === 'miss') { f.count = f.countdown ?? 8; if (boss) { boss.talk('ISA PA!', 2); boss.caught = true; } return; }
+        this.photo = out;
+        boss?.talk(out === 'in' ? 'ANG CUTE! SMILE, JUN!' : 'NASAAN SI JUN? SIGE NA NGA.', 2.6);
+        this.finish();
+        return;
+      }
+    }
     if (f.type === 'carryOut' && !f.started && this.player.carry?.scent) { f.started = true; this.escapeT = f.escape ?? 35; this.emit({ type: 'phase', text: 'TAKBO! TO THE CRAWLSPACE!', n: this.phase }); }
     if (f.type === 'seat' && boss) {
       if (boss.seen) f.lastSeen = this.time;
@@ -571,9 +639,11 @@ export class World {
     for (const [x, y] of ph.open || []) { this.pendingGates.delete(x + ',' + y); if (this.map.ch(x, y) === 'G') this.map.set(x, y, 'g'); }
     for (const [x, y] of ph.close || []) this.closeGate(x, y);
     if (ph.escape) this.escapeT = ph.escape;
+    if (ph.videoke) for (const v of this.videokes) Object.assign(v, ph.videoke); // (a song with a clear chorus)
     if (ph.finale) {
       this.finale = { ...ph.finale, t: 0 };
       const f = this.finale, boss = this.adults[this.level.boss?.index ?? 0];
+      if (f.type === 'photo') { f.noExit = true; f.count = f.countdown ?? 8; f.gathered = false; }
       if (f.type === 'seat') { f.seatPt = { x: f.seat[0] * TILE + TILE / 2, y: f.seat[1] * TILE + TILE / 2 }; f.noExit = true; f.plateN = 0; f.lastI = boss?.i; f.lastSeen = -9; }
     }
     this.emit({ type: 'phase', text: ph.banner || '', n: this.phase });
@@ -910,6 +980,7 @@ export class World {
     this.chatter(dt);
     this.stagedBeat(dt);
     this.finaleUpdate(dt);
+    this.ninangCall(dt);
     this.checkPuddles(dt);
     this.escortUpdate(dt);
     this.hearNoises(dt);
@@ -1116,7 +1187,7 @@ export class World {
     const emptied = this.targets.filter((t) => t.perCoin && t.done).length;
     this.result = { coins: this.coins, time: this.time, stars: missions.filter(Boolean).length, missions, fast, stealth, catches: this.catches, spotted: this.spotted, bonus: this.bonus,
       sobra: this.sobra, emptied, takenBy: this.takenBy(), spills: this.stats.spills, tattles: this.stats.tattles, palusot: this.stats.palusot,
-      evidence: this.stats.evidence, tanod: this.stats.tanod | 0 }; // things left behind that someone found (a slipper, an open door, a puddle)
+      evidence: this.stats.evidence, tanod: this.stats.tanod | 0, photo: this.photo || null }; // things left behind that someone found (a slipper, an open door, a puddle)
     this.emit({ type: 'clear' });
   }
 
@@ -1132,6 +1203,7 @@ export class World {
       p.x = e.x + dx * TILE; p.y = e.y + dy * TILE;
     }
     if (this.escort) { this.escort.x = this.player.x; this.escort.y = this.player.y; this.escort.trail = []; } // (Mingming comes too)
+    if (this.finale?.type === 'photo' && this.hides.length) { const h = this.hides[0]; this.player.x = h.x; this.player.y = h.y; this.player.hidden = h; for (const a of this.adults) a.sawHide = false; this.finale.gathered = true; this.finale.count = 0.05; } // (the photo: out of sight at the flash)
     if (this.finale?.type === 'seat') { const s = this.finale.seatPt; this.player.x = s.x; this.player.y = s.y; this.finale.lastSeen = -9; this.sitting = { t: SIT_TIME }; } // (the seat finale: sit down)
   }
   devNextPhase() { const ph = this.bossPhases[this.phase]; if (ph) this.coins = Math.max(this.coins, ph.at); return !!ph; }

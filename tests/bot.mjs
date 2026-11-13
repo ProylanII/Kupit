@@ -36,7 +36,8 @@ export function playBot(L, { run = false, maxT = 900, lives = 3, god = true } = 
     if (p !== w.player) { p = w.player; path = null; goal = null; lastPos = [p.x, p.y]; } // the other kid now
     // ---- what to go for
     let kind, obj;
-    if (w.open && w.finale?.type === 'seat') { kind = 'seat'; obj = w.finale.seatPt; }
+    if (w.finale?.type === 'photo') { kind = 'hide'; obj = w.hides.slice().sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0]; }
+    else if (w.open && w.finale?.type === 'seat') { kind = 'seat'; obj = w.finale.seatPt; }
     else if (w.open) { kind = 'exit'; obj = w.exit; }
     else {
       let best = null, bl = Infinity;
@@ -56,7 +57,9 @@ export function playBot(L, { run = false, maxT = 900, lives = 3, god = true } = 
     // ---- act or move
     const inp = { ...IDLE, mv: { x: 0, y: 0, mag: 0, run: false } };
     const ctx = w.context();
-    if (p.hidden) inp.mv = { x: 0, y: 1, mag: 1, run: false }; // never meant to hide: step out
+    if (p.hidden && kind === 'hide') { /* the photo: stay put */ }
+    else if (p.hidden) inp.mv = { x: 0, y: 1, mag: 1, run: false }; // never meant to hide: step out
+    else if (kind === 'hide' && ctx?.kind === 'hide' && ctx.obj === obj) { if (pressT <= 0) { inp.action = true; inp.actionPressed = true; pressT = 0.5; } }
     else if (kind === 'steal' && near(obj) && ctx?.kind === 'steal' && ctx.obj === obj) inp.action = true;
     else if (kind === 'switch' && near(obj) && ctx?.kind === 'switch' && ctx.obj === obj) {
       if (pressT <= 0) { inp.action = true; inp.actionPressed = true; pressT = 0.5; goal = null; }
