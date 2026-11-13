@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { TILE } from '../src/world/tilemap.js';
 import { World } from '../src/game/world.js';
 import { rules } from '../tools/level-rules.mjs';
+import { MISSIONS } from '../src/game/missions.js';
 
 const load = (f) => JSON.parse(readFileSync(new URL(`../src/data/levels/${f}.json`, import.meta.url), 'utf8'));
 const idle = { mv: { x: 0, y: 0, mag: 0, run: false }, action: false, actionPressed: false, throwPressed: false };
@@ -74,8 +75,27 @@ test('L5 BAKURAN: no lever yet, exit across the yard, a crawl table; HINALA take
   for (let i = 0; i < 60 * 30; i++) { w3.update(1 / 60, idle); assert.ok(aso.awake, 'the dog never sleeps at tier 3'); }
 });
 
+test('L6 SWELDO: payday wallet by the shower; the ligo mission counts coins taken while Tatay showers', () => {
+  const L = load('kwarto');
+  assert.equal(L.name, 'SWELDO');
+  assert.equal(L.quota, 7);
+  assert.equal(L.targets.reduce((n, t) => n + t.coins, 0), 10);
+  assert.ok(L.switches?.[0]?.time > 0, 'a timed lever gate');
+  const run = (stealWhenShowering) => {
+    const w = new World(L), tatay = w.adults.find((a) => a.type === 'tatay'), wallet = w.targets.find((t) => t.owner === 'tatay');
+    w.player.hidden = { kind: 'box', x: 0, y: 0 };
+    for (let i = 0; i < 60 * 40 && wallet.coins > 0; i++) {
+      w.update(1 / 60, idle);
+      if ((tatay.busy?.name === 'SHOWERING') === stealWhenShowering) w.stealCoin(wallet, 5);
+    }
+    return MISSIONS.ligo.ok(w);
+  };
+  assert.equal(run(true), true);
+  assert.equal(run(false), false);
+});
+
 test('level pass: the rules hold for every level the pass has reached', () => {
-  for (const id of ['01-sala', '02-kusina', '03-buong-bahay', '04-bakuran']) {
+  for (const id of ['01-sala', '02-kusina', '03-buong-bahay', '04-bakuran', 'kwarto']) {
     const r = rules(load(id));
     for (const k of ['R1', 'R2', 'R6', 'R7']) assert.ok(r[k].ok, `${id} ${k} ${JSON.stringify(r[k])}`);
   }

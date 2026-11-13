@@ -869,6 +869,10 @@ export class World {
     t.progress = 0;
     t.coins--;
     this.coins++;
+    if (t.owner) { // was the owner busy elsewhere (in the shower) when this coin went? (mission ligo)
+      const o = this.adults.find((a) => a.type === t.owner);
+      if (o) { if (o.busy?.name === 'SHOWERING') t.whileAway = (t.whileAway | 0) + 1; else t.notAway = (t.notAway | 0) + 1; }
+    }
     const last = this.stolen[this.stolen.length - 1];
     if (last && last.t === t) last.n++; else this.stolen.push({ t, n: 1 });
     if (k === 0) { // it opens: the purse clasp clicks, and Jun reads anything written on it

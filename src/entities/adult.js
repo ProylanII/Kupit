@@ -42,6 +42,7 @@ export const ACTIVITIES = {
   phone:  { name: 'ON THE PHONE', range: 0, fov: 1,    pose: 'phone', say: 'HELLO? MARE!', deaf: true },
   idlip:  { name: 'DOZING',    range: 0,    fov: 1,    pose: 'sleep', say: 'IDLIP LANG...' },
   kanta:  { name: 'SINGING',   range: 0,    fov: 1,    pose: 'alert', say: 'MY WAAAY!', deaf: true },
+  ligo:   { name: 'SHOWERING', range: 0,    fov: 1,    pose: null,    say: 'LIGO MUNA!', deaf: true }, // (the water drowns out everything)
 };
 
 const mapPts = (route) => route.map((p) => ({

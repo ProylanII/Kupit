@@ -1,16 +1,16 @@
 {
  "id": "06-kwarto",
- "name": "KWARTO",
- "hint": "A KEY OPENS THE KIDS' ROOM. WATCH YOUR BACK",
+ "name": "SWELDO",
+ "hint": "PAYDAY! TATAY'S WALLET IS BY THE SHOWER DOOR",
  "missions": [
-  "sakto",
-  "noCatch"
+  "noCatch",
+  "ligo"
  ],
  "tiles": [
   "####################",
   "#BB..BB.P#.BB..K...#",
-  "#BB..BB..#.BB......#",
-  "#........#......H..#",
+  "#BB..BB..#.BB....#.#",
+  "#........#.....##G##",
   "#.K......#.........#",
   "#........D....A....#",
   "#........#.....TT..#",
@@ -27,11 +27,11 @@
   "#C,,,,,,#..........#",
   "#C,,,,,,#...RR..K..#",
   "#,,,TT,,#...RR.TT..#",
-  "#,,,TT,,D..........#",
-  "#,,,,,,,#.A........#",
-  "#F,,,,,,#..........#",
-  "#,,,,,,,#..H.......#",
-  "#,,,,,,P#.........P#",
+  "#,,,TT,,D......#####",
+  "#,,,,,,,#.A...H#,,,#",
+  "#F,,,,,,#......D,,W#",
+  "#,,,,,,,#..H...#,,,#",
+  "#,,,,,,P#......#,,,#",
   "####################"
  ],
  "spawn": [
@@ -43,16 +43,18 @@
   1
  ],
  "quota": 7,
- "par": 150,
+ "par": 110,
  "targets": [
   {
    "kind": "wallet",
    "at": [
-    7,
-    3
+    13,
+    20
    ],
-   "coins": 2,
-   "time": 1.3
+   "coins": 4,
+   "time": 1.3,
+   "owner": "tatay",
+   "label": "SWELDO"
   },
   {
    "kind": "piggy",
@@ -67,9 +69,9 @@
    "kind": "purse",
    "at": [
     17,
-    22
+    19
    ],
-   "coins": 3,
+   "coins": 2,
    "time": 1.6
   },
   {
@@ -156,13 +158,6 @@
    ]
   },
   {
-   "kind": "box",
-   "at": [
-    11,
-    24
-   ]
-  },
-  {
    "kind": "curtain",
    "at": [
     18,
@@ -182,6 +177,13 @@
     8,
     7
    ]
+  },
+  {
+   "kind": "box",
+   "at": [
+    10,
+    24
+   ]
   }
  ],
  "traps": [
@@ -195,8 +197,8 @@
   {
    "kind": "creak",
    "at": [
-    13,
-    20
+    11,
+    21
    ]
   },
   {
@@ -262,32 +264,124 @@
   {
    "type": "tita",
    "at": [
-    14,
-    21
+    5,
+    17
    ],
-   "face": -1.5708,
+   "face": 0,
    "sweep": 0.5
   },
   {
    "type": "kuya",
    "route": [
     [
-     10,
-     20
-    ],
-    [
+     14,
      15,
-     20
-    ],
-    [
-     15,
-     23
+     4,
+     -1.5708,
+     "phone"
     ],
     [
      10,
-     23
+     17,
+     1
+    ],
+    [
+     10,
+     23,
+     1
+    ],
+    [
+     13,
+     23,
+     1
+    ]
+   ]
+  },
+  {
+   "type": "tatay",
+   "route": [
+    [
+     14,
+     17,
+     1.5
+    ],
+    [
+     17,
+     23,
+     10,
+     1.5708,
+     "ligo"
+    ],
+    [
+     14,
+     22,
+     2,
+     3.14159
+    ],
+    [
+     11,
+     19,
+     2
     ]
    ]
   }
- ]
+ ],
+ "suggest": "bing",
+ "suggestWhy": "BEDS IN TWO ROOMS: SHE CRAWLS UNDER THEM",
+ "switches": [
+  {
+   "at": [
+    12,
+    4
+   ],
+   "gates": [
+    [
+     17,
+     3
+    ]
+   ],
+   "time": 6
+  }
+ ],
+ "hinala": {
+  "1": {
+   "news": "TATAY CHECKS HIS WALLET NOW",
+   "do": [
+    {
+     "stop": 4,
+     "at": [
+      12,
+      20,
+      3,
+      0,
+      "bilang"
+     ]
+    }
+   ]
+  },
+  "2": {
+   "news": "MAMA KEEPS HER PURSE BY THE APARADOR",
+   "do": [
+    {
+     "move": 2,
+     "to": [
+      3,
+      4
+     ]
+    }
+   ]
+  },
+  "3": {
+   "news": "MAMA CHECKS THE HIDING SPOTS",
+   "do": [
+    {
+     "adult": 0,
+     "cfg": {
+      "checksHides": true
+     }
+    }
+   ]
+  }
+ },
+ "notes": "Near-miss: Jomar on his phone at the hall door; when the call ends his eyes are on the hall. The payday wallet is safest while Tatay showers (10 s, deaf). Timed lever: pull it, then 6 s to reach the gate to the exit nook."
 }
