@@ -73,8 +73,13 @@ export const BEFORE = {
   'boss4-fiesta': [ // Ninang's Christmas party. Lola's line seeds the ending: Mama once hid a cat too.
     { who: 'lola', lines: ['Apo, you look like your Mama', 'at your age. Always under the', 'house, that one.'] },
     { who: 'jun', mood: 'shock', lines: ['(...Under the house?)'] },
+    { who: 'jun', lines: ['Muning is eating again.', "And it's Ninang's Christmas party.", 'She always brings fat envelopes...'] },
+  ],
+  '09-barangay': [ // the escort: Mingming carries her sick kitten to the free vaccination drive. No family out here.
     { who: 'nene', lines: ['I named them! Puti, Muning,', 'and Tigre. Tigre bites.'] },
-    { who: 'jun', lines: ['They need a vet soon.', "And it's Ninang's Christmas party.", 'She always brings fat envelopes...'] },
+    { who: 'jun', mood: 'sad', lines: ['Muning will not eat.', 'She is so hot and so quiet.'] },
+    { who: 'nena', lines: ['Free vaccination at the', 'barangay hall tonight, ijo.', 'Bring the mother too.'] },
+    { who: 'jun', lines: ['Mingming, stay close.', 'Nobody can know.'] },
   ],
   bagyo: [
     { who: 'jun', lines: ['Signal number three. The yard', 'is already filling with water.'] },

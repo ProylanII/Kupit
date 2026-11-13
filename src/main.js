@@ -923,6 +923,7 @@ function afterPlay() {
     const stars = starsOf(mask), coins = cur.giveBack ? 0 : r.coins; // the epilogue has no stars; coins put back are not income
     save.stars[id] = stars;
     save.unlocked = Math.max(save.unlocked, Math.min(idx + 1, levels.length - 1));
+    while (save.unlocked < levels.length - 1 && save.stars[levels[save.unlocked].id] !== undefined) save.unlocked++; // (past levels already cleared: the v5 reorder)
     bossBonus = cur.boss && first ? cur.boss.bonus : 0; // first clear only
     const alk = r.bonus && !save.alkansya[id] ? r.bonus : 0;
     if (r.bonus) save.alkansya[id] = true;

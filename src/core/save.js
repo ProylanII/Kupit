@@ -6,7 +6,7 @@ import { hashStr } from './rng.js';
 import { maskFromStars, starsOf } from '../game/missions.js';
 
 const KEY = 'kupit.save.v1'; // the storage key never changes; the schema version is inside the save
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 export const DEFAULT_OPTS = { music: 0.75, sfx: 1, shake: 1, flash: true, pulse: true, left: false, ghost: true };
 
@@ -56,6 +56,13 @@ const MIGRATIONS = {
     s.bank = Math.max(0, Math.floor(Number(s.bank) || 0)) + oldUpgradeSpend(s.upgrades && typeof s.upgrades === 'object' ? s.upgrades : {});
     s.upgrades = {};
     s.v = 4;
+    return s;
+  },
+  4: (s) => { // v5 (design overhaul Phase 4): Chapter 4 is now PALENGKE -> BARANGAY -> PARTY. Someone who had reached
+    // the barangay (index 14, the party cleared) now finds it at 13; the cleared party is skipped over once it is done.
+    const u = Math.max(0, Math.floor(Number(s.unlocked) || 0));
+    if (u === 14) s.unlocked = 13;
+    s.v = 5;
     return s;
   },
 };

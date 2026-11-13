@@ -77,13 +77,13 @@ test('needs open with the story, and the fifth is now the medicine (GAMOT, 14)',
 });
 
 test('save v4: every coin spent on the old upgrades comes back, the old ids are gone', () => {
-  assert.equal(SAVE_VERSION, 4);
+  assert.ok(SAVE_VERSION >= 4);
   const spent = { quiet: 2, hands: 1, pasensya: 3, stash: 9 };
   const expect = 6 + 12 + 6 + (5 + 10 + 16) + (6 + 12 + 20);
   assert.equal(oldUpgradeSpend(spent), expect);
   const v3 = { ...fresh(), v: 3, bank: 7, upgrades: spent };
   const s = migrate(v3);
-  assert.equal(s.v, 4);
+  assert.equal(s.v, SAVE_VERSION);
   assert.equal(s.bank, 7 + expect);
   assert.deepEqual(s.upgrades, {});
   assert.equal(migrate({ ...fresh(), bank: 5 }).bank, 5, 'a v4 save is not refunded twice');
