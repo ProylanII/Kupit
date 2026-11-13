@@ -9,7 +9,7 @@ import { World } from './world.js';
 
 export const KINDS = {
   items: ['tsinelas', 'pandesal', 'key'], hide: ['box', 'curtain', 'basket'],
-  devices: ['tv', 'radio', 'videoke'], traps: ['creak', 'lego'], targets: ['purse', 'bayong', 'wallet', 'piggy', 'candy', 'gatas', 'kuting', 'ibalik', 'regalo', 'bilin'],
+  devices: ['tv', 'radio', 'videoke'], traps: ['creak', 'lego'], targets: ['purse', 'bayong', 'wallet', 'piggy', 'candy', 'gatas', 'kuting', 'ibalik', 'regalo', 'bilin', 'isda'],
 };
 
 // Player reachability with keys and switch-operated gates, iterated to a fixpoint.
@@ -93,6 +93,7 @@ export function validateLevel(L) {
     if (has('noGossip') && !L.adults.some((a) => a.type === 'tindera') ) bad('mission noGossip needs a tindera');
     if (has('ligo') && !(L.targets.some((t) => t.owner === 'tatay') && L.adults.some((a) => a.type === 'tatay' && (a.route || []).some((p) => p[4] === 'ligo')))) bad('mission ligo needs Tatay with a shower stop and his wallet');
   }
+  if (L.breadBag) floor(L.breadBag.at, 'breadBag');
   floor(L.spawn, 'spawn');
   floor(L.exit, 'exit');
   const used = new Map();

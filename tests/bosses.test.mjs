@@ -113,3 +113,58 @@ test('MAMA finale: seen in the last second before you sit is a close call; so is
   assert.equal(plates, 6);
   assert.ok(w2.scold || w2.catches === 1, '"JUN! KAIN NA!"');
 });
+
+// ---- 8.3 TATAY + ASO
+const fishOf = (w) => w.targets.find((t) => t.kind === 'isda');
+test('TATAY: only the fish leaves a scent trail, twice as dense when you run; it never spills', () => {
+  const L = load('boss3-tatay');
+  const trail = (carry, run) => {
+    const w = new World(L); w.adults.length = 0;
+    if (carry) { const f = fishOf(w); f.done = true; w.player.carry = f; }
+    for (let i = 0; i < 60 * 3; i++) w.update(1 / 60, { ...idle, mv: { x: i % 120 < 60 ? 1 : -1, y: 0, mag: 1, run } });
+    return { n: w.trail.length, carry: !!w.player.carry };
+  };
+  assert.equal(trail(false, false).n, 0);
+  const walk = trail(true, false), run = trail(true, true);
+  assert.ok(run.n >= walk.n * 1.7, `walk ${walk.n} run ${run.n}`);
+  assert.ok(run.carry, 'running did not spill the fish');
+});
+
+test('TATAY: the dog on the fish grabs it; Tatay laughs, the fish goes back, a close call', () => {
+  const w = new World(load('boss3-tatay'), { lives: 3 }), dog = w.adults[1], fish = fishOf(w);
+  fish.done = true; w.player.carry = fish;
+  w.player.x = dog.x + 6; w.player.y = dog.y; w.player.graceT = 0;
+  step(w);
+  assert.equal(w.player.carry, null);
+  assert.equal(fish.done, false, 'back on its plate');
+  assert.ok(w.scold || w.catches === 1);
+  assert.equal(w.adults[0].say?.text, 'HAHA! IKAW PALA, ASO!');
+});
+
+test('TATAY: the bread bag gives one pandesal at a time, every 8 s; with the fish you cannot hide', () => {
+  const w = new World(load('boss3-tatay')), bag = w.breadBag;
+  w.adults.length = 0;
+  w.player.x = bag.x; w.player.y = bag.y + 10;
+  assert.equal(w.context().kind, 'bread');
+  w.update(1 / 60, { ...idle, action: true, actionPressed: true });
+  assert.deepEqual(w.player.items.filter((i) => i === 'pandesal'), ['pandesal']);
+  w.player.items = [];
+  step(w, 60 * 7);
+  assert.notEqual(w.context()?.kind, 'bread', 'still refilling');
+  step(w, 60 * 1.2);
+  assert.equal(w.context().kind, 'bread');
+  const h = w.hides[0]; w.player.x = h.x; w.player.y = h.y + 8;
+  const f = fishOf(w); f.done = true; w.player.carry = f;
+  assert.notEqual(w.context()?.kind, 'hide');
+});
+
+test('TATAY finale: carryOut; the 35 s timer starts once you have the quota and the fish', () => {
+  const w = atFinale(load('boss3-tatay'));
+  assert.equal(w.finale.type, 'carryOut');
+  w.adults.length = 0;
+  step(w);
+  assert.equal(w.escapeT, 0, 'not yet: no fish');
+  const f = fishOf(w); f.done = true; w.player.carry = f;
+  step(w);
+  assert.ok(w.escapeT > 34);
+});

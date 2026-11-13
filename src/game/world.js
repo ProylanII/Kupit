@@ -75,6 +75,8 @@ export class World {
     // every 10 s unless you stand still beside her for a second, and runs back to you if a grown-up spots her. She
     // cannot be caught. The exit only takes you once she is with you.
     this.escort = level.escort ? { look: 'pusa', x: this.player.x - 16, y: this.player.y, trail: [], meowT: ESCORT_MEOW, hushT: 0, runT: 0, seenCd: 0, dir: 0, stepT: 0, moving: false, hidden: false } : null;
+    this.scentOnly = (level.targets || []).some((t) => t.scent); // TATAY's boss: the trail is the fish's, not yours
+    this.breadBag = level.breadBag ? { ...at(level.breadBag.at), every: level.breadBag.every ?? 8, cd: 0 } : null; // one pandesal at a time
     this.creaky = new Set((level.creakyDoors || []).map((p) => p.join())); // doors that creak unless opened slowly (hold ACT)
     this.doorHold = null; // { obj, key, t } while ACT is held on a creaky door
     this.finale = null;   // the boss finale in progress (Blueprint 8): { type, t, ... }
@@ -247,6 +249,15 @@ export class World {
     }
   }
 
+  // TATAY's boss: the dog reached the fish. Tatay laughs, the fish goes back to its plate: a close call.
+  dogGrab(dog) {
+    if (this.god) { dog.state = 'eat'; dog.eatT = 3; this.player.graceT = 1; return; } // (bots and the dev mode: no close calls)
+    const tatay = this.adults.find((a) => a.type === 'tatay');
+    tatay?.talk('HAHA! IKAW PALA, ASO!', 2.4);
+    dog.state = 'eat'; dog.eatT = 3; dog.talk('NOM NOM', 1.5);
+    this.caught(dog);
+  }
+
   // A creaky door: hold ACT for 1.5 s and it opens without a sound; let go early and it creaks open (MEDYAS halves it).
   holdDoor(dt, input, ctx) {
     const h = this.doorHold, { tx, ty } = h.obj;
@@ -274,6 +285,7 @@ export class World {
     if (!f || this.status !== 'play') return;
     f.t += dt;
     const boss = this.adults[this.level.boss?.index ?? 0];
+    if (f.type === 'carryOut' && !f.started && this.player.carry?.scent) { f.started = true; this.escapeT = f.escape ?? 35; this.emit({ type: 'phase', text: 'TAKBO! TO THE CRAWLSPACE!', n: this.phase }); }
     if (f.type === 'seat' && boss) {
       if (boss.seen) f.lastSeen = this.time;
       if (boss.i !== f.lastI) { f.lastI = boss.i; f.plateN++; this.emit({ type: 'plate', n: f.plateN, x: boss.x, y: boss.y }); } // a plate set: clink
@@ -420,7 +432,8 @@ export class World {
     };
     let o = near(this.targets, (t) => !t.done);
     if (o) return { kind: 'steal', obj: o, label: o.profile.verb || 'KUPIT', detail: o.profile.tip };
-    o = near(this.hides);
+    o = p.carry?.scent ? null : near(this.hides); // (carrying the fish you cannot hide: you smell of it)
+    if (this.breadBag && this.breadBag.cd <= 0 && !p.items.includes('pandesal') && dist(this.breadBag, p) <= REACH) return { kind: 'bread', obj: this.breadBag, label: 'PANDESAL' };
     if (o) return { kind: 'hide', obj: o, label: 'TAGO' };
     const doors = [];
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
@@ -466,6 +479,7 @@ export class World {
   interact(c) {
     const p = this.player;
     switch (c.kind) {
+      case 'bread': p.items.push('pandesal'); this.breadBag.cd = this.breadBag.every; this.emit({ type: 'pickup' }); break;
       case 'seat': this.sitting = { t: SIT_TIME }; this.emit({ type: 'sit' }); break;
       case 'unhide':
         p.hidden = null;
@@ -756,14 +770,15 @@ export class World {
     }
 
     // --- carrying the milk: run, dash or get knocked over and it spills (and goes back where it came from)
-    if (p.carry && (p.running || p.dashT > 0 || p.stunT > 0)) this.spill();
+    if (p.carry && !p.carry.noSpill && (p.running || p.dashT > 0 || p.stunT > 0)) this.spill();
 
     // --- scent trail
-    if (!p.hidden && (this.trailT -= dt) <= 0) {
+    if (!p.hidden && (this.trailT -= dt) <= 0 && (!this.scentOnly || p.carry?.scent)) {
       this.trail.push({ x: p.x, y: p.y, t: this.time });
       if (this.trail.length > 40) this.trail.shift();
-      this.trailT = 0.4;
+      this.trailT = this.scentOnly ? (p.running ? 0.25 : 0.5) : 0.4; // (the fish: running leaves twice the scent)
     }
+    if (this.breadBag && this.breadBag.cd > 0) this.breadBag.cd -= dt;
 
     // --- stealing: every stash sounds different (see TARGET_KINDS); a light sleeper nearby stirs as you rummage
     if (stealing) {
@@ -788,6 +803,7 @@ export class World {
           t.done = true; t.progress = 1;
           if (pf.end) { this.noise({ x: t.x, y: t.y, r: pf.end.r }); if (pf.end.say) this.talk(pf.end.say, 0.8); }
           if (t.carry) p.carry = t;
+          if (t.then && !t.thenDone) { t.thenDone = true; this.applyPhase(t.then); } // e.g. "ASO SMELLS THE FISH!"
           if (t.kind === 'ibalik') { // put back: was its owner right there? (mission underNose)
             const o = this.adults.find((a) => a.type === t.owner);
             t.ownerNear = !!o && dist(o, t) < 6 * TILE;
@@ -950,6 +966,7 @@ export class World {
     const p = this.player, t = p.carry;
     if (!t) return;
     p.carry = null;
+    if (t.noSpill) { t.done = false; t.progress = 0; t.started = false; return; } // (the fish goes back to its plate)
     this.stats.spills++;
     this.puddles.push({ x: p.x, y: p.y, t: 0, found: false }); // it leaves a puddle someone may find
     t.done = false; t.progress = 0; t.started = false;

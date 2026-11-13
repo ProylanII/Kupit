@@ -588,6 +588,8 @@ export class Play {
     }
     const sf = w.finale?.type === 'seat' && w.open ? w.finale.seatPt : null;
     if (sf && Math.floor(now / 300) % 2) { g.fillStyle = C.green; g.fillRect(Math.round(sf.x) - 5, Math.round(sf.y) + 5, 10, 2); } // your place at the table
+    if (w.breadBag) { drawTarget(g, 'bilin', w.breadBag.x, w.breadBag.y, false); if (w.breadBag.cd > 0) drawText(g, String(Math.ceil(w.breadBag.cd)), w.breadBag.x, w.breadBag.y - 14, C.gray, { align: 'center', shadow: C.ink }); }
+    if (w.player.carry?.scent && Math.floor(now / 180) % 2) { g.fillStyle = C.white; g.globalAlpha = 0.6; g.fillRect(Math.round(w.player.x) - 3, Math.round(w.player.y) - 16, 1, 3); g.fillRect(Math.round(w.player.x) + 2, Math.round(w.player.y) - 18, 1, 3); g.globalAlpha = 1; } // the fish smells
     this.holdRing = w.doorHold ? Math.min(1, w.doorHold.t / 1.5) : 0;
     if (this.holdRing > 0) { // opening a creaky door slowly: a ring of dots fills around your feet
       const n = 16, k = Math.floor(this.holdRing * n);

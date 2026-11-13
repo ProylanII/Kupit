@@ -264,11 +264,13 @@ const ALKANSYA = [ // bamboo coin bank with a slot on top
 
 const GATAS = ['.bb.', '.ww.', 'wWWw', 'wWWw', 'wWWw', 'wwww']; // a bottle of fresh milk
 const KUTING = ['o..o....', 'oooo....', 'oeoe..o.', 'ooooooo.', '.oooooo.', '.o.o.o..'];
+const ISDA = ['...oooo...', '.ooooooo.t', 'oeooooooot', '.ooooooo.t', '...oooo...', 'wwwwwwwwww', '.wwwwwwww.']; // a fried fish on its plate
 const REGALO = ['.yy.yy.', '..yyy..', 'rrryrrr', 'rrryrrr', 'RRRyRRR', 'RRRyRRR'];
 const STORY_TARGETS = {
   gatas: [GATAS, { b: '#4f8fff', w: '#cfd6e0', W: '#ffffff' }],
   kuting: [KUTING, { o: '#e8a04a', e: '#1a1626' }],
   regalo: [REGALO, { y: '#ffd84d', r: '#d94a4a', R: '#a83a3a' }],
+  isda: [ISDA, { o: '#d9902e', e: '#1a1626', t: '#a8602a', w: '#cfd6e0' }], // Tatay's fried fish on its plate
   bilin: [REGALO, { y: '#c89a5a', r: '#8a5a3a', R: '#6a4028' }], // a brown paper bundle
 };
 

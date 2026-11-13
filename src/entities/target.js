@@ -13,6 +13,7 @@ export const TARGET_KINDS = {
   gatas:    { name: 'GATAS',  hold: 1.0, verb: 'KUNIN',  tip: 'MILK! WALK IT OUT SLOWLY. RUNNING SPILLS IT' },
   kuting:   { name: 'KUTING', hold: 1.0, verb: 'SAGIP',  tick: { every: 0.9, r: 30 }, end: { r: 0, say: 'MEOW!' }, tip: 'A KITTEN! IT MEOWS AS YOU PICK IT UP' },
   ibalik:   { name: 'PITAKA', hold: 1.0, verb: 'IBALIK', end: { r: 36, say: 'KLIK!' }, tip: 'PUT THE COINS BACK. QUIETLY' },
+  isda:     { name: 'PRITONG ISDA', hold: 1.0, verb: 'KUNIN', tip: 'THE FISH! ASO WILL SMELL IT. PANDESAL KEEPS HIM BUSY' }, // TATAY's boss
   bilin:    { name: 'BILIN',  hold: 0.8, verb: 'KUNIN',  tip: 'AN ERRAND: JUST PICK IT UP. BUT NOT WHERE MAMA SEES' }, // PALENGKE: free things, an errand
   regalo:   { name: 'HINGI',  hold: 0.6, verb: 'HINGI',  tip: 'NO SNEAKING. JUST ASK!' },
   alkansya: { name: 'ALKANSYA', hold: 1.0, tick: { every: 0.6, r: 30 }, end: { r: 50, say: 'KLING!' }, tip: 'SECRET ALKANSYA! BONUS COINS' },
@@ -36,6 +37,9 @@ export class Target {
     this.profile = TARGET_KINDS[this.kind] || TARGET_KINDS.purse;
     this.time = (def.time ?? 1.6) * this.profile.hold; // seconds of holding still to steal
     this.bonus = !!def.bonus; // the alkansya: optional, does not count toward the quota
+    this.scent = !!def.scent;     // TATAY's fish: it leaves the trail the dog follows
+    this.noSpill = !!def.noSpill; // (running does not spill it)
+    this.then = def.then || null; // a phase-like change when it is taken ("ASO SMELLS THE FISH!")
     this.carry = !!def.carry; // carried out by hand: running (or being knocked over) spills it and it goes back
     this.must = !!def.must;   // the exit stays shut until this one is taken, whatever the coin count
     this.from = def.from;     // HINGI: index of the adult who gives it, and what they say

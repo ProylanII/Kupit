@@ -671,6 +671,17 @@ export class Adult {
       this.investigate(player.x + (rnd() * 2 - 1) * s, player.y + (rnd() * 2 - 1) * s);
       this.talk(c.dog ? 'SNIFF SNIFF' : 'NASAAN KA?!', 1.2);
     }
+    // --- TATAY's boss: the dog on the fish. Close to it he barks (Tatay comes to the barks); on it, he grabs it.
+    const fish = c.tracker && player.carry?.scent;
+    if (fish && this.awake && this.state !== 'eat') {
+      const d = Math.hypot(player.x - this.x, player.y - this.y);
+      if (d < 12 && !(player.graceT > 0)) { world.dogGrab?.(this); return; }
+      if (d < 3 * TILE && this.barkT <= 0) {
+        this.talk('AW AW!', 1); this.barkT = 1.6;
+        world.noise({ x: this.x, y: this.y, r: 150, lure: true, from: this, goal: { x: player.x, y: player.y } });
+        world.emit({ type: 'bark', who: this });
+      }
+    }
     // --- tracker dog: follows the player's scent trail when it crosses it
     if (c.tracker && calm && this.state !== 'investigate' && world.trail?.length) {
       const tr = world.trail;
@@ -713,7 +724,7 @@ export class Adult {
           if (this.stuck) { this.food = null; this.beginSearch(world, this.x, this.y, 0); break; } // way got blocked
           world.arrived(this);
           if (this.food && c.dog) {
-            if (world.eatFood(this.food)) { this.state = 'eat'; this.eatT = 8; this.talk('NOM NOM', 2); world.emit({ type: 'bribed', who: this }); }
+            if (world.eatFood(this.food)) { this.state = 'eat'; this.eatT = world.level?.eatTime ?? 8; this.talk('NOM NOM', 2); world.emit({ type: 'bribed', who: this }); }
             else this.beginSearch(world, this.x, this.y, 0, 1);
             this.food = null;
           } else if (!this.startInspect(world, this.target.x, this.target.y)) this.beginSearch(world, this.target.x, this.target.y, 1); // a lure: one look round
