@@ -1,16 +1,16 @@
 {
  "id": "04-bakuran",
  "name": "BAKURAN",
- "hint": "LAUNDRY HIDES YOU. PANDESAL KEEPS ASO BUSY",
+ "hint": "ASO PATROLS THE YARD. PANDESAL KEEPS HIM BUSY",
  "suggest": "bing",
  "suggestWhy": "SMALL IS GOOD HERE: CRAWL UNDER THE TABLE",
  "missions": [
   "noBark",
-  "fast"
+  "sakto"
  ],
  "tiles": [
   "###############",
-  "#...K#........#",
+  "#...K#.......A#",
   "#....#..TT....#",
   "#....D......H.#",
   "#A...#..TT....#",
@@ -19,15 +19,15 @@
   "#;;;;;;;;LLL;;#",
   "#;;PP;;;;;;;;;#",
   "#;;;;;;;;;;;;;#",
-  "#;;;LL;;;;;PP;#",
+  "#;;;;;;;;;;PP;#",
   "#;;;;;;;;W;;;;#",
-  "######G########",
+  "######;########",
   "#;;;;;;;;;;;;;#",
-  "#;;;;;;;;LL;;;#",
   "#;;;;;;;;;;;;;#",
-  "#;W;;PP;;;;;;;#",
-  "#;;;;;;;;;;;L;#",
-  "#;;;;;;;;;PP;;#",
+  "#;;;;;;;TTP;;;#",
+  "#;W;;;;;;;;;;;#",
+  "#;;;;;;;;;;;;;#",
+  "#;;;;;;;;;;PP;#",
   "#;;;;;;;;;;;;;#",
   "#;;;;;;;;;;;;;#",
   "###############"
@@ -38,7 +38,7 @@
  ],
  "exit": [
   13,
-  20
+  6
  ],
  "quota": 4,
  "par": 120,
@@ -46,11 +46,12 @@
   {
    "kind": "wallet",
    "at": [
-    2,
+    3,
     1
    ],
    "coins": 3,
-   "time": 1.4
+   "time": 1.4,
+   "owner": "tatay"
   },
   {
    "kind": "piggy",
@@ -58,36 +59,8 @@
     12,
     1
    ],
-   "coins": 2,
+   "coins": 3,
    "time": 1.2
-  }
- ],
- "switches": [
-  {
-   "at": [
-    7,
-    13
-   ],
-   "gates": [
-    [
-     6,
-     12
-    ]
-   ],
-   "time": 6
-  },
-  {
-   "at": [
-    5,
-    11
-   ],
-   "gates": [
-    [
-     6,
-     12
-    ]
-   ],
-   "time": 6
   }
  ],
  "items": [
@@ -196,7 +169,7 @@
      0
     ],
     [
-     13,
+     11,
      1,
      1
     ],
@@ -214,5 +187,32 @@
     ]
    ]
   }
- ]
+ ],
+ "hinala": {
+  "2": {
+   "news": "TATAY DOES NOT DOZE OFF ANYMORE",
+   "do": [
+    {
+     "adult": 1,
+     "cfg": {
+      "skipActs": [
+       "idlip"
+      ]
+     }
+    }
+   ]
+  },
+  "3": {
+   "news": "ASO STAYS AWAKE ALL DAY NOW",
+   "do": [
+    {
+     "adult": 0,
+     "cfg": {
+      "cycle": null
+     }
+    }
+   ]
+  }
+ },
+ "notes": "Near-miss: the dog loop runs right past the laundry line you are standing in. The spawn yard is open lawn on purpose (Bing crawls under the mango-tree table)."
 }

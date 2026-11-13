@@ -485,7 +485,7 @@ export class Adult {
     this.barkT = Math.max(0, this.barkT - dt);
     // in the middle of a routine? (only on a calm patrol, standing at the point that names it, with nothing heard)
     const at = this.pts.length > 1 ? this.pts[(this.i + this.pts.length - 1) % this.pts.length] : this.pts[0];
-    const act = this.state === 'patrol' && this.hearT <= 0 && this.alert < 0.3 && (this.pts.length > 1 ? this.wait > 0 : Math.hypot(at.x - this.x, at.y - this.y) < 3) ? ACTIVITIES[at.act] : null;
+    const act = this.state === 'patrol' && this.hearT <= 0 && this.alert < 0.3 && (this.pts.length > 1 ? this.wait > 0 : Math.hypot(at.x - this.x, at.y - this.y) < 3) && !c.skipActs?.includes(at.act) ? ACTIVITIES[at.act] : null; // (skipActs: HINALA can take a habit away, e.g. Tatay stops dozing)
     if (act && this.busy !== act && act.say && !this.say) this.talk(act.say, 1.6);
     this.busy = act || null;
     // A5: Mama notices a door Jun left open on her way ('Why is this open?'), looks in the room beyond and closes it

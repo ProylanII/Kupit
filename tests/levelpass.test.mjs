@@ -60,8 +60,22 @@ test('L3 BUONG BAHAY: the purse moved to the bedroom; no lever yet; tier 2 locks
   assert.ok(w.locks.has('4,14') && !w.adultLocks.has('4,14'), 'locked for the kids, not for Mama');
 });
 
+test('L5 BAKURAN: no lever yet, exit across the yard, a crawl table; HINALA takes away the nap and the dog sleep', async () => {
+  const { applyHinala } = await import('../src/game/hinala.js');
+  const L = load('04-bakuran');
+  assert.ok(!L.switches && !L.tiles.some((r) => r.includes('G')));
+  assert.equal(L.targets.reduce((n, t) => n + t.coins, 0), 6);
+  assert.equal(L.items.filter((i) => i.kind === 'pandesal').length, 2);
+  const naps = (lvl) => { const w = new World(lvl), t = w.adults[1]; w.player.hidden = { kind: 'box', x: 0, y: 0 }; let n = 0; for (let i = 0; i < 60 * 30; i++) { w.update(1 / 60, idle); if (t.busy?.name === 'DOZING') n++; } return n; };
+  assert.ok(naps(L) > 60, 'Tatay dozes at tier 0');
+  assert.equal(naps(applyHinala(L, 2)), 0, 'not at tier 2');
+  const w3 = new World(applyHinala(L, 3)), aso = w3.adults[0];
+  w3.player.hidden = { kind: 'box', x: 0, y: 0 };
+  for (let i = 0; i < 60 * 30; i++) { w3.update(1 / 60, idle); assert.ok(aso.awake, 'the dog never sleeps at tier 3'); }
+});
+
 test('level pass: the rules hold for every level the pass has reached', () => {
-  for (const id of ['01-sala', '02-kusina', '03-buong-bahay']) {
+  for (const id of ['01-sala', '02-kusina', '03-buong-bahay', '04-bakuran']) {
     const r = rules(load(id));
     for (const k of ['R1', 'R2', 'R6', 'R7']) assert.ok(r[k].ok, `${id} ${k} ${JSON.stringify(r[k])}`);
   }
