@@ -40,10 +40,16 @@ and that standing still at the spawn for 4 s is safe. The same validator checks 
   "par": 120,                  // seconds for the "fast" mission
   "patience": 160,             // optional: "KAIN NA!" timer, caught when it runs out
   "storm": { "every": 7, "dur": 2.4 }, // optional: lightning every N s, then thunder that masks all your noise for dur s
+  "hinala": { "1": { "news": "MAMA COUNTS HER PURSE NOW", "do": [op, op] }, "2": {...}, "3": {...} },
+                               // optional: how the house changes at each HINALA tier (cumulative, max 2 ops per tier,
+                               // news max 40 chars). op: { "move": targetIndex, "to": [x,y] } | { "stop": adultIndex,
+                               // "at": [x,y,wait,face,"bilang"] } | { "adult": adultIndex, "cfg": {...} }. See src/game/hinala.js
   "giveBack": true,            // optional: targets are filled, not emptied (kind "ibalik"); pays stars only
   "hingi": true, "epilogue": true, // optional: every adult is harmless; no stars are recorded
   "clearText": "KITTENS SAFE!", // optional: headline on the clear screen
   "targets": [{ "kind": "purse|bayong|wallet|piggy|candy|gatas|kuting|ibalik|regalo", "at": [x,y], "coins": 3, "time": 1.6 }], // time 0.5..4
+  // coin stashes give their coins one at a time (SOBRA); "owner": "mama|lola|tita|tatay|..." (default by kind: purse
+  // Mama, bayong Lola, wallet Tita, piggy the household); "label": "PARA KAY JUN" (Jun reads it as it opens)
   // story targets: "carry": true (in your hands; running spills it), "must": true (exit stays shut without it),
   //                "from": adultIndex + "say": "LINE" (HINGI: who gives it and what they say)
   "alkansya": { "at": [x,y], "coins": 5 }, // optional secret bonus stash (tools/place-alkansya.mjs suggests a spot)

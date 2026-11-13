@@ -25,6 +25,11 @@ export const fresh = () => ({
   // v3
   needs: {},                // what has been bought for Mingming and the kittens (progression.js NEEDS)
   missions: {},             // level id -> bit mask of its missions done so far (stars[id] = how many bits are set)
+  // design overhaul (fields with defaults: no schema bump until v4 also remaps the chapter order)
+  hinala: 0,                // the household's suspicion, 0..100 (game/hinala.js); moves on first clears only
+  hinalaAt: {},             // level id -> HINALA tier it was first cleared at (replays use it)
+  hinalaPlay: 0,            // the part of it Jun's own play caused (no chapter floors): flavours the ending
+  ledger: {},               // level id -> what the first clear took { by: {owner: n}, sobra, emptied, catches, spills }
 });
 
 // version -> function that upgrades a save of that version by one step
@@ -79,6 +84,7 @@ export function migrate(raw) {
   }
   out.bank = Math.max(0, Math.floor(Number(out.bank) || 0));
   out.unlocked = Math.max(0, Math.floor(Number(out.unlocked) || 0));
+  for (const k of ['hinala', 'hinalaPlay']) out[k] = Math.max(0, Math.min(100, Number(out[k]) || 0));
   return out;
 }
 

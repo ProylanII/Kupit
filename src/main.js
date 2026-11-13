@@ -23,6 +23,7 @@ import { settings, applySettings, SHAKE_LEVELS, shakeLabel, VOLUME_STEPS } from 
 import { loadGhost, storeGhost } from './game/ghost.js';
 import { INTRO, BEFORE, AFTER, ENDING, EPILOGUE, NAMES, CHAPTERS } from './data/story.js';
 import { missionIds, missionLabel, maskOf, starsOf } from './game/missions.js';
+import { applyHinala, tierOf, effective, delta as hinalaDelta, next as hinalaNext, TIERS } from './game/hinala.js';
 import { drawMenu, drawButton, buttonRect, menuHit, hit } from './ui/menu.js';
 
 const canvas = document.getElementById('game');
@@ -70,6 +71,7 @@ let prevMode = 'title'; // where BACK goes from levels/help/options
 let newBest = false;
 let earned = 0;
 let bossBonus = 0;
+let hinalaShown = null; // clear screen: { d, from, to } when this first clear moved the household's suspicion
 let msg = null;    // { text, color, t } short message on menus
 let shareText = null;
 let starShown = [false, false, false]; // clear screen: which stars have popped in
@@ -91,7 +93,8 @@ const tips = { get seen() { return save.seen; }, mark(id) { save.seen[id] = true
 function launch() {
   const campaign = !run;
   const ghost = campaign && settings.ghost ? loadGhost(cur.id) : null;
-  play = new Play(cur, input, { char: save.char, upgrades: save.upgrades, lives: 3, alkansyaFound: !!save.alkansya[cur.id] },
+  const L = campaign ? applyHinala(cur, hinalaTierFor(cur, idx)) : cur;
+  play = new Play(L, input, { char: save.char, upgrades: save.upgrades, lives: 3, alkansyaFound: !!save.alkansya[cur.id] },
     { tips, ghost, outfit: save.outfit, record: campaign, log: playtest ? ptEvent : null,
       earned: campaign ? save.missions[cur.id] | 0 : 0,
       quietClear: campaign && !!cur.ending && !save.story.ending, // the storm ends on "HULI KA!", not on a fanfare
@@ -103,6 +106,11 @@ function launch() {
 }
 
 function start(i) { idx = i; run = null; cur = levels[i]; launch(); }
+
+// HINALA (game/hinala.js): the household's suspicion, never below the chapter's floor. A replay uses the tier the
+// level was first cleared at; a first visit uses the house as it is now.
+const hinalaNow = (i = idx) => effective(save.hinala, chapterOf(Math.max(0, i)));
+const hinalaTierFor = (L, i = idx) => save.hinalaAt[L.id] ?? tierOf(hinalaNow(i));
 
 function startHouse(seed, diff, daily = false) {
   const mutators = daily ? [] : save.mutators.slice();
@@ -169,7 +177,11 @@ function drawMsg(y = 318) {
 
 // ---- story panels -------------------------------------------------------------
 let story = null; // { panels, i, then, flash }
-function startStory(panels, then) { story = { panels, i: 0, then, flash: 0 }; setMode('story'); enterPanel(); }
+function startStory(panels, then, at = idx) {
+  const tier = tierOf(hinalaNow(at)), low = tierOf(save.hinalaPlay | 0) <= 1;
+  panels = panels.filter((p) => p.minTier === undefined || tier >= p.minTier).map((p) => (p.low && low ? { ...p, lines: p.low } : p));
+  story = { panels, i: 0, then, flash: 0 }; setMode('story'); enterPanel();
+}
 // A "caught" panel opens exactly like the game's own caught screen: the sting, a buzz and a red flash.
 function enterPanel() {
   const p = story.panels[story.i];
@@ -182,9 +194,9 @@ function begin(i) {
   const L = levels[i];
   if (!L) return;
   const go = () => begin(i);
-  if (i === 0 && !save.story.intro) { startStory(INTRO, () => { save.story.intro = true; persist(); go(); }); return; }
+  if (i === 0 && !save.story.intro) { startStory(INTRO, () => { save.story.intro = true; persist(); go(); }, i); return; }
   // (the ending normally plays the moment the storm is cleared; this covers saves that got past it another way)
-  if (L.epilogue && !save.story.ending) { startStory(ENDING, () => { save.story.ending = true; persist(); go(); }); return; }
+  if (L.epilogue && !save.story.ending) { startStory(ENDING, () => { save.story.ending = true; persist(); go(); }, i); return; }
   const scene = BEFORE[L.id];
   if (scene && !save.story.seen[L.id]) {
     startStory(scene, () => {
@@ -192,7 +204,7 @@ function begin(i) {
       for (const p of scene) if (p.flag) save.story[p.flag] = true; // e.g. Aling Nena's discount
       grantSiblings(save, levelIds());                               // a sibling who joined in this scene
       persist(); go();
-    });
+    }, i);
     return;
   }
   start(i);
@@ -345,7 +357,7 @@ function drawTitle() {
   drawDecor(t);
   drawText(g, 'KUPIT', VIEW_W / 2, 44, C.gold, { scale: 8, align: 'center', shadow: C.gold2 });
   drawText(g, save.story.epilogue ? 'MAGSABI KA LANG. JUST ASK.' : 'SNEAK. KUPIT. ESCAPE.', VIEW_W / 2, 98, C.white, { align: 'center' });
-  drawHideout(g, save, t, HUB_Y);
+  drawHideout(g, save, t, HUB_Y, { tier: save.story.intro && !save.story.ending ? tierOf(hinalaNow(unlockedMax())) : -1 });
   const items = titleItems();
   TITLE_RECTS.forEach((r, i) => drawButton(g, r, items[i], i === sel));
   if (canAffordNeed() && Math.floor(t * 2) % 2) { const r = TITLE_RECTS[3]; g.fillStyle = C.ink; g.fillRect(r.x + r.w - 9, r.y - 3, 8, 8); g.fillStyle = C.pink; g.fillRect(r.x + r.w - 8, r.y - 2, 6, 6); drawText(g, '!', r.x + r.w - 6, r.y - 1, C.ink); }
@@ -447,6 +459,7 @@ const HELP = [[
   ['CROWD', 'AT A PARTY, WALK BESIDE A GUEST AND YOU BLEND IN: NOBODY NOTICES YOU UNLESS THEY ARE VERY CLOSE. RUNNING BREAKS IT.'],
   ['VIDEOKE', 'WHILE SOMEONE IS SINGING, NOTHING YOU DO NEAR THE MACHINE CAN BE HEARD. THUNDER DOES THE SAME FOR THE WHOLE YARD.'],
   ['SAPAT NA', 'COINS COME OUT ONE AT A TIME (THE DOTS OVER A STASH). LET GO AT THE QUOTA: ANYTHING MORE IS SOBRA, EVERY EXTRA COIN CLINKS LOUDER, AND AN EMPTY PURSE IS EASY TO NOTICE.'],
+  ['HINALA', "THE HOUSE REMEMBERS. SOBRA, EMPTY STASHES, ALARMS AND CLOSE CALLS MAKE THE FAMILY SUSPICIOUS (MAMA'S FACE IN THE HIDEOUT), AND THE HOUSE CHANGES: A PURSE MOVES, SOMEONE WATCHES MORE. A CLEAN RUN CALMS THEM."],
   ['KUTING', 'FINISH THE STORY AND TIGRE FOLLOWS YOU ON EVERY KUPIT. HE IS ONLY HERE TO WATCH.'],
 ], [
   ['KITTENS', "YOUR COINS BUY WHAT MINGMING AND HER KITTENS NEED AT ALING NENA'S. THE HIDEOUT CHANGES WITH EVERY ONE."],
@@ -748,6 +761,12 @@ function drawClear() {
   else if (!run && starsOf(save.missions[cur.id] | 0) < 3) drawText(g, 'STARS STAY EARNED: COME BACK FOR THE REST', VIEW_W / 2, 162, C.gray, { align: 'center' });
   drawText(g, `+${earned} COINS   BANK ${save.bank}`, VIEW_W / 2, 178, C.gold, { align: 'center' });
   let y = 190;
+  if (hinalaShown && hinalaShown.d.parts.length && !run) { // what the house noticed this time (first clears only)
+    const { d, from, to } = hinalaShown, sign = (n) => (n > 0 ? `+${n}` : `${n}`);
+    const why = d.parts.slice().sort((a, b) => Math.abs(b.n) - Math.abs(a.n)).slice(0, 2).map((p) => `${p.label} ${sign(p.n)}`).join(', ');
+    drawText(g, `HINALA ${sign(d.total)}: ${why}`, VIEW_W / 2, y, d.total > 0 ? C.orange : C.green, { align: 'center' }); y += 11;
+    if (to > from) { drawText(g, `MAMA IS NOW ${TIERS[to].name} (${TIERS[to].en})`, VIEW_W / 2, y, C.orange, { align: 'center' }); y += 11; }
+  }
   if (bossBonus) { drawText(g, `BOSS BONUS +${bossBonus}`, VIEW_W / 2, y, C.green, { align: 'center' }); y += 11; }
   if (r.bonus) { drawText(g, `SECRET ALKANSYA +${r.bonus}`, VIEW_W / 2, y, C.green, { align: 'center' }); y += 11; }
   if (run?.daily) { drawText(g, `DAILY STREAK: ${save.streak.n}`, VIEW_W / 2, y, C.orange, { align: 'center' }); y += 11; }
@@ -827,6 +846,15 @@ function afterPlay() {
     const alk = r.bonus && !save.alkansya[id] ? r.bonus : 0;
     if (r.bonus) save.alkansya[id] = true;
     earned = campaignPayout({ coins, stars, prevStars, first, bossBonus, alkansya: alk });
+    hinalaShown = null;
+    if (first && !cur.hingi) { // HINALA moves on first clears only (retries and replays never change it)
+      const ch = chapterOf(idx), before = hinalaNow(idx), d = hinalaDelta(r, cur);
+      save.hinalaAt[id] = tierOf(before);
+      save.hinala = hinalaNext(before, d, ch);
+      save.hinalaPlay = Math.max(0, Math.min(100, (save.hinalaPlay | 0) + d.total)); // Jun's own share, no floors
+      save.ledger[id] = { by: r.takenBy || {}, sobra: r.sobra | 0, emptied: r.emptied | 0, catches: r.catches | 0, spills: r.spills | 0, coins: r.coins | 0 };
+      hinalaShown = { d, from: tierOf(before), to: tierOf(save.hinala) };
+    }
   }
   save.bank += earned;
   unlocked = grantUnlocks(save, { pasko: isPasko() });

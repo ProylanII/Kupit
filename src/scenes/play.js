@@ -854,10 +854,12 @@ export class Play {
 
     // tips / tutorial coach / level hint: one line at the top, away from your thumbs
     const th = this.tutorialHint();
-    const line = this.tip ? this.tip.text : th || (this.level.hint && w.time < 8 ? this.level.hint : null);
+    // HINALA: what changed in the house since last time comes first, then the level's own hint
+    const news = this.level.news?.[0], showNews = news && w.time < 5 && !this.tip && !th;
+    const line = this.tip ? this.tip.text : th || (showNews ? `NEW IN THE HOUSE: ${news}` : this.level.hint && w.time < (news ? 11 : 8) ? this.level.hint : null);
     if (line && !(w.patience && w.time / w.patience > 0.75 && !this.tip)) {
       g.globalAlpha = 0.75; g.fillStyle = C.ink; g.fillRect(0, 18, VIEW_W, 11); g.globalAlpha = 1;
-      drawText(g, line, VIEW_W / 2, 21, this.tip ? C.green : th ? C.white : C.yellow, { align: 'center' });
+      drawText(g, line, VIEW_W / 2, 21, this.tip ? C.green : th ? C.white : showNews ? C.orange : C.yellow, { align: 'center' });
     }
     if (this.toast) {
       const tw = Math.max(140, textWidth(this.toast.text) + 12);

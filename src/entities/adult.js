@@ -124,6 +124,8 @@ export class Adult {
   get fov() { return this.cfg.fov * (this.busy ? this.busy.fov : 1); }
 
   get home() { return this.pts[0]; }
+  // how long a search lasts (HINALA: a suspicious house looks longer before giving up)
+  get searchTime() { return SEARCH_TIME * (this.cfg.searchMul || 1); }
   // where the eyes point: walking direction plus the flashlight sweep
   get va() { return this.a + this.lookOff; }
 
@@ -366,7 +368,7 @@ export class Adult {
       this.seen = false;
       this.awake = true;
       this.pendingLure = null;
-      if (this.state === 'chase') { this.state = 'search'; this.searchT = SEARCH_TIME; this.sawHide = false; }
+      if (this.state === 'chase') { this.state = 'search'; this.searchT = this.searchTime; this.sawHide = false; }
       return;
     }
 
@@ -480,7 +482,7 @@ export class Adult {
           if (leashed) { this.state = 'search'; this.searchT = 1; this.talk(c.shout, 1.5); break; }
           if (!this.startInspect(world, this.last.x, this.last.y)) {
             this.state = 'search';
-            this.searchT = SEARCH_TIME;
+            this.searchT = this.searchTime;
             this.talk('NASAAN NA?', 1.5);
           }
         }
@@ -488,13 +490,13 @@ export class Adult {
       }
       case 'investigate': {
         if (this.follow(dt, c.speed * 1.15, world)) {
-          if (this.stuck) { this.food = null; this.state = 'search'; this.searchT = SEARCH_TIME; break; } // way got blocked
+          if (this.stuck) { this.food = null; this.state = 'search'; this.searchT = this.searchTime; break; } // way got blocked
           world.arrived(this);
           if (this.food && c.dog) {
             if (world.eatFood(this.food)) { this.state = 'eat'; this.eatT = 8; this.talk('NOM NOM', 2); world.emit({ type: 'bribed', who: this }); }
             else this.state = 'search', this.searchT = 1;
             this.food = null;
-          } else if (!this.startInspect(world, this.target.x, this.target.y)) { this.state = 'search'; this.searchT = SEARCH_TIME; }
+          } else if (!this.startInspect(world, this.target.x, this.target.y)) { this.state = 'search'; this.searchT = this.searchTime; }
         }
         break;
       }

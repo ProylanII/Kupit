@@ -8,6 +8,8 @@
 // join: a sibling who joins the crew on this panel. flag: a story flag set when the scene has played.
 // mood: the portrait's expression (happy | sad | angry | shock; default neutral).
 // caught: the panel opens like the game's own "caught" screen (red frame, HULI KA!, the caught sting).
+// HINALA (game/hinala.js): minTier = only shown when the house is at least that suspicious; low = the lines used
+// instead when Jun's own play left suspicion low (sakto, quiet runs), whatever the chapter's floor says.
 
 export const INTRO = [
   { who: 'jun', lines: ['Under our house, behind the old', 'boxes, I found a cat.'] },
@@ -53,6 +55,7 @@ export const BEFORE = {
   ],
   ibalik: [
     { who: 'mama', mood: 'sad', lines: ['That is odd. I am short for the', 'palengke. I was sure I had it...'] },
+    { who: 'mama', mood: 'sad', minTier: 2, lines: ['Jomar? Was it you?', '...He swears it was not him.'] },
     { who: 'jun', mood: 'sad', lines: ['Mama skipped her merienda today.', 'Because of me.'] },
     { who: 'jun', lines: ['I took too much. Tonight I put', 'it back. Every coin.'] },
   ],
@@ -91,7 +94,8 @@ export const AFTER = {
 // The moment the storm level is cleared: Jun runs in through the door with the kittens and is caught at last.
 // They are ready to scold him, until they see what he is carrying and understand where every coin went.
 export const ENDING = [
-  { who: 'mama', mood: 'angry', caught: true, lines: ['JUN!! So it WAS you. Every coin', 'from my purse. All this time!'] },
+  { who: 'mama', mood: 'angry', caught: true, lines: ['JUN!! So it WAS you. Every coin', 'from my purse. All this time!'],
+    low: ['JUN!! So it WAS you... I thought', 'I was only imagining it!'] },
   { who: 'tatay', mood: 'angry', lines: ['My wallet. My fish. And now out', 'in a typhoon! Explain yourself!'] },
   { who: 'jun', mood: 'sad', lines: ["I'm sorry! I'm sorry! I only..."] },
   { who: 'cat', lines: ['Mew.   Mew.   Mew.'] },

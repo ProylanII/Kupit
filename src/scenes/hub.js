@@ -1,7 +1,8 @@
 // The hideout under the house (the game's home screen) and the street map (level select).
 // Everything here is drawn in code: Mingming, her kittens, and what the coins have bought them so far.
 import { drawText } from '../ui/font.js';
-import { drawActor, drawStar, drawObj, getSprite } from '../render/sprites.js';
+import { drawActor, drawStar, drawObj, getSprite, drawPortrait } from '../render/sprites.js';
+import { TIERS } from '../game/hinala.js';
 import { atlasSprite } from '../render/atlas.js';
 import { missionIds, missionLabel } from '../game/missions.js';
 import { C } from '../render/palette.js';
@@ -50,7 +51,8 @@ const MOODS = ['MINGMING IS THIN AND HUNGRY', 'MINGMING HAS MILK NOW', 'THE KITT
 export const catMood = (save) => (save.story?.ending ? 'MINGMING LIVES IN THE HOUSE NOW' : MOODS[catStage(save)]);
 
 // The hideout panel: y0 is its top edge, it is 76 px tall and the full screen width.
-export function drawHideout(g, save, t, y0 = 186) {
+// opts.tier: the household's HINALA tier (0..3), shown as Mama upstairs; -1 hides it (before the intro, after the ending)
+export function drawHideout(g, save, t, y0 = 186, { tier = -1 } = {}) {
   const H = 76, floor = y0 + H - 8, stage = catStage(save), has = (id) => hasNeed(save, id);
   px(g, '#15101f', 0, y0, VIEW_W, H);
   // the house floor above: joists and gaps with light leaking through
@@ -93,6 +95,14 @@ export function drawHideout(g, save, t, y0 = 186) {
     if (save.char === id) px(g, C.gold, x - 2, floor - 24 - (Math.floor(t * 2) % 2), 4, 2); // who you are playing
   }
   drawText(g, catMood(save), VIEW_W / 2, y0 + 11, stage >= 5 || save.story?.ending ? C.green : C.gray, { align: 'center' });
+  // upstairs: how suspicious the house is right now (HINALA). Mama's face in the gap between the floorboards.
+  if (tier >= 0) {
+    const T = TIERS[tier], fx = VIEW_W - 36, fy = y0 + 9;
+    px(g, C.ink, fx - 1, fy - 1, 32, 32); px(g, tier >= 2 ? C.orange : C.wallD, fx - 1, fy - 1, 32, 1);
+    drawPortrait(g, 'mama', fx, fy, 1, T.mood);
+    drawText(g, T.name, VIEW_W - 4, fy + 33, tier >= 2 ? C.orange : C.gray, { align: 'right' });
+    drawText(g, T.en, VIEW_W - 4, fy + 41, C.dgray, { align: 'right' });
+  }
   // needs bought so far: five pips
   for (let i = 0; i < NEED_ORDER.length; i++) px(g, has(NEED_ORDER[i]) ? C.pink : '#3a3048', VIEW_W / 2 - 14 + i * 6, y0 + 19, 4, 3);
 }

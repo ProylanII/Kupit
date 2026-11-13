@@ -1,5 +1,5 @@
 {
-  "version": "2721acf1",
+  "version": "47206ede",
   "files": [
     "assets/sprites/atlas.json",
     "assets/sprites/sheet.png",
@@ -42,6 +42,7 @@
     "src/entities/player.js",
     "src/entities/target.js",
     "src/game/ghost.js",
+    "src/game/hinala.js",
     "src/game/house.js",
     "src/game/missions.js",
     "src/game/progression.js",

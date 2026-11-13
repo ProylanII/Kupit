@@ -67,7 +67,7 @@ export class World {
     // Videoke: it plays by itself, a song then a break. While someone is singing, nothing you do near it can be heard.
     this.videokes = (level.devices || []).filter((d) => d.kind === 'videoke').map((d) => ({ ...at(d.at), kind: 'videoke', r: d.r ?? 76, on: d.on ?? 9, off: d.off ?? 6, t: d.phase ?? 0, singing: false }));
     this.cover = null;  // what is drowning out your noise right now: 'thunder' | 'videoke' | null
-    this.stats = { throws: 0, hides: 0, runT: 0, loudRunT: 0, skills: 0, traps: 0, barks: 0, devices: 0, spills: 0 }; // for the missions
+    this.stats = { throws: 0, hides: 0, runT: 0, loudRunT: 0, skills: 0, traps: 0, barks: 0, devices: 0, spills: 0, tattles: 0 }; // for the missions (and HINALA)
     this.alkansyaWasFound = !!loadout.alkansyaFound;
     this.missionIds = missionIds(level);
     this.missionLost = this.missionIds.map(() => false); // strict missions already failed this run
@@ -112,7 +112,7 @@ export class World {
   // a must-have (the milk) that is not in your hands yet
   get missing() { return this.targets.find((t) => t.must && !t.done) || null; }
   get livesLeft() { return this.lives - this.catches; }
-  emit(e) { if (e.type === 'bark') this.stats.barks++; this.events.push(e); }
+  emit(e) { if (e.type === 'bark') this.stats.barks++; else if (e.type === 'tattle') this.stats.tattles++; this.events.push(e); }
   // Is a sound made at (x, y) drowned out? Thunder covers the whole map, a videoke only what is near it.
   masked(x, y) {
     if (this.thunder) return 'thunder';
@@ -707,7 +707,7 @@ export class World {
     const missions = this.missionIds.map((id, i) => !this.missionLost[i] && !!MISSIONS[id].ok(this)); // [clear, mission 2, mission 3]
     const emptied = this.targets.filter((t) => t.perCoin && t.done).length;
     this.result = { coins: this.coins, time: this.time, stars: missions.filter(Boolean).length, missions, fast, stealth, catches: this.catches, spotted: this.spotted, bonus: this.bonus,
-      sobra: this.sobra, emptied, takenBy: this.takenBy() };
+      sobra: this.sobra, emptied, takenBy: this.takenBy(), spills: this.stats.spills, tattles: this.stats.tattles };
     this.emit({ type: 'clear' });
   }
 

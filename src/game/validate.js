@@ -4,6 +4,7 @@ import { TileMap } from '../world/tilemap.js';
 import { findPath } from '../world/pathfind.js';
 import { ADULT_TYPES, ACTIVITIES } from '../entities/adult.js';
 import { MISSIONS } from './missions.js';
+import { hinalaProblems } from './hinala.js';
 import { World } from './world.js';
 
 export const KINDS = {
@@ -69,6 +70,7 @@ export function validateLevel(L) {
     if (map.tileSolid(p[0], p[1]) || 'dgDG'.includes(c)) bad(`${what} ${p} must be on plain floor (got '${c}')`);
   };
   if (L.hint && L.hint.length > 58) bad(`hint is ${L.hint.length} chars (max 58 fits the screen)`);
+  for (const msg of hinalaProblems(L)) bad(msg); // (each tier variant is validated as a level of its own in the tests)
   if (L.missions) {
     if (!Array.isArray(L.missions) || L.missions.length !== 2 || L.missions[0] === L.missions[1]) bad('missions must be two different mission ids');
     else for (const id of L.missions) if (!MISSIONS[id] || id === 'clear') bad(`unknown mission ${id}`);

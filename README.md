@@ -54,6 +54,12 @@ Collect the coin quota, then reach the exit.
   the quota the game says SAPAT NA ("that's enough"); anything past it is SOBRA. It still pays, but every extra coin
   in one go clinks louder and emptying a stash makes a hollow klak. The "take only what you need" star asks for
   exactly the quota.
+- **Hinala (the house remembers)**: the family's suspicion, 0 to 100, carried across the campaign. Only a level's first
+  clear moves it: sobra, emptied stashes, alarms, close calls and tattles raise it, a clean run lowers it, and putting
+  coins back (IBALIK) lowers it a lot. Each chapter has a floor, so suspicion always grows toward the storm. At its four
+  tiers the house changes (a purse moves, Mama counts it, people search longer, sleepers sleep lightly); the level
+  starts with "NEW IN THE HOUSE", the hideout shows Mama's mood, and the clear screen says what was noticed. They
+  suspect something, never Jun: they only find out in the ending. Rules and level format: `src/game/hinala.js`.
 - **Hide** in boxes, curtains and laundry baskets. An eye over you means someone watched you hide, so they'll find you.
 - **Secret alkansya**: every level hides one bonus stash off the main route.
 - **Bosses** each have a signature rule and finale. Lola's Siesta: a sleep meter that noise drains, then a finale
