@@ -102,15 +102,16 @@ BUILDS = {
     'old':   dict(W=14, top=2, torso=6, legs=4, tw=8),
     'perm':  dict(W=16, top=2, torso=6, legs=5, tw=8),
 }
-# body: torso rows, leg rows, torso width. Kids are a head and a half tall; adults loom over them.
+# body: torso rows, leg rows, torso width. Kids are a head and a half tall; adults loom over them (about 1.5x a
+# kid since the design overhaul, approved 2026-11-13: every head is the same 12x9, so the difference is the body).
 BODY = {
     'kid':   dict(torso=3, legs=3, tw=8),
-    'small': dict(torso=3, legs=2, tw=8),
-    'teen':  dict(torso=4, legs=3, tw=8),
-    'adult': dict(torso=6, legs=5, tw=8),
-    'big':   dict(torso=6, legs=5, tw=10),
-    'old':   dict(torso=6, legs=4, tw=8),
-    'perm':  dict(torso=6, legs=5, tw=8),
+    'small': dict(torso=2, legs=2, tw=8),
+    'teen':  dict(torso=5, legs=5, tw=8),
+    'adult': dict(torso=8, legs=7, tw=10),
+    'big':   dict(torso=8, legs=7, tw=12),
+    'old':   dict(torso=7, legs=5, tw=10),
+    'perm':  dict(torso=8, legs=7, tw=10),
 }
 
 # H/h/k hair (base/shade/shine)  T/t/U top (base/shade/pattern)  B/b bottom  F shoes  A/a accessory  G glasses
@@ -132,16 +133,20 @@ LOOKS = {
                   B='#f6f1e7', b='#cfc7b8', F='#ffd84d', A='#1b1424', a='#7fd7ff', top='blouse', bottom='pants', lips=True, lashes=True),
     'tatay': dict(build='big', **TAN, H='#2a1f33', h='#1b1424', k='#4a3d5c', T='#f6f1e7', t='#cfc7b8', U='#ffffff',
                   B='#3a4f8a', b='#2b3b6a', F='#5a5468', top='sando', bottom='shorts', stache=True),
-    'kuya':  dict(build='adult', **SKIN, H='#3a2418', h='#24160f', k='#5a3a28', T='#46a0e0', t='#3580b8', U='#f6f1e7',
+    'kuya':  dict(build='teen', **SKIN, H='#3a2418', h='#24160f', k='#5a3a28', T='#46a0e0', t='#3580b8', U='#f6f1e7',
                   B='#5a5468', b='#46415a', F='#f6f1e7', A='#2f5fbf', a='#24488f', top='tee', bottom='pants', stripe=True),
     'nena':  dict(build='adult', **SKIN, H='#9a94a8', h='#7a7488', k='#c4bfd0', T='#4f7fd0', t='#3a62a8', U='#f6f1e7',
                   B='#6b3a5a', b='#4f2a44', F='#5a5468', A='#f0e6c8', a='#d6c9a4', top='tee', bottom='longskirt', apron=True, towel=True, elder=True),
+    # barangay watchman: an adult in a lime reflective vest, blue cap, navy trousers (was a runtime recolour of the
+    # kuya sprite). Khaki vanished against the wood floor; yellow looked like Jun's own shirt.
+    'tanod': dict(build='adult', **TAN, H='#2a1f33', h='#1b1424', k='#4a3d5c', T='#c8f06a', t='#8fb84a', U='#f6f1e7',
+                  B='#2a3560', b='#1d2448', F='#1b1424', A='#4f8fff', a='#2f5fbf', top='tee', bottom='pants'),
     'ninang': dict(build='perm', **SKIN, H='#4a2c5a', h='#2e1a3a', k='#7a5a8c', T='#c0306a', t='#8a2050', U='#ff7eb6',
                    B='#c0306a', b='#8a2050', F='#ffd84d', A='#ffd84d', a='#ff4b4b', top='terno', bottom='longskirt',
                    lips=True, earrings=True, fan=True, lashes=True),
 }
 KIDS = ['jun', 'bing', 'ramil', 'nene']
-ADULTS = ['mama', 'lola', 'tita', 'tatay', 'kuya', 'nena', 'ninang']
+ADULTS = ['mama', 'lola', 'tita', 'tatay', 'kuya', 'nena', 'ninang', 'tanod']
 WALK = [0, 1, 2, 3]
 
 # ---- heads -----------------------------------------------------------------------
@@ -572,6 +577,7 @@ HEADS = {
         '..hhhSSSSSShh...',
     ]),
 }
+HEADS['tanod'] = HEADS['kuya']  # the tanod's cap is the same shape as Jomar's; his colours make it a uniform cap
 
 
 def layout(look):

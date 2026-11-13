@@ -78,6 +78,7 @@ export const LOOKS = {
   nena: { H: C.gray,   S: C.skin, T: C.blue,   B: '#3a4f8a', F: C.skin2, E: C.ink, legsN: 4, longHair: true },
   ninang: { H: '#6b4a8c', S: C.skin, T: '#c0306a', B: '#8a2050', F: C.skin2, E: C.ink, legsN: 4, skirt: true },
   kuya: { H: '#3a2418', S: C.skin, T: '#46a0e0', B: C.dgray, F: C.skin2, E: C.ink, legsN: 3 },
+  tanod: { H: '#3a2418', S: C.skin, T: '#c8f06a', B: '#2a3560', F: C.skin2, E: C.ink, legsN: 3 },
 };
 
 // Aso (askal dog): own maps, H fur, D dark fur, E eye, N nose
@@ -118,7 +119,6 @@ export const KID_SLOTS = { // the top / bottom colours (base, shade) of each kid
 };
 export const VARIANTS = {
   bisita:  { base: 'tita', map: { '#2fa59b': '#ff9a3c', '#22807a': '#d9762a', '#7fe0d4': '#ffe36b', '#ff7eb6': '#2a1f33', '#d9578f': '#1b1424', '#ffb0d4': '#4a3d5c' } },
-  tanod:   { base: 'kuya', map: { '#46a0e0': '#c9a46a', '#3580b8': '#a6824a', '#2f5fbf': '#3a3550', '#24488f': '#2a2640', '#5a5468': '#3a3550', '#46415a': '#2a2640' } },
   tindera: { base: 'nena', map: { '#4f7fd0': '#46e08a', '#3a62a8': '#2fa55b', '#6b3a5a': '#a8433f', '#4f2a44': '#7a2a2a', '#9a94a8': '#2a1f33', '#7a7488': '#1b1424', '#c4bfd0': '#4a3d5c' } },
   // the three kittens are one sprite in three coats
   tigre:   { base: 'kuting', map: {} },
