@@ -14,6 +14,7 @@
 //       { "stop": adultIndex, "at": [x, y, wait, face, "bilang"] } a new stop on someone's route (counting the purse)
 //       { "adult": adultIndex, "cfg": { "lightSleeper": true } }  someone watches differently (cfg keys as in adult.js)
 //       { "lock": [x, y], "key": "blue", "keyAt": [x, y] }       a door gets locked, and its key left somewhere
+//       { "set": { "laundryDown": { "every": 18 } } }             a level setting changes (shallow, per key)
 // A level can also carry "news" of its own (a scripted change, shown at every tier, after the tier's news).
 
 export const MAX = 100;
@@ -100,6 +101,7 @@ function applyOp(L, op) {
     if (!a.route) a.route = [a.at.slice()];
     a.route.push(op.at.slice());
   } else if (op.adult !== undefined && L.adults[op.adult]) L.adults[op.adult].cfg = { ...(L.adults[op.adult].cfg || {}), ...op.cfg };
+  else if (op.set) for (const [k, v] of Object.entries(op.set)) L[k] = v && typeof v === 'object' && !Array.isArray(v) ? { ...(L[k] || {}), ...v } : v;
   else if (op.lock) {
     L.locks = [...(L.locks || []), { at: op.lock.slice(), key: op.key, family: true }]; // the family locked it: they have the key
     if (!(L.items || []).some((i) => i.kind === 'key' && i.color === op.key)) L.items = [...(L.items || []), { kind: 'key', color: op.key, at: op.keyAt.slice() }];

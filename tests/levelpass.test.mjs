@@ -125,8 +125,17 @@ test('L9 GABI: Jomar walks the long hall; 30 s before dinner Mama calls HUGAS KA
 });
 
 test('level pass: the rules hold for every level the pass has reached', () => {
-  for (const id of ['01-sala', '02-kusina', '03-buong-bahay', '04-bakuran', 'kwarto', 'gatas', '05-gabi']) {
+  for (const id of ['01-sala', '02-kusina', '03-buong-bahay', '04-bakuran', 'kwarto', 'gatas', '05-gabi', 'sampayan']) {
     const r = rules(load(id));
     for (const k of ['R1', 'R2', 'R6', 'R7']) assert.ok(r[k].ok, `${id} ${k} ${JSON.stringify(r[k])}`);
   }
+});
+
+test('L10 KASABWAT: HINALA 2 brings the washing in sooner (a level setting), 3 lets the dog loose', async () => {
+  const { applyHinala } = await import('../src/game/hinala.js');
+  const L = load('sampayan');
+  assert.equal(applyHinala(L, 2).laundryDown.every, 18);
+  assert.equal(applyHinala(L, 2).laundryDown.floor, ';', 'the rest of the setting is kept');
+  assert.equal(L.laundryDown.every, 25, 'the level file is untouched');
+  assert.equal(new World(applyHinala(L, 3)).adults[3].cfg.cycle, null);
 });
