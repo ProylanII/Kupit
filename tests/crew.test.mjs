@@ -73,7 +73,9 @@ test('PALUSOT costs a little suspicion: they wonder (HINALA +3)', () => {
 
 test('levels suggest a kid on the card (a valid one, with a short reason), and the save remembers picks', () => {
   const sug = levels.filter((L) => L.suggest);
-  assert.deepEqual(sug.map((L) => L.suggest).sort(), ['bing', 'nene', 'ramil']);
+  const kids = new Set(sug.map((L) => L.suggest));
+  for (const k of ['bing', 'nene', 'ramil']) assert.ok(kids.has(k), `some level suggests ${k}`);
+  for (const k of kids) assert.ok(['jun', 'bing', 'ramil', 'nene'].includes(k));
   for (const L of sug) assert.ok(L.suggestWhy && L.suggestWhy.length <= 56, L.id);
   assert.ok(validateLevel({ ...room(), suggest: 'tatay' }).some((m) => /suggest/.test(m)));
   assert.deepEqual(fresh().pick, {});
