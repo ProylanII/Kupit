@@ -96,7 +96,7 @@ function launch() {
   const L = campaign ? applyHinala(cur, hinalaTierFor(cur, idx)) : cur;
   play = new Play(L, input, { char: save.char, upgrades: save.upgrades, lives: 3, alkansyaFound: !!save.alkansya[cur.id] },
     { tips, ghost, outfit: save.outfit, record: campaign, log: playtest ? ptEvent : null,
-      earned: campaign ? save.missions[cur.id] | 0 : 0,
+      earned: campaign ? save.missions[cur.id] | 0 : 0, noCard: campaign, // campaign: the card came before the level
       quietClear: campaign && !!cur.ending && !save.story.ending, // the storm ends on "HULI KA!", not on a fanfare
       kitten: !campaign || cur.storm ? 0 : cur.hingi ? 3 : save.story.epilogue ? 1 : 0 }); // the epilogue: all three trot after you; afterwards Tigre tags along
   ptLog('start');
@@ -190,7 +190,9 @@ function enterPanel() {
 const levelIds = () => levels.map((l) => l.id);
 
 // Start a campaign level, playing whatever part of the story comes before it the first time.
+let beganFrom = 'title'; // where the player chose to start a level (the card's BACK returns there)
 function begin(i) {
+  if (mode !== 'story' && mode !== 'card') beganFrom = mode;
   const L = levels[i];
   if (!L) return;
   const go = () => begin(i);
@@ -207,7 +209,73 @@ function begin(i) {
     }, i);
     return;
   }
-  start(i);
+  showCard(i);
+}
+
+// ---- before a level: SINO ANG PUPUNTA? (who's going?) -------------------------------------------------
+// The level, its three stars, what changed in the house (HINALA), and the crew: pick who goes. A level can
+// suggest a kid ("suggest": "bing", "suggestWhy": "..."), but every level can be finished as Jun.
+let card = null; // { i, sel: index into the crew row }
+const CARD_GO = { x: 20, y: 318, w: 200, h: 22 }, CARD_BACK = { x: 70, y: 346, w: 100, h: 15 };
+const cardSlot = (k) => ({ x: VIEW_W / 2 - 74 + k * 38, y: 190, w: 34, h: 34 });
+function showCard(i) {
+  const L = levels[i];
+  if (!L || L.epilogue) { start(i); return; } // nobody sneaks in the epilogue
+  const want = save.pick[L.id] && save.chars.includes(save.pick[L.id]) ? save.pick[L.id] : save.char;
+  card = { i, sel: Math.max(0, CHAR_ORDER.indexOf(want)) };
+  setMode('card');
+}
+function cardGo() {
+  const L = levels[card.i], id = CHAR_ORDER[card.sel];
+  save.char = id; save.pick[L.id] = id; persist();
+  sfx.unlock(); start(card.i);
+}
+function updateCard() {
+  const owned = (k) => save.chars.includes(CHAR_ORDER[k]);
+  const move = (d) => { let k = card.sel; for (let n = 0; n < CHAR_ORDER.length; n++) { k = (k + d + CHAR_ORDER.length) % CHAR_ORDER.length; if (owned(k)) break; } if (k !== card.sel) { card.sel = k; sfx.click(); } };
+  if (input.pressed('ArrowLeft') || input.pressed('a')) move(-1);
+  if (input.pressed('ArrowRight') || input.pressed('d')) move(1);
+  if (input.pressed('Escape') || hit(input.tapPos, CARD_BACK)) { sfx.unlock(); if (beganFrom === 'levels') { prevMode = 'title'; setMode('levels'); } else setMode('title'); return; }
+  const tp = input.tapPos;
+  if (tp) for (let k = 0; k < CHAR_ORDER.length; k++) if (hit(tp, cardSlot(k))) { if (owned(k)) { card.sel = k; sfx.click(); } else sfx.creak(); return; }
+  if (age > 0.25 && (hit(tp, CARD_GO) || input.pressed('Enter') || input.pressed(' ') || input.pressed('e'))) cardGo();
+}
+function drawCard() {
+  const L = levels[card.i], cx = VIEW_W / 2;
+  g.fillStyle = C.ink; g.fillRect(0, 0, VIEW_W, VIEW_H);
+  if (!titleBg) titleBg = buildTitleBg();
+  g.globalAlpha = 0.18; g.drawImage(titleBg, 0, 0); g.globalAlpha = 1;
+  const c = CHAPTERS[chapterOf(card.i)];
+  drawText(g, `CHAPTER ${chapterOf(card.i) + 1}: ${c.name}`, cx, 14, C.gray, { align: 'center' });
+  drawText(g, L.name, cx, 28, C.gold, { scale: L.name.length > 12 ? 2 : 3, align: 'center', shadow: C.gold2 });
+  // the three stars (missions), earned ones lit
+  const ids = missionIds(L), mask = save.missions[L.id] | 0;
+  g.globalAlpha = 0.85; g.fillStyle = '#2a2440'; g.fillRect(cx - 88, 60, 176, 40); g.globalAlpha = 1;
+  ids.forEach((m, k) => { const on = !!((mask >> k) & 1); drawStar(g, cx - 80, 65 + k * 11, on); drawText(g, missionLabel(L, m), cx - 70, 66 + k * 11, on ? C.gold : C.white); });
+  // what changed in the house since last time (HINALA)
+  const news = applyHinala(L, hinalaTierFor(L, card.i)).news || [];
+  let y = 110;
+  if (news.length) {
+    drawText(g, 'NEW IN THE HOUSE', cx, y, C.orange, { align: 'center' }); y += 10;
+    for (const n of news.slice(0, 2)) { drawText(g, n, cx, y, C.white, { align: 'center' }); y += 9; }
+  } else if (L.hint) { for (const l of wrap(L.hint, 56).slice(0, 2)) { drawText(g, l, cx, y, C.gray, { align: 'center' }); y += 9; } }
+  // the crew
+  drawText(g, 'SINO ANG PUPUNTA?', cx, 160, C.gold, { align: 'center' });
+  drawText(g, "WHO'S GOING?", cx, 170, C.gray, { align: 'center' });
+  CHAR_ORDER.forEach((id, k) => {
+    const r = cardSlot(k), have = save.chars.includes(id), on = card.sel === k;
+    g.fillStyle = on ? C.gold : C.wallD; g.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2);
+    g.fillStyle = C.ink; g.fillRect(r.x + 1, r.y + 1, r.w - 2, r.h - 2);
+    if (have) drawPortrait(g, id, r.x + 2, r.y + 2, 1, on ? 'happy' : '');
+    else drawText(g, '?', r.x + r.w / 2, r.y + 13, C.dgray, { align: 'center' });
+    if (have && L.suggest === id) { g.fillStyle = C.green; g.fillRect(r.x + r.w - 7, r.y - 3, 8, 8); drawText(g, '!', r.x + r.w - 4, r.y - 1, C.ink); }
+  });
+  const ch = CHARACTERS[CHAR_ORDER[card.sel]];
+  drawText(g, ch.name, cx, 232, C.white, { align: 'center' });
+  ch.lines.forEach((l, k) => drawText(g, l, cx, 242 + k * 9, k ? C.gray : C.yellow, { align: 'center' }));
+  if (L.suggest && save.chars.includes(L.suggest)) drawText(g, `! ${L.suggestWhy || `${CHARACTERS[L.suggest].name} FITS THIS ONE`}`, cx, 268, C.green, { align: 'center' });
+  drawButton(g, CARD_GO, 'GO!', true);
+  drawButton(g, CARD_BACK, 'BACK', false);
 }
 
 const SKIP = { x: VIEW_W - 58, y: 8, w: 50, h: 15 };
@@ -934,7 +1002,8 @@ function frame(now) {
     chars: [() => charScreen.update(input, shopCtx, dt), () => charScreen.draw(g, shopCtx)],
     house: [updateHouse, drawHouse],
     dev: [updateDevMenu, drawDevMenu],
-    paused: [updatePaused, drawPaused], caught: [updateCaught, drawCaught], clear: [updateClear, drawClear] };
+    paused: [updatePaused, drawPaused], caught: [updateCaught, drawCaught], clear: [updateClear, drawClear],
+    card: [updateCard, drawCard] };
   if (screens[m]) { screens[m][0](); if (mode === m) screens[m][1](); } // skip the draw if the screen just changed
   else if (m === 'loading') {
     g.fillStyle = C.ink; g.fillRect(0, 0, VIEW_W, VIEW_H);
@@ -986,6 +1055,7 @@ requestAnimationFrame(frame);
 
 // Debug hook for automated checks: window.__kupit
 window.__kupit = { get play() { return play; }, get mode() { return mode; }, start, startHouse, startDaily, input,
+  card: (i) => showCard(i), /* tools/qa/shot.mjs card:N */
   story: (panels, i = 0) => { startStory(panels, () => setMode('title')); story.i = i; age = 99; }, go: (m) => setMode(m), /* for tools/qa/shot.mjs */ get save() { return save; }, get cur() { return cur; }, get run() { return run; }, get loadError() { return loadError; } };
 
 // ---- installable + offline (PWA) --------------------------------------------------------

@@ -2,6 +2,8 @@
  "id": "04-bakuran",
  "name": "BAKURAN",
  "hint": "LAUNDRY HIDES YOU. PANDESAL KEEPS ASO BUSY",
+ "suggest": "bing",
+ "suggestWhy": "SMALL IS GOOD HERE: CRAWL UNDER THE TABLE",
  "missions": [
   "noBark",
   "fast"

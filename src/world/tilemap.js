@@ -12,6 +12,7 @@ const SOLID = new Set('#TSBPCFHWAKMDG');
 const OPAQUE = new Set('#DKML');
 export const FURNITURE = 'TSBPCFHWAKM';
 export const FLOORS = '.,;:';
+export const CRAWL = new Set('TB'); // tables and beds: Bing (and only Bing) crawls under them
 
 export class TileMap {
   constructor(rows) {
@@ -29,14 +30,15 @@ export class TileMap {
     this.grid[ty][tx] = c;
     this.version++;
   }
-  tileSolid(tx, ty) { return SOLID.has(this.ch(tx, ty)); }
-  isSolidAt(px, py) { return this.tileSolid(Math.floor(px / TILE), Math.floor(py / TILE)); }
+  tileSolid(tx, ty, pass = null) { const c = this.ch(tx, ty); return SOLID.has(c) && !(pass && pass.has(c)); }
+  isSolidAt(px, py, pass = null) { return this.tileSolid(Math.floor(px / TILE), Math.floor(py / TILE), pass); }
   // Walls, closed doors, wardrobes, stalls and hanging laundry stop sight; low furniture and gate bars do not.
   blocksLosAt(px, py) { return OPAQUE.has(this.ch(Math.floor(px / TILE), Math.floor(py / TILE))); }
   // Axis-aligned box of half-size r centred on (x,y) overlaps something solid?
-  blocked(x, y, r) {
-    return this.isSolidAt(x - r, y - r) || this.isSolidAt(x + r, y - r) ||
-           this.isSolidAt(x - r, y + r) || this.isSolidAt(x + r, y + r);
+  // pass: tiles this mover may go through anyway (Bing's tables and beds)
+  blocked(x, y, r, pass = null) {
+    return this.isSolidAt(x - r, y - r, pass) || this.isSolidAt(x + r, y - r, pass) ||
+           this.isSolidAt(x - r, y + r, pass) || this.isSolidAt(x + r, y + r, pass);
   }
 }
 

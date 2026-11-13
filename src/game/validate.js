@@ -70,6 +70,8 @@ export function validateLevel(L) {
     if (map.tileSolid(p[0], p[1]) || 'dgDG'.includes(c)) bad(`${what} ${p} must be on plain floor (got '${c}')`);
   };
   if (L.hint && L.hint.length > 58) bad(`hint is ${L.hint.length} chars (max 58 fits the screen)`);
+  if (L.suggest !== undefined && !['jun', 'bing', 'ramil', 'nene'].includes(L.suggest)) bad(`suggest: unknown kid ${L.suggest}`);
+  if (L.suggestWhy && L.suggestWhy.length > 56) bad(`suggestWhy is ${L.suggestWhy.length} chars (max 56)`);
   for (const msg of hinalaProblems(L)) bad(msg); // (each tier variant is validated as a level of its own in the tests)
   if (L.missions) {
     if (!Array.isArray(L.missions) || L.missions.length !== 2 || L.missions[0] === L.missions[1]) bad('missions must be two different mission ids');

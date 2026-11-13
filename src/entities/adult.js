@@ -52,6 +52,7 @@ const RAYS = 32;
 const SEARCH_TIME = 2.5;
 const CHASE_MULT = 1.5;
 const CATCH_DIST = 10;
+export const UNDER_SEE = 20; // Bing under a table or bed: only someone right next to it sees her (and can reach in)
 const COVER_R = 6; // half-width of a person standing in the way
 export const BLEND_SEE = 30; // a kid walking with a guest is only noticed from this close
 
@@ -314,6 +315,7 @@ export class Adult {
     if (player.hidden && !this.sawHide) return false;
     const dx = player.x - this.x, dy = player.y - this.y, dist = Math.hypot(dx, dy);
     if (player.blend && this.state !== 'chase' && dist > BLEND_SEE) return false; // one more kid in the crowd
+    if (player.under && dist > UNDER_SEE) return false; // MALIIT: under the table, out of sight
     return dist < this.range && Math.abs(angDiff(Math.atan2(dy, dx) - this.va)) < this.fov &&
       hasLos(this.map, this, player) && !this.covered(player.x, player.y);
   }
@@ -474,7 +476,8 @@ export class Adult {
         if (this.repathT <= 0) { this.goTo(this.last.x, this.last.y); this.repathT = 0.35; }
         const done = this.follow(dt, c.speed * CHASE_MULT, world, false);
         const dist = Math.hypot(player.x - this.x, player.y - this.y);
-        if (dist < CATCH_DIST && !(player.graceT > 0) && (!player.hidden || this.sawHide)) { this.caught = true; return; }
+        const reach = player.under ? UNDER_SEE : CATCH_DIST; // they can reach in under a table
+        if (dist < reach && !(player.graceT > 0) && (!player.hidden || this.sawHide)) { this.caught = true; return; }
         // the tindera never strays far from her stall
         const leashed = c.leash && Math.hypot(this.x - this.home.x, this.y - this.home.y) > c.leash;
         if ((done && !this.seen) || this.lostT > 5 || leashed) {

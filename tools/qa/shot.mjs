@@ -1,7 +1,8 @@
 // Screenshots for looking at the game by eye (art, levels, story panels):
 //   node tools/qa/shot.mjs http://localhost:8080 outDir level:3 level:14@6 story:ENDING:0 story:ENDING:3 title map clear:3 paused:2
 // level:N[@seconds] = level N (1-based) after that many seconds; story:NAME:panel = a story scene (INTRO, ENDING,
-// EPILOGUE, a level id from BEFORE, or after-<id> for AFTER); clear:N = level N's clear screen; paused:N; title; map.
+// EPILOGUE, a level id from BEFORE, or after-<id> for AFTER); clear:N = level N's clear screen; paused:N; title; map;
+// card:N = the pre-level card (who's going?) of level N.
 import { mkdirSync } from 'node:fs';
 import { launch, openPage, sleep, state } from './browser.mjs';
 
@@ -31,6 +32,7 @@ for (const s of shots) {
     await sleep(1600);
   } else if (kind === 'title') { await page.evaluate(() => window.__kupit.go('title')); await sleep(500); }
   else if (kind === 'map') { await page.evaluate(() => window.__kupit.go('levels')); await sleep(500); }
+  else if (kind === 'card') { await page.evaluate((i) => window.__kupit.card(i), Number(a) - 1); await sleep(500); }
   await page.screenshot({ path: `${out}/${name}.png` });
   console.log(name, JSON.stringify(await state(page)));
 }

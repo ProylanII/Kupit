@@ -44,6 +44,7 @@ export class World {
     this.player = new Player(level.spawn[0], level.spawn[1], this.mods);
     this.player.items = this.noThrow ? [] : this.mods.startItems.slice(); // gear: BAON, HOLEN
     this.panyo = this.mods.panyo; // PANYO: stash openings it can still muffle this level
+    this.palusot = this.mods.palusot; // PALUSOT: close calls Kuya Ramil can still talk away this level
     this.rollers = [];            // HOLEN: marbles rolling across the floor
     this.abilityCd = 0;
     this.god = false; // dev mode: nobody can catch you
@@ -70,7 +71,7 @@ export class World {
     // Videoke: it plays by itself, a song then a break. While someone is singing, nothing you do near it can be heard.
     this.videokes = (level.devices || []).filter((d) => d.kind === 'videoke').map((d) => ({ ...at(d.at), kind: 'videoke', r: d.r ?? 76, on: d.on ?? 9, off: d.off ?? 6, t: d.phase ?? 0, singing: false }));
     this.cover = null;  // what is drowning out your noise right now: 'thunder' | 'videoke' | null
-    this.stats = { throws: 0, hides: 0, runT: 0, loudRunT: 0, skills: 0, traps: 0, barks: 0, devices: 0, spills: 0, tattles: 0 }; // for the missions (and HINALA)
+    this.stats = { throws: 0, hides: 0, runT: 0, loudRunT: 0, skills: 0, traps: 0, barks: 0, devices: 0, spills: 0, tattles: 0, palusot: 0 }; // for the missions (and HINALA)
     this.alkansyaWasFound = !!loadout.alkansyaFound;
     this.missionIds = missionIds(level);
     this.missionLost = this.missionIds.map(() => false); // strict missions already failed this run
@@ -111,6 +112,8 @@ export class World {
 
   get patience() { return this.level.patience ? this.level.patience + this.mods.patienceBonus : 0; }
   get bossPhases() { return this.level.boss?.phases || []; }
+  // a boss's last phase has fired (no excuses work any more)
+  get finalPhase() { return !!this.level.boss && this.phase >= this.bossPhases.length && this.bossPhases.length > 0; }
   get open() { return this.coins >= this.level.quota && !this.missing; }
   // a must-have (the milk) that is not in your hands yet
   get missing() { return this.targets.find((t) => t.must && !t.done) || null; }
@@ -443,7 +446,8 @@ export class World {
     const stealing = !p.hidden && input.action && ctx?.kind === 'steal';
     p.stealing = stealing; // drawn with the 'reach' pose
     if (input.cyclePressed) this.cycleItem();
-    const canThrow = p.items.length && !p.hidden && !stealing && p.stunT <= 0 && !this.noThrow;
+    p.under = !!p.crawl && p.crawl.has(map.ch(p.tx, p.ty)); // MALIIT: Bing under a table or bed
+    const canThrow = p.items.length && !p.hidden && !p.under && !stealing && p.stunT <= 0 && !this.noThrow;
     this.aim = input.throwAim && canThrow ? this.aimPreview() : null;
     if (input.throwPressed && canThrow) this.throwItem();
     if (input.abilityPressed) this.useAbility();
@@ -646,6 +650,18 @@ export class World {
   // Caught by an adult: a scolding, some coins go back, and you try again from the last safe spot.
   // The last catch (lives used up) ends the level.
   caught(a) {
+    // PALUSOT: Kuya Ramil talks his way out of the first close call (not in a boss's final phase)
+    if (this.palusot > 0 && !this.finalPhase) {
+      this.palusot--;
+      this.stats.palusot++;
+      const p = this.player;
+      p.graceT = GRACE_TIME; p.stunT = 0;
+      for (const b of this.adults) if (b.state === 'chase' || b === a) b.reset();
+      this.talk('MA, TINUTULUNGAN KO LANG SIYA!', 2.2);
+      a.talk('HAY NAKO. SIGE NA, ALIS.', 2.2);
+      this.emit({ type: 'palusot', who: a });
+      return;
+    }
     this.catches++;
     if (this.catches >= this.lives) { this.fail('seen', a); return; }
     this.spill();
@@ -737,7 +753,7 @@ export class World {
     const missions = this.missionIds.map((id, i) => !this.missionLost[i] && !!MISSIONS[id].ok(this)); // [clear, mission 2, mission 3]
     const emptied = this.targets.filter((t) => t.perCoin && t.done).length;
     this.result = { coins: this.coins, time: this.time, stars: missions.filter(Boolean).length, missions, fast, stealth, catches: this.catches, spotted: this.spotted, bonus: this.bonus,
-      sobra: this.sobra, emptied, takenBy: this.takenBy(), spills: this.stats.spills, tattles: this.stats.tattles };
+      sobra: this.sobra, emptied, takenBy: this.takenBy(), spills: this.stats.spills, tattles: this.stats.tattles, palusot: this.stats.palusot };
     this.emit({ type: 'clear' });
   }
 

@@ -31,6 +31,7 @@ export const fresh = () => ({
   hinalaAt: {},             // level id -> HINALA tier it was first cleared at (replays use it)
   hinalaPlay: 0,            // the part of it Jun's own play caused (no chapter floors): flavours the ending
   ledger: {},               // level id -> what the first clear took { by: {owner: n}, sobra, emptied, catches, spills }
+  pick: {},                 // level id -> the kid who went last time (the pre-level card remembers)
 });
 
 // version -> function that upgrades a save of that version by one step

@@ -36,6 +36,7 @@ export const INPUTS = {
   spotted: { label: 'ALARM',       each: 2, cap: 6 },
   spills:  { label: 'EVIDENCE',    each: 3, cap: 6 },
   tattles: { label: 'TATTLE',      each: 2, cap: 4 },
+  palusot: { label: 'EXCUSE',      each: 3, cap: 3 }, // Kuya Ramil's excuse worked, but they wonder
 };
 export const CLEAN = -5;      // nothing taken past the quota, no alarm, no close call: the house seems normal
 export const RETURNED = -2;   // IBALIK: per coin put back

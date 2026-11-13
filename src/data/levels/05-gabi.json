@@ -3,6 +3,8 @@
  "name": "GABI",
  "night": true,
  "hint": "BEFORE DINNER! JOMAR TELLS EVERYONE IF HE SEES YOU",
+ "suggest": "ramil",
+ "suggestWhy": "A LONG HALL: YELL TO SEND JOMAR THE OTHER WAY",
  "missions": [
   "noWake",
   "alkansya"

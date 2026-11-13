@@ -2,6 +2,8 @@
  "id": "08-palengke",
  "name": "PALENGKE",
  "hint": "STALLS BLOCK THE VIEW. TINDERAS TELL MAMA EVERYTHING",
+ "suggest": "nene",
+ "suggestWhy": "THE TINDERAS MELT FOR A CUTE FACE",
  "missions": [
   "noCatch",
   "sakto"

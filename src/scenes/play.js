@@ -89,6 +89,8 @@ const TIPS = {
   holen: 'HOLEN! IT ROLLS ON, TICKING. DOGS IGNORE IT',
   panyo: 'PANYO: THE HANDKERCHIEF MUFFLED IT. ONCE A LEVEL',
   medyas: 'MEDYAS: IN SOCKS THE CREAKY BOARD STAYS QUIET',
+  maliit: 'MALIIT: UNDER HERE ONLY SOMEONE RIGHT NEXT TO YOU SEES',
+  palusot: 'ONE EXCUSE A LEVEL. THEY STILL WONDER (HINALA +3)',
 };
 
 export class Play {
@@ -127,7 +129,7 @@ export class Play {
     // kittens trotting after you (the epilogue, and Tigre once the story is over): they follow your footsteps
     this.crumbs = [];
     this.kittens = Array.from({ length: opts.kitten | 0 }, (_, i) => ({ x: this.world.player.x, y: this.world.player.y, look: ['tigre', 'puti', 'muning'][i % 3], dir: 0, stepT: 0, moving: false }));
-    this.cardT = level.tutorial || level.hingi ? 0 : 5; // the mission card at the start of a level
+    this.cardT = level.tutorial || level.hingi || opts.noCard ? 0 : 5; // the mission card (campaign: shown before the level instead)
     // cats that simply live in this room (the epilogue: Mingming asleep on the rug)
     this.cats = (level.cats || []).map((c) => ({ look: c.kind || 'pusa', x: c.at[0] * TILE + TILE / 2, y: c.at[1] * TILE + TILE / 2, dir: c.dir ?? 2, pose: c.pose || 'sit' }));
     this.updateCamera(1);
@@ -203,6 +205,7 @@ export class Play {
     this.updateKittens(dt);
     if (w.cover === 'videoke') this.showTip('videoke');
     if (w.player.blend) this.showTip('blend');
+    if (w.player.under) this.showTip('maliit');
     if (w.map.ch(w.player.tx, w.player.ty) === 'L') this.showTip('laundry');
     if (w.time > 1 && w.adults.some((a) => a.busy && this.onScreen(a.x, a.y))) this.showTip('routine');
     for (const v of w.videokes) if (v.singing && this.onScreen(v.x, v.y, 20) && Math.random() < dt * 4) this.notes.push({ x: v.x + Math.random() * 16 - 8, y: v.y - 10, l: 1.2, k: Math.random() < 0.5 });
@@ -290,6 +293,7 @@ export class Play {
       case 'emptied': sfx.klak(); this.showTip('emptied'); break;
       case 'roll': sfx.tick(); this.showTip('holen'); break;
       case 'panyo': sfx.hide(); this.showTip('panyo'); break;
+      case 'palusot': sfx.skill(); this.toast = { text: 'PALUSOT! KUYA RAMIL TALKED YOU OUT', col: C.green, t: 2.4 }; this.showTip('palusot'); break;
       case 'medyas': this.showTip('medyas'); break;
       case 'clear': if (!this.opts.quietClear) sfx.clear(); this.buzz([30, 30, 30], C.green); break;
       case 'door': case 'switch': sfx.click(); break;
@@ -541,6 +545,11 @@ export class Play {
         if (!blink) drawActor(g, this.look, p.x, p.y, p.dir, w.status === 'caught' || w.scold ? 'caught' : this.castT > 0 ? 'cast' : p.stealing ? 'reach' : p.moving ? Math.floor(p.stepT * 8) % 4 : 0);
       } else this.drawAdult(g, e);
     }
+    if (p.under && !p.hidden) { // MALIIT: the table or bed drawn back over Bing, her eyes peeking out
+      const tx = p.tx * TILE, ty = p.ty * TILE;
+      g.globalAlpha = 0.82; g.drawImage(this.bg, tx, ty - 4, TILE, TILE + 4, tx, ty - 4, TILE, TILE + 4); g.globalAlpha = 1;
+      g.fillStyle = C.white; g.fillRect(Math.round(p.x) - 2, Math.round(p.y) - 1, 1, 1); g.fillRect(Math.round(p.x) + 1, Math.round(p.y) - 1, 1, 1);
+    }
     for (const h of w.hides) if (h.kind === 'curtain') drawObj(g, 'curtain', h.x, h.y - 1);
     this.drawOverlayTiles(g);
     for (const n of this.notes) drawText(g, '*', Math.round(n.x), Math.round(n.y), n.k ? C.pink : C.yellow, { shadow: C.ink });
@@ -707,7 +716,7 @@ export class Play {
   tutorialHint() {
     if (!this.level.tutorial) return null;
     const w = this.world, p = w.player;
-    if (w.scold) return 'CAUGHT! MAMA TOOK SOME COINS BACK';
+    if (w.scold) return 'MUNTIK NA! YOU DROPPED SOME COINS';
     if (w.open) return 'EXIT IS OPEN! WALK TO THE GREEN DOOR';
     if (p.hidden) return 'SAFE! WAIT, THEN MOVE TO COME OUT';
     if (w.targets.some((t) => t.progress > 0 && !t.done && !t.bonus)) return 'KEEP HOLDING THE BUTTON... WATCH THE CONE';
@@ -843,6 +852,12 @@ export class Play {
         g.fillStyle = used ? C.dgray : C.pink; g.fillRect(x + 1, 6, 2, 4); g.fillRect(x + 4, 6, 2, 4);
         if (used) { g.fillStyle = C.red; g.fillRect(x, 8, 7, 1); }
         x += 8;
+      }
+      // PALUSOT: Kuya Ramil's one excuse this level (a little speech bubble: gold while he still has it)
+      if (w.mods.palusot) {
+        const col = w.palusot > 0 && !w.finalPhase ? C.gold : C.dgray;
+        g.fillStyle = C.ink; g.fillRect(x + 1, 4, 8, 7);
+        g.fillStyle = col; g.fillRect(x + 2, 5, 6, 4); g.fillRect(x + 3, 9, 1, 1);
       }
     }
     if (w.bonus) { drawObj(g, 'alkansya', VIEW_W - 30, 26); drawText(g, `+${w.bonus}`, VIEW_W - 25, 23, C.green, sh); }

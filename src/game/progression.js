@@ -11,14 +11,14 @@ export const CHARACTERS = {
     lines: ['SNEAKY STEP: SILENT DASH', 'BALANCED. NO WEAKNESS.'],
   },
   bing: {
-    name: 'BING', joins: '04-bakuran', look: 'bing', speed: 0.88, alertRate: 0.7, radius: 3,
+    name: 'BING', joins: '04-bakuran', look: 'bing', speed: 0.88, alertRate: 0.7, radius: 3, crawl: true,
     skill: { id: 'hide', label: 'TAGO', cd: 10 },
-    lines: ['TAGO: HIDE ANYWHERE FOR 3S', 'TINY: HARD TO SPOT, SLOWER.'],
+    lines: ['TAGO: HIDE ANYWHERE FOR 3S', 'MALIIT: CRAWLS UNDER TABLES, BEDS.'],
   },
   ramil: {
-    name: 'KUYA RAMIL', joins: '05-gabi', look: 'ramil', throwRange: 1.6, runNoise: 1.25,
+    name: 'KUYA RAMIL', joins: '05-gabi', look: 'ramil', throwRange: 1.6, runNoise: 1.25, palusot: 1,
     skill: { id: 'shout', label: 'YELL', cd: 8 },
-    lines: ['SIGAW: YELL TO LURE AHEAD', 'STRONG: THROWS FAR, LOUD RUN.'],
+    lines: ['SIGAW: YELL TO LURE AHEAD', 'PALUSOT: TALKS AWAY ONE CLOSE CALL.'],
   },
   nene: {
     name: 'NENE', joins: '08-palengke', look: 'nene', stealTime: 0.75,
@@ -114,6 +114,8 @@ export function computeMods(charId = 'jun', ups = {}) {
     medyas: !!lvl(ups, 'medyas'), // creaky boards stay quiet
     panyo: lvl(ups, 'panyo') ? 1 : 0, // stash openings it can muffle per level
     throwRange: c.throwRange ?? 1,
+    crawl: !!c.crawl,       // Bing: under tables and beds (MALIIT)
+    palusot: c.palusot | 0, // Ramil: close calls he can talk away per level (PALUSOT)
   };
 }
 

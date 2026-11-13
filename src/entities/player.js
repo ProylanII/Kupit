@@ -1,4 +1,4 @@
-import { TILE } from '../world/tilemap.js';
+import { TILE, CRAWL } from '../world/tilemap.js';
 
 export const SNEAK_SPEED = 30;
 export const RUN_SPEED = 58;
@@ -26,6 +26,8 @@ export class Player {
     this.items = []; // throwables, last picked is thrown first
     this.keys = new Set();
     this.carry = null; // a full bowl of milk (a Target): slower, and running spills it
+    this.crawl = mods.crawl ? CRAWL : null; // Bing: tables and beds are passable (MALIIT)
+    this.under = false;                     // right now under a table or bed (the World keeps this up to date)
   }
 
   get tx() { return Math.floor(this.x / TILE); }
@@ -44,8 +46,8 @@ export class Player {
     const mx = mv.mag === 0 ? this.fx : mv.x, my = mv.mag === 0 ? this.fy : mv.y;
     const speed = dash ? DASH_SPEED : this.speedMul * (this.carry ? 0.85 : 1) * (run ? RUN_SPEED : SNEAK_SPEED * (0.5 + 0.5 * Math.min(1, mv.mag / 0.9)));
     const dx = mx * speed * dt, dy = my * speed * dt;
-    if (!map.blocked(this.x + dx, this.y, this.r)) this.x += dx;
-    if (!map.blocked(this.x, this.y + dy, this.r)) this.y += dy;
+    if (!map.blocked(this.x + dx, this.y, this.r, this.crawl)) this.x += dx;
+    if (!map.blocked(this.x, this.y + dy, this.r, this.crawl)) this.y += dy;
     this.moving = true;
     this.running = run;
     this.fx = mx; this.fy = my;
