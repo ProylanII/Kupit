@@ -750,7 +750,8 @@ export class Play {
     const w = this.world, p = w.player;
     if (w.scold) return 'MUNTIK NA! YOU DROPPED SOME COINS';
     if (w.open) return 'EXIT IS OPEN! WALK TO THE GREEN DOOR';
-    if (p.hidden) return 'SAFE! WAIT, THEN MOVE TO COME OUT';
+    if (p.hidden) return w.adults.some((a) => a.staged) ? 'SAFE! WAIT TILL SHE GOES BACK' : 'SAFE! WAIT, THEN MOVE TO COME OUT';
+    if (w.adults.some((a) => a.staged) || (w.stagedT > 0 && !w.stagedDone)) return 'TAGO! SHE HEARD SOMETHING. HIDE IN THE BOX!';
     if (w.targets.some((t) => t.progress > 0 && !t.done && !t.bonus)) return 'KEEP HOLDING THE BUTTON... WATCH THE CONE';
     if (w.adults.some((a) => a.awake && a.alert > 0.3)) return 'SHE SEES YOU! BACK OFF OUT OF THE YELLOW';
     if (w.coins === 0 && w.time < 5) return 'DRAG OR WASD TO MOVE. FAR DRAG / SHIFT RUNS';

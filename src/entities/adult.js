@@ -691,7 +691,10 @@ export class Adult {
           break;
         }
         this.a += Math.sin(this.searchT * 3) * dt * 3;
-        if ((this.searchT -= dt) <= 0) { this.state = 'return'; this.goTo(this.pts[this.i].x, this.pts[this.i].y); }
+        if ((this.searchT -= dt) <= 0) {
+          if (this.staged) { this.staged = false; this.talk('WALA NAMAN...', 1.4); } // (a staged beat: she shrugs)
+          this.state = 'return'; this.goTo(this.pts[this.i].x, this.pts[this.i].y);
+        }
         break;
       case 'return':
         if (this.follow(dt, c.speed, world)) { this.state = 'patrol'; this.wait = 0; if (this.stuck) this.blockedT = RETRY; }

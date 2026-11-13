@@ -44,7 +44,8 @@ test('soak: every level, idle 60s and wandering 40s', () => {
   for (const L of levels) {
     const { w, moved } = soak(L, 'idle', 60);
     // adults with a patrol route actually walk it (nobody is stuck in place for a minute)
-    w.adults.forEach((a, k) => { if (a.pts.length > 1) assert.ok(moved[k] > 2 * TILE, `${L.id}: ${a.type} #${k} never moved`); });
+    const walks = (a) => a.pts.some((p) => p.x !== a.pts[0].x || p.y !== a.pts[0].y); // (two stops on one spot: she sits and turns)
+    w.adults.forEach((a, k) => { if (walks(a)) assert.ok(moved[k] > 2 * TILE, `${L.id}: ${a.type} #${k} never moved`); });
     soak(L, 'walk', 40);
   }
 });

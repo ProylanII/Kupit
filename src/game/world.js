@@ -194,6 +194,23 @@ export class World {
     this.map.set(tx, ty, 'D');
     this.emit({ type: 'door', x: tx * TILE + 8, y: ty * TILE + 8 });
   }
+  // A staged beat (level "staged": { afterCoins, adult, to, delay, say }): once you have that many coins, that adult
+  // hears something and goes to look at a fixed spot, then shrugs and goes back. The tutorial uses it to teach TAGO.
+  stagedBeat(dt) {
+    const s = this.level.staged;
+    if (!s || this.stagedDone) return;
+    if (this.stagedT === undefined) { if (this.coins >= (s.afterCoins ?? 1)) this.stagedT = s.delay ?? 1; return; }
+    if ((this.stagedT -= dt) > 0) return;
+    this.stagedDone = true;
+    const a = this.adults[s.adult | 0];
+    if (!a || a.state === 'chase') return;
+    a.busy = null; a.wait = 0; a.hearT = 0;
+    a.investigate(s.to[0] * TILE + TILE / 2, s.to[1] * TILE + TILE / 2);
+    a.talk(s.say || 'ANO YUN?', 1.4);
+    a.staged = true;
+    this.emit({ type: 'staged', who: a });
+  }
+
   // A8: two of the family passing each other on a calm walk swap a line now and then. What they say follows the
   // house's mood (HINALA): small talk in a calm house, missing coins in a suspicious one (never Jun's name).
   chatter(dt) {
@@ -717,6 +734,7 @@ export class World {
       if (a.caught && !catcher) catcher = a;
     }
     this.chatter(dt);
+    this.stagedBeat(dt);
     this.hearNoises(dt);
     if (catcher) { this.caught(catcher); if (this.status !== 'play' || this.scold) return; }
 
