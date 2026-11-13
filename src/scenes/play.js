@@ -910,8 +910,12 @@ export class Play {
     // tips / tutorial coach / level hint: one line at the top, away from your thumbs
     const th = this.tutorialHint();
     // HINALA: what changed in the house since last time comes first, then the level's own hint
-    const news = this.level.news?.[0], showNews = news && w.time < 5 && !this.tip && !th;
-    const line = this.tip ? this.tip.text : th || (showNews ? `NEW IN THE HOUSE: ${news}` : this.level.hint && w.time < (news ? 11 : 8) ? this.level.hint : null);
+    // (it waits for a tip or the coach to finish, then stays up for 4 seconds)
+    const news = this.level.news?.[0];
+    const showNews = !!news && !this.tip && !th && w.time < 30 && (this.newsT || 0) < 4; // 4 s on screen, counted only while shown
+    if (showNews) { if (this.newsLast !== undefined) this.newsT = (this.newsT || 0) + Math.min(0.1, Math.max(0, w.time - this.newsLast)); this.newsLast = w.time; if (this.newsT >= 4) this.newsDone = w.time; }
+    else this.newsLast = undefined;
+    const line = this.tip ? this.tip.text : th || (showNews ? `NEW IN THE HOUSE: ${news}` : this.level.hint && (news ? this.newsDone !== undefined && w.time - this.newsDone < 6 : w.time < 8) ? this.level.hint : null);
     if (line && !(w.patience && w.time / w.patience > 0.75 && !this.tip)) {
       g.globalAlpha = 0.75; g.fillStyle = C.ink; g.fillRect(0, 18, VIEW_W, 11); g.globalAlpha = 1;
       drawText(g, line, VIEW_W / 2, 21, this.tip ? C.green : th ? C.white : showNews ? C.orange : C.yellow, { align: 'center' });

@@ -148,7 +148,7 @@ export function validateLevel(L) {
   for (const it of L.items || []) if (!reach.has(it.at.join())) bad(`item ${it.kind} ${it.at} unreachable`);
 
   // adults open plain doors but have no keys: a patrol must not need a locked door
-  const locked = new Set((L.locks || []).map((l) => l.at.join()));
+  const locked = new Set((L.locks || []).filter((l) => !l.family).map((l) => l.at.join())); // (family locks: they have the key)
   const pass = (x, y) => (map.ch(x, y) === 'D' ? !locked.has(`${x},${y}`) : !map.tileSolid(x, y));
   for (const a of L.adults) {
     if (!ADULT_TYPES[a.type]) { bad(`unknown adult type ${a.type}`); continue; }

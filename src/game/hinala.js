@@ -13,6 +13,8 @@
 //   op: { "move": targetIndex, "to": [x, y] }                    a stash moves (Mama hides her purse somewhere new)
 //       { "stop": adultIndex, "at": [x, y, wait, face, "bilang"] } a new stop on someone's route (counting the purse)
 //       { "adult": adultIndex, "cfg": { "lightSleeper": true } }  someone watches differently (cfg keys as in adult.js)
+//       { "lock": [x, y], "key": "blue", "keyAt": [x, y] }       a door gets locked, and its key left somewhere
+// A level can also carry "news" of its own (a scripted change, shown at every tier, after the tier's news).
 
 export const MAX = 100;
 export const TIERS = [
@@ -69,6 +71,7 @@ export function applyHinala(L, tier) {
   tier = Math.max(0, Math.min(3, tier | 0));
   if (!tier || L.hingi || L.epilogue) return L;
   const out = clone(L), news = [];
+  const own = L.news || [];
   for (let t = 1; t <= tier; t++) {
     const b = L.hinala?.[t];
     if (!b) continue;
@@ -85,7 +88,7 @@ export function applyHinala(L, tier) {
     }
   }
   for (const a of out.adults) if (a.type === 'mama') a.cfg = { ...a.cfg, speedMul: Math.max(a.cfg?.speedMul || 1, 1 + 0.04 * tier) }; // she hurries (A14)
-  out.news = news;
+  out.news = [...news, ...own];
   out.hinalaTier = tier;
   return out;
 }
@@ -97,6 +100,10 @@ function applyOp(L, op) {
     if (!a.route) a.route = [a.at.slice()];
     a.route.push(op.at.slice());
   } else if (op.adult !== undefined && L.adults[op.adult]) L.adults[op.adult].cfg = { ...(L.adults[op.adult].cfg || {}), ...op.cfg };
+  else if (op.lock) {
+    L.locks = [...(L.locks || []), { at: op.lock.slice(), key: op.key, family: true }]; // the family locked it: they have the key
+    if (!(L.items || []).some((i) => i.kind === 'key' && i.color === op.key)) L.items = [...(L.items || []), { kind: 'key', color: op.key, at: op.keyAt.slice() }];
+  }
 }
 
 // Problems with a level's hinala block (the validator checks every tier variant on top of this).
@@ -111,6 +118,7 @@ export function hinalaProblems(L) {
       if (op.move !== undefined && !(L.targets[op.move] && Array.isArray(op.to))) bad.push(`hinala ${k}: bad move`);
       if (op.stop !== undefined && !(L.adults[op.stop] && Array.isArray(op.at) && op.at.length >= 2)) bad.push(`hinala ${k}: bad stop`);
       if (op.adult !== undefined && !(L.adults[op.adult] && op.cfg)) bad.push(`hinala ${k}: bad adult change`);
+      if (op.lock && !(Array.isArray(op.lock) && op.key && Array.isArray(op.keyAt))) bad.push(`hinala ${k}: bad lock`);
     }
   }
   return bad;

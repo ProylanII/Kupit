@@ -38,8 +38,30 @@ test('L1 SALA: after the first coin she hears something, checks the kids room, s
   assert.deepEqual(tile(m), [7, 5], 'and back to the sofa');
 });
 
+test('L2 KUSINA: quota 5 of 7 (purse 3, the coin jar by the stove 2, piggy 2); radio and lego moved to L3', () => {
+  const L = load('02-kusina');
+  assert.equal(L.quota, 5);
+  assert.deepEqual(L.targets.map((t) => [t.kind, t.coins]), [['purse', 3], ['candy', 2], ['piggy', 2]]);
+  assert.equal(L.targets[1].owner, 'mama');
+  assert.ok(!L.devices && !L.traps);
+  assert.ok(!L.tiles.some((r) => r.includes('D')), 'no doors yet (L3 teaches them)');
+});
+
+test('L3 BUONG BAHAY: the purse moved to the bedroom; no lever yet; tier 2 locks the bedroom (Mama has that key)', async () => {
+  const { applyHinala } = await import('../src/game/hinala.js');
+  const L = load('03-buong-bahay');
+  assert.deepEqual(L.missions, ['noWake', 'sakto']);
+  assert.ok(!L.switches && !L.tiles.some((r) => r.includes('G')), 'the lever and gate moved to L6');
+  assert.ok(L.devices.some((d) => d.kind === 'radio') && L.traps.some((t) => t.kind === 'lego'));
+  assert.deepEqual(applyHinala(L, 0).news, ['MAMA MOVED HER PURSE TO THE BEDROOM']);
+  const t2 = applyHinala(L, 2);
+  assert.equal(t2.news[0], 'THE BEDROOM DOOR IS LOCKED NOW');
+  const w = new World(t2);
+  assert.ok(w.locks.has('4,14') && !w.adultLocks.has('4,14'), 'locked for the kids, not for Mama');
+});
+
 test('level pass: the rules hold for every level the pass has reached', () => {
-  for (const id of ['01-sala']) {
+  for (const id of ['01-sala', '02-kusina', '03-buong-bahay']) {
     const r = rules(load(id));
     for (const k of ['R1', 'R2', 'R6', 'R7']) assert.ok(r[k].ok, `${id} ${k} ${JSON.stringify(r[k])}`);
   }

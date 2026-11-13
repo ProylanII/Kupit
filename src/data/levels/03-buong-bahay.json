@@ -1,10 +1,10 @@
 {
  "id": "03-buong-bahay",
  "name": "BUONG BAHAY",
- "hint": "DOORS BLOCK SIGHT. KEYS OPEN LOCKS. LEVERS: GATES",
+ "hint": "DOORS BLOCK SIGHT. LOLA HAS THE BACK DOOR KEY",
  "missions": [
-  "fast",
-  "noCatch"
+  "noWake",
+  "sakto"
  ],
  "tiles": [
   "###############",
@@ -22,12 +22,12 @@
   "#..H.......A..#",
   "#.............#",
   "####D#######D##",
-  "#......#......#",
-  "#..CC..#.K....#",
+  "#.BB...#......#",
+  "#.BB...#.K....#",
   "#......#...PP.#",
-  "#####G##......#",
+  "#####.##......#",
   "#.....W#.H....#",
-  "#......#......#",
+  "#H.....#......#",
   "###############"
  ],
  "spawn": [
@@ -44,8 +44,8 @@
   {
    "kind": "purse",
    "at": [
-    12,
-    10
+    1,
+    16
    ],
    "coins": 3,
    "time": 1.6
@@ -120,24 +120,10 @@
  ],
  "traps": [
   {
-   "kind": "creak",
+   "kind": "lego",
    "at": [
-    11,
+    8,
     8
-   ]
-  }
- ],
- "switches": [
-  {
-   "at": [
-    5,
-    16
-   ],
-   "gates": [
-    [
-     5,
-     18
-    ]
    ]
   }
  ],
@@ -190,20 +176,16 @@
    "type": "tita",
    "route": [
     [
-     1,
-     15
-    ],
-    [
-     6,
-     15
+     2,
+     17
     ],
     [
      6,
      17
     ],
     [
-     1,
-     17
+     6,
+     15
     ]
    ]
   }
@@ -215,37 +197,55 @@
     {
      "stop": 0,
      "at": [
-      11,
-      10,
+      1,
+      15,
       3,
-      0,
+      1.5708,
       "bilang"
      ]
     }
    ]
   },
   "2": {
-   "news": "MAMA HID HER PURSE IN LOLA'S ROOM",
+   "news": "THE BEDROOM DOOR IS LOCKED NOW",
    "do": [
     {
-     "move": 0,
-     "to": [
-      13,
-      3
+     "lock": [
+      4,
+      14
+     ],
+     "key": "blue",
+     "keyAt": [
+      1,
+      8
      ]
     }
    ]
   },
   "3": {
-   "news": "MAMA CHECKS THE HIDING SPOTS",
+   "news": "LOLA SLEEPS LIGHTLY NOW",
    "do": [
     {
-     "adult": 0,
+     "adult": 1,
      "cfg": {
-      "checksHides": true
+      "lightSleeper": true
      }
     }
    ]
   }
- }
+ },
+ "news": [
+  "MAMA MOVED HER PURSE TO THE BEDROOM"
+ ],
+ "devices": [
+  {
+   "kind": "radio",
+   "at": [
+    1,
+    11
+   ],
+   "dur": 9
+  }
+ ],
+ "notes": "Near-miss: Tita's phone call ends just as you pass the wallet in her corner. The purse has moved to the bedroom (scripted HINALA). The exit is through the back door Lola has the key for."
 }

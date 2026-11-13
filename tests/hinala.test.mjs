@@ -46,7 +46,11 @@ test('hinala: next value is clamped and never drops under the chapter floor', ()
 });
 
 test('hinala: the house changes cumulatively by tier, and the level file is never touched', () => {
-  const L = byId['03-buong-bahay'];
+  // (a fixture: the real levels' blocks change with the level pass)
+  const L = { ...byId['03-buong-bahay'], hinala: {
+    1: { news: 'MAMA COUNTS HER PURSE NOW', do: [{ stop: 0, at: [11, 10, 3, 0, 'bilang'] }] },
+    2: { news: "MAMA HID HER PURSE IN LOLA'S ROOM", do: [{ move: 0, to: [13, 3] }] },
+    3: { news: 'MAMA CHECKS THE HIDING SPOTS', do: [{ adult: 0, cfg: { checksHides: true } }] } }, news: undefined };
   const copy = JSON.stringify(L);
   assert.equal(applyHinala(L, 0), L, 'tier 0: the house as built');
   const t2 = applyHinala(L, 2);

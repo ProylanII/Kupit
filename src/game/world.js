@@ -97,6 +97,9 @@ export class World {
     this.checkpoints = [{ x: this.player.x, y: this.player.y, hide: null }];
     this.stolen = [];   // [{ t, n }] coins taken, newest last (caught -> some go back)
     this.locks = new Map((level.locks || []).map((l) => [l.at.join(), l.key]));
+    // a door the family locked themselves (HINALA): they have the key, so it only stops the kids
+    const family = new Set((level.locks || []).filter((l) => l.family).map((l) => l.at.join()));
+    this.adultLocks = { has: (k) => this.locks.has(k) && !family.has(k) };
     this.pendingGates = new Map(); // gates that should close but someone is standing in them ("x,y" -> [x, y])
     this.adults = []; // filled in place: every adult keeps a reference to this list (guests in it block sight)
     for (const d of level.adults) this.adults.push(this.makeAdult(d));
@@ -153,7 +156,7 @@ export class World {
   makeAdult(d) {
     // HINGI (the epilogue): nobody is watching for you any more, they are just family in their house
     if (this.level.hingi) d = { ...d, cfg: { ...d.cfg, harmless: true, cover: false } };
-    const a = new Adult(d, this.map, this.locks);
+    const a = new Adult(d, this.map, this.adultLocks);
     a.covers = this.adults; // guests and vehicles in this list block sight
     return a;
   }
@@ -180,7 +183,7 @@ export class World {
 
   // ---- callbacks used by adults ----
   openDoor(tx, ty) {
-    if (this.map.ch(tx, ty) !== 'D' || this.locks.has(tx + ',' + ty)) return false; // adults have no keys
+    if (this.map.ch(tx, ty) !== 'D' || this.adultLocks.has(tx + ',' + ty)) return false; // adults have no keys (except to their own doors)
     this.map.set(tx, ty, 'd');
     this.playerOpened.delete(tx + ',' + ty);
     this.emit({ type: 'door', x: tx * TILE + 8, y: ty * TILE + 8 });
