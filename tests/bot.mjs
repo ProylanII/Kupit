@@ -78,7 +78,9 @@ export function playBot(L, { run = false, maxT = 900, lives = 3, god = true } = 
     }
     pressT -= 1 / 60;
     w.update(1 / 60, inp);
-    if (Math.hypot(p.x - lastPos[0], p.y - lastPos[1]) < 0.5 && !inp.action) stuckT += 1 / 60; else stuckT = 0;
+    // caught without god mode: after the respawn, plan again from where you are (the old path is from elsewhere)
+    if (Math.hypot(p.x - lastPos[0], p.y - lastPos[1]) > 24) { path = null; goal = null; stuckT = 0; }
+    else if (Math.hypot(p.x - lastPos[0], p.y - lastPos[1]) < 0.5 && !inp.action && !w.scold) stuckT += 1 / 60; else stuckT = 0;
     lastPos = [p.x, p.y];
     if (stuckT > 12) return fail(`stuck at ${p.tx},${p.ty} going to ${kind} ${tileOf(obj)}`, t);
   }
