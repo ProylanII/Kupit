@@ -72,6 +72,8 @@ export const sfx = {
   rustle: () => beep(220 + Math.random() * 80, 0.06, { type: 'triangle', vol: 0.04 }),
   jingle: () => { beep(1500, 0.04, { vol: 0.03 }); beep(1800, 0.04, { at: 0.05, vol: 0.03 }); },
   whistle: () => beep(2100, 0.35, { slide: 300, type: 'square', vol: 0.04 }),
+  tune: () => [784, 659, 880].forEach((f, i) => beep(f, 0.12, { at: i * 0.14, type: 'sine', vol: 0.025 })), // Tatay whistling a tune
+  ringtone: () => [1320, 1320, 1320].forEach((f, i) => beep(f, 0.06, { at: i * 0.09, type: 'square', vol: 0.025 })), // Tita's phone
   horn: () => { beep(330, 0.12, { vol: 0.06 }); beep(330, 0.12, { at: 0.18, vol: 0.06 }); },
   unlock: () => ac(),
 };

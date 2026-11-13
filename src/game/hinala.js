@@ -84,6 +84,7 @@ export function applyHinala(L, tier) {
       if (base.light && (a.type === 'lola' || a.sleepy || a.cfg.sleepy)) a.cfg.lightSleeper = true;
     }
   }
+  for (const a of out.adults) if (a.type === 'mama') a.cfg = { ...a.cfg, speedMul: Math.max(a.cfg?.speedMul || 1, 1 + 0.04 * tier) }; // she hurries (A14)
   out.news = news;
   out.hinalaTier = tier;
   return out;

@@ -44,6 +44,14 @@ function laundryRuns(map) {
 //   come out of hiding > kupit > hide > door > switch > device. Within a kind, the nearest one wins.
 export const ACT_PRIORITY = ['unhide', 'steal', 'hide', 'door', 'switch', 'device'];
 
+const FAMILY = new Set(['mama', 'tatay', 'lola', 'tita']);
+const CHAT = [ // by HINALA tier: [first line, the reply]
+  [['KUMAIN KA NA?', 'MAMAYA NA.'], ['ANG INIT NGAYON!', 'OO NGA...'], ['NAKITA MO ANG REMOTE?', 'WALA DITO.']],
+  [['PARANG KULANG ANG BARYA KO.', 'BAKA NAIWAN MO?'], ['MAY DAGA YATA DITO.', 'BAKA PUSA.']],
+  [['MAY NAWAWALA NA NAMAN!', 'SINO KAYA?'], ['BANTAYAN NATIN ANG PITAKA.', 'SIGE.']],
+  [['MAY KUMUKUHA TALAGA!', 'HUHULIHIN NATIN.'], ['BILANGIN MO ULIT.', 'KULANG PA RIN!']],
+];
+
 export class World {
   // loadout: { char, upgrades } from the save; defaults = Jun with no upgrades.
   //   lives: catches allowed before the level is lost (1 = classic, the game uses 3)
@@ -186,6 +194,24 @@ export class World {
     this.map.set(tx, ty, 'D');
     this.emit({ type: 'door', x: tx * TILE + 8, y: ty * TILE + 8 });
   }
+  // A8: two of the family passing each other on a calm walk swap a line now and then. What they say follows the
+  // house's mood (HINALA): small talk in a calm house, missing coins in a suspicious one (never Jun's name).
+  chatter(dt) {
+    if ((this.chatT = (this.chatT ?? 8) - dt) > 0) return;
+    const fam = this.adults.filter((a) => FAMILY.has(a.type) && a.awake && a.state === 'patrol' && a.alert < 0.3 && !a.say);
+    for (let i = 0; i < fam.length; i++) for (let j = i + 1; j < fam.length; j++) {
+      const a = fam[i], b = fam[j];
+      if (dist(a, b) > 22) continue;
+      const tier = this.level.hinalaTier | 0, lines = CHAT[Math.min(tier, CHAT.length - 1)];
+      const k = Math.floor(this.rng() * lines.length);
+      a.talk(lines[k][0], 1.8);
+      b.say = { text: lines[k][1], t: 1.8 };
+      this.chatT = 25;
+      this.emit({ type: 'chat', a, b });
+      return;
+    }
+  }
+
   // A5: a door Jun opened and left open, close enough to this adult to notice. Returns where to look (the room on
   // the far side of the door) and counts it as evidence, or null.
   noticeOpenDoor(adult) {
@@ -690,6 +716,7 @@ export class World {
       if (a.caught && this.god) { a.caught = false; a.state = 'search'; a.searchT = 1; a.alert = 0.5; }
       if (a.caught && !catcher) catcher = a;
     }
+    this.chatter(dt);
     this.hearNoises(dt);
     if (catcher) { this.caught(catcher); if (this.status !== 'play' || this.scold) return; }
 

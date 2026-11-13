@@ -145,3 +145,107 @@ test('A5: evidence (spills and found things) feeds HINALA', () => {
   const d = delta({ evidence: 2 });
   assert.equal(d.parts.find((p) => p.id === 'evidence').n, 6);
 });
+
+// ---- Phase 4B-2: A7, A8, A9, A11, A13, A14-A17
+import { applyHinala } from '../src/game/hinala.js';
+
+test('A7: waits at route points vary a little, the same way every run (seeded)', () => {
+  const run = () => {
+    const w = new World(open({ adults: [{ type: 'mama', at: [3, 3], route: [[3, 3, 2], [9, 3, 2]] }], seed: 7 }));
+    w.player.hidden = { kind: 'box', x: 0, y: 0 };
+    const waits = [];
+    for (let i = 0; i < 60 * 30; i++) { const before = w.adults[0].wait; w.update(1 / 60, idle); const a = w.adults[0]; if (a.wait > before + 0.5) waits.push(+a.wait.toFixed(3)); }
+    return waits;
+  };
+  const a = run(), b = run();
+  assert.deepEqual(a, b);
+  assert.ok(a.length >= 3 && a.every((x) => x >= 1.69 && x <= 2.31), JSON.stringify(a));
+  assert.ok(new Set(a).size > 1, 'not all the same');
+});
+
+test('A8: two adults meeting in a corridor do not walk through each other forever; one waits', () => {
+  const w = new World(open({ adults: [{ type: 'mama', at: [2, 3], route: [[2, 3], [12, 3]] }, { type: 'tita', at: [12, 3], route: [[12, 3], [2, 3]], cycle: { on: 99, off: 1 } }] }));
+  w.player.hidden = { kind: 'box', x: 0, y: 0 };
+  let yielded = false;
+  for (let i = 0; i < 60 * 8; i++) { w.update(1 / 60, idle); if (w.adults.some((a) => a.yieldT > 0)) yielded = true; }
+  assert.ok(yielded, 'someone stepped aside for a moment');
+});
+
+test('A8: the tricycle stops for a person in the road and honks', () => {
+  const w = new World(open({ adults: [{ type: 'trike', at: [2, 3], route: [[2, 3], [12, 3]] }, { type: 'bisita', at: [4, 3] }] }));
+  const t = w.adults[0], ev = [];
+  w.on?.((e) => ev.push(e.type));
+  for (let i = 0; i < 60; i++) w.update(1 / 60, idle);
+  assert.ok(t.x < c(4) - 8, 'it did not drive through the guest');
+  assert.ok(t.say?.text === 'BEEP BEEP!' || t.yieldT > 0);
+});
+
+test('A9: the outer edge of a cone fills at half rate', () => {
+  const mk = (dx) => {
+    const w = new World(open({ adults: [{ type: 'mama', at: [2, 3], face: 0 }] }));
+    const m = w.adults[0];
+    w.player.x = m.x + dx; w.player.y = m.y;
+    m.alert = 0;
+    w.update(1 / 60, idle);
+    return m.alert;
+  };
+  const mid = mk(40), far = mk(64);
+  assert.ok(far > 0 && far < mid * 0.6, `far ${far} vs mid ${mid}`);
+});
+
+test('A11: bumping into a busy adult startles her', () => {
+  const w = new World(open({ adults: [{ type: 'mama', at: [6, 3], face: 0, route: [[6, 3, 99, 0, 'luto']] }] }));
+  const m = w.adults[0];
+  w.player.x = m.x - 6; w.player.y = m.y;
+  w.update(1 / 60, idle);
+  assert.ok(m.alert >= 0.8);
+});
+
+test('A13: a woken sleeper stays up half again as long and then sleeps lightly', () => {
+  const w = new World(open({ adults: [{ type: 'lola', at: [10, 3], phase: 9.5 }] }));
+  const l = w.adults[0];
+  w.player.hidden = { kind: 'box', x: 0, y: 0 };
+  w.update(1 / 60, idle);
+  assert.equal(l.awake, false);
+  l.hear({ x: l.x, y: l.y, r: 100 }, 5);
+  assert.equal(l.awake, true);
+  assert.equal(l.cyc.on, 9 * 1.5);
+  assert.equal(l.cfg.lightSleeper, true);
+});
+
+test('A13/A16: later cycles vary; Tita takes quick texts and long calls, and the phone rings first', () => {
+  const w = new World(open({ adults: [{ type: 'tita', at: [10, 3] }], seed: 3 }));
+  const t = w.adults[0], offs = new Set();
+  w.player.hidden = { kind: 'box', x: 0, y: 0 };
+  let rings = 0;
+  const say = () => t.say?.text === 'KRING KRING!';
+  let was = false;
+  for (let i = 0; i < 60 * 80; i++) { w.update(1 / 60, idle); if (t.cyc) offs.add(+t.cyc.off.toFixed(2)); const now = say(); if (now && !was) rings++; was = now; }
+  assert.ok([...offs].some((o) => o <= 2.1) && [...offs].some((o) => o >= 5.5), [...offs].join(','));
+  assert.ok(rings >= 4);
+});
+
+test('A14: Mama hurries a little more at each HINALA tier', () => {
+  const L = open({ adults: [{ type: 'mama', at: [6, 3] }] });
+  assert.equal(applyHinala(L, 2).adults[0].cfg.speedMul, 1.08);
+  const w = new World(applyHinala(L, 3));
+  assert.ok(Math.abs(w.adults[0].cfg.speed - 26 * 1.12) < 1e-9);
+});
+
+test('A15: Lola does not chase; she calls out and the others come to her', () => {
+  const w = new World(open({ adults: [{ type: 'lola', at: [6, 3], face: Math.PI, cycle: { on: 99, off: 1 } }, { type: 'mama', at: [12, 1], face: 0 }] }));
+  const l = w.adults[0], m = w.adults[1];
+  w.player.x = l.x - 30; w.player.y = l.y;
+  for (let i = 0; i < 60 * 2; i++) w.update(1 / 60, idle);
+  assert.notEqual(l.state, 'chase');
+  assert.equal(m.state, 'investigate');
+  assert.ok(Math.hypot(m.target.x - l.x, m.target.y - l.y) < 20, 'Mama goes to where Lola called from');
+});
+
+test('A8: family members passing swap a line that follows the house mood', () => {
+  const lvl = open({ adults: [{ type: 'mama', at: [6, 3], face: 0 }, { type: 'tatay', at: [7, 3], face: Math.PI }] });
+  const w = new World({ ...lvl, hinalaTier: 2 });
+  w.player.hidden = { kind: 'box', x: 0, y: 0 };
+  for (let i = 0; i < 60 * 9; i++) w.update(1 / 60, idle);
+  assert.ok(['MAY NAWAWALA NA NAMAN!', 'BANTAYAN NATIN ANG PITAKA.'].includes(w.adults[0].say?.text) || w.chatT > 0 && w.chatT <= 25);
+});

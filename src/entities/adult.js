@@ -62,6 +62,8 @@ const RETRY = 0.5; // seconds a blocked adult waits before planning its route ag
 const LOOK_TIME = 0.9, WARY_TIME = 15;
 export const SEARCH_PTS = { mama: 3, tatay: 2, lola: 0, tita: 2, kuya: 2, tanod: 2, tindera: 1, ninang: 2, nena: 2, aso: 0 };
 export const LIGHT_CHECK = 0.4; // A2: chance an ordinary adult checks the one hiding spot right by where they lost you
+const BUMP_DIST = 9;           // A11: walking into an awake adult startles them
+const YIELD_MAX = 0.8;          // A8: longest an adult waits for someone in the way before stepping through
 const LURE_MEMORY = 20;         // A4: seconds a thrown lure is remembered (the same trick twice only gets a look)
 
 export class Adult {
@@ -74,6 +76,9 @@ export class Adult {
     if (def.cycle) this.cfg.cycle = def.cycle;
     if (def.sleepy) this.cfg.sleepy = true;
     Object.assign(this.cfg, def.cfg || {}); // per-adult overrides: range, ranged, cook, ...
+    if (this.cfg.speedMul) this.cfg.speed *= this.cfg.speedMul; // (HINALA: Mama hurries as the house grows suspicious)
+    this.uid = ++Adult.n; // (who yields when two meet in a doorway)
+    this.yieldT = 0;
     // route points: [x, y, waitSeconds?, faceRadians?]
     this.pts = mapPts(def.route || [def.at]);
     this.x = this.pts[0].x;
@@ -257,6 +262,7 @@ export class Adult {
     if (d < 1.5) { this.x = n.x; this.y = n.y; this.path.shift(); return this.path.length === 0; }
     const ta = Math.atan2(dy, dx);
     this.a += angDiff(ta - this.a) * Math.min(1, dt * 8);
+    if (this.state !== 'chase' && this.blockedBy(world, dx / d, dy / d, dt)) return false; // A8: someone in the way
     if (!turnFirst || Math.abs(angDiff(ta - this.a)) < 0.6) {
       const step = Math.min(d, speed * dt);
       this.x += (dx / d) * step;
@@ -267,9 +273,50 @@ export class Adult {
     return false;
   }
 
+  // A8: is someone standing just ahead? Then wait a moment (up to YIELD_MAX) instead of walking through them. In a
+  // head-on meeting only one of the two waits. The tricycle stops for people and honks; it does not stop for kids
+  // (crossing in front of it is the risk), it just honks.
+  blockedBy(world, ux, uy, dt) {
+    const veh = this.cfg.vehicle, reach = veh ? 22 : 9;
+    let block = null;
+    for (const o of world.adults || []) {
+      if (o === this || o.cfg.vehicle || (o.cfg.dog && !veh)) continue;
+      const ox = o.x - this.x, oy = o.y - this.y, ahead = ox * ux + oy * uy, side = Math.abs(ox * uy - oy * ux);
+      if (ahead <= 0 || ahead > reach || side > (veh ? 9 : 6)) continue;
+      const theyFaceMe = o.moving && Math.cos(o.a) * -ux + Math.sin(o.a) * -uy > 0.5;
+      if (!veh && theyFaceMe && this.uid < o.uid) continue; // head-on: the other one waits
+      block = o; break;
+    }
+    if (veh && !block && !this.say) {
+      for (const k of world.kids || [world.player]) {
+        if (!k || k.out || k.hidden) continue;
+        const ox = k.x - this.x, oy = k.y - this.y, ahead = ox * ux + oy * uy;
+        if (ahead > 0 && ahead < 30 && Math.abs(ox * uy - oy * ux) < 10) { this.talk(this.cfg.shout, 0.8); world.emit({ type: 'honk', who: this }); break; }
+      }
+    }
+    if (!block) { this.yieldT = 0; return false; }
+    if (veh && !this.say) { this.talk(this.cfg.shout, 0.8); world.emit({ type: 'honk', who: this }); }
+    this.yieldT += dt;
+    return this.yieldT <= (veh ? 4 : YIELD_MAX); // waited long enough: squeeze past
+  }
+
+  // The next sleep or phone cycle (A13, A16): the first one is exactly as the level wrote it, later ones vary a
+  // little (seeded, so a replay is the same). Tita's calls are either a quick text or a long call.
+  rollCycle(world) {
+    const c = this.cfg.cycle, rnd = world?.rng || Math.random, j = () => 1 + (rnd() * 2 - 1) * 0.2;
+    if (this.cfg.phone) return { on: c.on * j(), off: rnd() < 0.5 ? Math.max(2, c.off * 0.67) : c.off * 1.9 };
+    return { on: c.on * j(), off: c.off * j() };
+  }
+
   wake() {
     const c = this.cfg.cycle;
-    if (c) this.t = Math.floor(this.t / (c.on + c.off)) * (c.on + c.off);
+    if (c && (this.cfg.depth || this.cfg.checksHides)) this.t = Math.floor(this.t / (c.on + c.off)) * (c.on + c.off); // (boss Lola: unchanged)
+    else if (c) { // A13: woken, she stays up half again as long, and sleeps lightly for the rest of the level
+      const cy = this.cyc || c;
+      this.t = 0;
+      this.cyc = { on: c.on * 1.5, off: cy.off };
+      if (this.cfg.sleepy) this.cfg.lightSleeper = true;
+    }
     this.awake = true;
     this.woken++;
   }
@@ -331,13 +378,23 @@ export class Adult {
     if (this.goTo(x, y)) {
       this.state = 'investigate';
       this.target = { x, y };
-      if (this.alert < 0.3) this.talk('?', 1);
+      if (this.alert < 0.3) this.talk(this.type === 'mama' ? 'ANAK?' : '?', 1);
     }
   }
 
   smellFood(food) {
     if (!this.cfg.dog || this.state === 'chase' || this.state === 'eat' || this.food) return;
     if (this.goTo(food.x, food.y)) { this.state = 'investigate'; this.food = food; this.target = food; this.awake = true; }
+  }
+
+  // A15: Lola doesn't run after anyone. She calls out ('Apo? Is that you?'), and whoever hears comes to her.
+  callOut(world) {
+    this.alert = 0.6;
+    if (this.callT > 0) return;
+    this.callT = 6;
+    this.talk("APO? IKAW BA 'YAN?", 2);
+    world.noise({ x: this.x, y: this.y, r: 150, lure: true, from: this });
+    world.emit({ type: 'callout', who: this });
   }
 
   startChase(world, player) {
@@ -412,6 +469,13 @@ export class Adult {
     this.moving = false;
     this.clock = (this.clock || 0) + dt;
     if (this.wary > 0) this.wary -= dt;
+    if (this.callT > 0) this.callT -= dt;
+    // A17: Tatay whistles while he walks about (you hear where he is)
+    if (this.type === 'tatay' && this.moving && this.state === 'patrol' && (this.tuneT = (this.tuneT ?? 2) - dt) <= 0) {
+      this.tuneT = 5;
+      world.emit({ type: 'tune', who: this });
+      if (!this.say) this.talk('FWIT FWIW~', 1);
+    }
     // A5: a door they opened gets closed behind them once they are past it (habit)
     if (this.openedDoor && Math.max(Math.abs(toTile(this.x) - this.openedDoor.tx), Math.abs(toTile(this.y) - this.openedDoor.ty)) >= 2) {
       world.closeDoorBehind?.(this.openedDoor.tx, this.openedDoor.ty);
@@ -484,7 +548,14 @@ export class Adult {
     const wasAwake = this.awake;
     if (c.cycle && this.state === 'patrol' && this.hearT <= 0 && this.alert < 0.3) {
       this.t += dt;
-      this.awake = this.t % (c.cycle.on + c.cycle.off) < c.cycle.on;
+      if (c.depth || c.checksHides || !(c.sleepy || c.phone)) this.awake = this.t % (c.cycle.on + c.cycle.off) < c.cycle.on; // bosses (and cooks): clockwork on purpose
+      else {
+        let cy = this.cyc || c.cycle;
+        while (this.t >= cy.on + cy.off) { this.t -= cy.on + cy.off; cy = this.cyc = this.rollCycle(world); this.rang = false; }
+        this.awake = this.t < cy.on;
+        // A16: her phone rings a moment before she answers it
+        if (c.phone && this.awake && cy.on - this.t < 0.7 && !this.rang) { this.rang = true; this.talk('KRING KRING!', 0.7); world.emit({ type: 'ringtone', x: this.x, y: this.y }); }
+      }
     } else this.awake = true;
     if (!this.awake) {
       if (wasAwake) this.depth = 1; // falls asleep: a fresh, deep sleep
@@ -506,7 +577,9 @@ export class Adult {
     this.seen = this.canSee(player);
     if (this.seen) {
       const dist = Math.hypot(player.x - this.x, player.y - this.y);
-      if (this.state !== 'chase') this.alert += dt * c.rate * (world.mods?.alertRate ?? 1) * (dist < 32 ? 2.5 : 1);
+      // close range fills fast; the outer 30% of the cone (far, or off to the side) fills at half rate (A9)
+      const edge = dist > 0.7 * this.range * (player.darkMul ?? 1) || Math.abs(angDiff(Math.atan2(player.y - this.y, player.x - this.x) - this.va)) > 0.7 * this.fov;
+      if (this.state !== 'chase') this.alert += dt * c.rate * (world.mods?.alertRate ?? 1) * (dist < 32 ? 2.5 : edge ? 0.5 : 1);
       if (this.state !== 'chase' || dist < 24) this.a += angDiff(Math.atan2(player.y - this.y, player.x - this.x) - this.va) * Math.min(1, dt * 8);
       if (this.alert >= 1 && this.state !== 'chase') {
         if (c.dog) {
@@ -517,10 +590,19 @@ export class Adult {
             this.barkT = 2.5;
           }
           this.alert = 0.55;
-        } else this.startChase(world, player);
+        } else if (this.type === 'lola' && !c.depth && !c.checksHides && !c.hunt) this.callOut(world);
+        else this.startChase(world, player);
       }
     } else if (this.state !== 'chase') {
       this.alert = Math.max(0, this.alert - dt * (this.state === 'patrol' ? (this.wary > 0 ? 0.45 : 0.9) : 0.4)); // wary: drains slower
+    }
+    // A11: walking right into someone who is awake startles them, routine or not (bosses keep their own rules until Phase 5)
+    if (this.state !== 'chase' && !c.dog && !c.checksHides && !player.hidden && !player.under && !(player.graceT > 0) && this.alert < 0.8 &&
+        Math.hypot(player.x - this.x, player.y - this.y) < BUMP_DIST) {
+      this.alert = 0.8;
+      this.busy = null;
+      this.a = Math.atan2(player.y - this.y, player.x - this.x);
+      this.talk('UY!', 0.8);
     }
 
     // --- ranged (Mama's sandok): throws at what she sees, dodgeable by moving sideways
@@ -655,7 +737,7 @@ export class Adult {
       this.pathFor = tg;
       this.goTo(tg.x, tg.y);
     }
-    const done = this.follow(dt, this.cfg.speed, world, !this.cfg.vehicle);
+    const done = this.follow(dt, this.cfg.speed * (this.wary > 0 ? 1.12 : 1), world, !this.cfg.vehicle); // (A7: brisker when wary)
     if (this.stuck && Math.hypot(tg.x - this.x, tg.y - this.y) >= 1.5) { // can't reach this waypoint right now: skip to the next one after a short look around
       this.i = (this.i + 1) % this.pts.length;
       this.pathFor = null;
@@ -664,9 +746,11 @@ export class Adult {
     }
     if (done || Math.hypot(tg.x - this.x, tg.y - this.y) < 1.5) {
       this.x = tg.x; this.y = tg.y;
-      this.wait = tg.wait ?? 0.8;
+      this.wait = (tg.wait ?? 0.8) * (this.cfg.vehicle ? 1 : 1 + ((world.rng || Math.random)() * 2 - 1) * 0.15); // A7: never quite the same (seeded)
       this.i = (this.i + 1) % this.pts.length;
       this.pathFor = null;
     }
   }
 }
+
+Adult.n = 0;

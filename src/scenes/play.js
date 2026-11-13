@@ -310,6 +310,11 @@ export class Play {
       case 'medyas': this.showTip('medyas'); break;
       case 'clear': if (!this.opts.quietClear) sfx.clear(); this.buzz([30, 30, 30], C.green); break;
       case 'door': case 'switch': sfx.click(); break;
+      case 'tune': if (this.onScreen(e.who.x, e.who.y, 60)) sfx.tune(); break;
+      case 'ringtone': if (this.onScreen(e.x, e.y, 40)) sfx.ringtone(); break;
+      case 'honk': if (this.onScreen(e.who.x, e.who.y, 40)) sfx.horn(); break;
+      case 'callout': this.kick(1); break;
+      case 'evidence': this.toast = { text: e.what === 'door' ? 'MAMA FOUND A DOOR LEFT OPEN' : 'THEY FOUND YOUR TSINELAS', col: C.orange, t: 2.2 }; break;
       case 'creak': case 'locked': sfx.creak(); break;
       case 'ouch': sfx.ouch(); this.buzz(60); this.kick(3); if (w.adults.some((a) => a.cfg.vehicle && a.say)) sfx.horn(); break;
       case 'pickup': case 'unlock':
