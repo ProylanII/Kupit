@@ -58,6 +58,7 @@ export class World {
     this.panyo = this.mods.panyo; // PANYO: stash openings it can still muffle this level
     this.palusot = this.mods.palusot; // PALUSOT: close calls Kuya Ramil can still talk away this level
     this.rollers = [];            // HOLEN: marbles rolling across the floor
+    this.playerOpened = new Set(); // A5: doors Jun opened and left open ("x,y"): someone passing may notice
     // KASABWAT (tag-team levels: "team": ["bing", "ramil"], "spawn2"): two kids, one controlled at a time. The other
     // stays where you left them (safe only if hidden), a catch of either uses the shared chances, coins are pooled,
     // and the exit needs both: the first one through waits outside while you bring the other.
@@ -104,7 +105,7 @@ export class World {
     // Videoke: it plays by itself, a song then a break. While someone is singing, nothing you do near it can be heard.
     this.videokes = (level.devices || []).filter((d) => d.kind === 'videoke').map((d) => ({ ...at(d.at), kind: 'videoke', r: d.r ?? 76, on: d.on ?? 9, off: d.off ?? 6, t: d.phase ?? 0, singing: false }));
     this.cover = null;  // what is drowning out your noise right now: 'thunder' | 'videoke' | null
-    this.stats = { throws: 0, hides: 0, runT: 0, loudRunT: 0, skills: 0, traps: 0, barks: 0, devices: 0, spills: 0, tattles: 0, palusot: 0 }; // for the missions (and HINALA)
+    this.stats = { throws: 0, hides: 0, runT: 0, loudRunT: 0, skills: 0, traps: 0, barks: 0, devices: 0, spills: 0, tattles: 0, palusot: 0, evidence: 0 }; // for the missions (and HINALA)
     this.alkansyaWasFound = !!loadout.alkansyaFound;
     this.missionIds = missionIds(level);
     this.missionLost = this.missionIds.map(() => false); // strict missions already failed this run
@@ -165,13 +166,56 @@ export class World {
 
   // ---- callbacks used by adults ----
   openDoor(tx, ty) {
-    if (this.map.ch(tx, ty) !== 'D' || this.locks.has(tx + ',' + ty)) return; // adults have no keys
+    if (this.map.ch(tx, ty) !== 'D' || this.locks.has(tx + ',' + ty)) return false; // adults have no keys
     this.map.set(tx, ty, 'd');
+    this.playerOpened.delete(tx + ',' + ty);
     this.emit({ type: 'door', x: tx * TILE + 8, y: ty * TILE + 8 });
+    return true;
+  }
+  // A5: an adult closes a door they opened, once they are past it (unless someone is standing in it)
+  closeDoorBehind(tx, ty) {
+    if (this.map.ch(tx, ty) !== 'd') return;
+    const inIt = (o) => Math.floor(o.x / TILE) === tx && Math.floor(o.y / TILE) === ty;
+    if ((this.kids || [this.player]).some(inIt) || this.adults.some(inIt)) return;
+    this.map.set(tx, ty, 'D');
+    this.emit({ type: 'door', x: tx * TILE + 8, y: ty * TILE + 8 });
+  }
+  // A5: a door Jun opened and left open, close enough to this adult to notice. Returns where to look (the room on
+  // the far side of the door) and counts it as evidence, or null.
+  noticeOpenDoor(adult) {
+    for (const key of this.playerOpened) {
+      const [tx, ty] = key.split(',').map(Number);
+      if (this.map.ch(tx, ty) !== 'd') { this.playerOpened.delete(key); continue; }
+      const cx = tx * TILE + TILE / 2, cy = ty * TILE + TILE / 2;
+      if (!adult.seesPoint(cx, cy, 3 * TILE)) continue; // she has to actually see it, close by
+      this.playerOpened.delete(key);
+      let best = null;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        if (this.map.tileSolid(tx + dx, ty + dy)) continue;
+        const far = !this.map.tileSolid(tx + 2 * dx, ty + 2 * dy) ? 2 : 1;
+        const p = { x: (tx + far * dx) * TILE + TILE / 2, y: (ty + far * dy) * TILE + TILE / 2 };
+        const dd = Math.hypot(p.x - adult.x, p.y - adult.y);
+        if (!best || dd > best.dd) best = { ...p, dd };
+      }
+      this.stats.evidence++;
+      this.emit({ type: 'evidence', x: cx, y: cy, what: 'door' });
+      return best && { x: best.x, y: best.y, tx, ty };
+    }
+    return null;
   }
   arrived(adult) {
     for (const d of this.devices) {
-      if (d.on && dist(d, adult) < 24) { d.on = false; adult.talk('SINO NAGBUKAS?', 1.6); this.emit({ type: 'deviceOff' }); }
+      if (d.on && dist(d, adult) < 24) { d.on = false; d.caught = (d.caught || 0) + 1; adult.talk('SINO NAGBUKAS?', 1.6); this.emit({ type: 'deviceOff' }); }
+    }
+    // A1: a thrown slipper is picked up and taken away (and somebody wonders whose it is: HINALA evidence)
+    if (adult.cfg.dog) return;
+    const it = this.items.find((i) => i.thrown && dist(i, adult) < 24);
+    if (it) {
+      this.items.splice(this.items.indexOf(it), 1);
+      adult.talk("KANINONG TSINELAS 'TO?", 1.8);
+      adult.wary = 15;
+      this.stats.evidence++;
+      this.emit({ type: 'evidence', x: it.x, y: it.y, what: 'tsinelas' });
     }
   }
   eatFood(food) {
@@ -260,9 +304,10 @@ export class World {
       case 'door': {
         const { tx, ty } = c.obj;
         const key = tx + ',' + ty;
-        if (this.map.ch(tx, ty) === 'd') { this.map.set(tx, ty, 'D'); this.emit({ type: 'door', x: c.obj.x, y: c.obj.y }); break; }
+        if (this.map.ch(tx, ty) === 'd') { this.map.set(tx, ty, 'D'); this.playerOpened.delete(key); this.emit({ type: 'door', x: c.obj.x, y: c.obj.y }); break; }
         if (this.locks.has(key)) { this.locks.delete(key); this.emit({ type: 'unlock' }); }
         this.map.set(tx, ty, 'd');
+        this.playerOpened.add(key); // A5: a door Jun leaves open can be noticed
         this.noise({ x: c.obj.x, y: c.obj.y, r: 32 });
         this.emit({ type: 'door', x: c.obj.x, y: c.obj.y });
         break;
@@ -380,7 +425,7 @@ export class World {
     const kind = p.items.pop();
     const [fx, fy] = p.facing();
     const m = Math.hypot(fx, fy) || 1;
-    this.projectiles.push({ kind, x: p.x, y: p.y - 2, vx: (fx / m) * THROW_SPEED, vy: (fy / m) * THROW_SPEED, d: 0 });
+    this.projectiles.push({ kind, x: p.x, y: p.y - 2, vx: (fx / m) * THROW_SPEED, vy: (fy / m) * THROW_SPEED, d: 0, origin: { x: p.x, y: p.y } });
     this.stats.throws++;
     this.emit({ type: 'throw' });
   }
@@ -405,8 +450,8 @@ export class World {
       this.foods.push(food);
       for (const a of this.adults) if (a.cfg.dog && dist(a, food) < SMELL) a.smellFood(food);
     } else {
-      this.noise({ x: pr.x, y: pr.y, r: 90, lure: true });
-      this.items.push({ x: pr.x, y: pr.y, kind: pr.kind, noPickT: 1 });
+      this.noise({ x: pr.x, y: pr.y, r: 90, lure: true, thrown: true, origin: pr.origin }); // (the third time, they look where it came from)
+      this.items.push({ x: pr.x, y: pr.y, kind: pr.kind, noPickT: 1, thrown: true }); // (an adult who comes to look takes it)
       this.emit({ type: 'land', x: pr.x, y: pr.y });
     }
   }
@@ -615,7 +660,7 @@ export class World {
     for (const d of this.devices) {
       if (!d.on) continue;
       d.t += dt;
-      if ((d.pulse -= dt) <= 0) { this.noise({ x: d.x, y: d.y, r: d.r, lure: true }); d.pulse = DEVICE_PULSE; }
+      if ((d.pulse -= dt) <= 0) { this.noise({ x: d.x, y: d.y, r: d.r, lure: true, again: d.caught > 0 }); d.pulse = DEVICE_PULSE; } // (A4: on again after someone switched it off)
       if (d.t >= d.dur) d.on = false;
     }
     for (const s of this.switches) if (s.timer > 0 && (s.timer -= dt) <= 0) this.toggleSwitch(s, false);
@@ -827,7 +872,8 @@ export class World {
     const missions = this.missionIds.map((id, i) => !this.missionLost[i] && !!MISSIONS[id].ok(this)); // [clear, mission 2, mission 3]
     const emptied = this.targets.filter((t) => t.perCoin && t.done).length;
     this.result = { coins: this.coins, time: this.time, stars: missions.filter(Boolean).length, missions, fast, stealth, catches: this.catches, spotted: this.spotted, bonus: this.bonus,
-      sobra: this.sobra, emptied, takenBy: this.takenBy(), spills: this.stats.spills, tattles: this.stats.tattles, palusot: this.stats.palusot };
+      sobra: this.sobra, emptied, takenBy: this.takenBy(), spills: this.stats.spills, tattles: this.stats.tattles, palusot: this.stats.palusot,
+      evidence: this.stats.spills + this.stats.evidence }; // things left behind that someone found
     this.emit({ type: 'clear' });
   }
 

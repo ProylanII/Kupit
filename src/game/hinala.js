@@ -34,7 +34,7 @@ export const INPUTS = {
   emptied: { label: 'EMPTY STASH', each: 4, cap: 12 },
   catches: { label: 'CLOSE CALL',  each: 5, cap: 10 },
   spotted: { label: 'ALARM',       each: 2, cap: 6 },
-  spills:  { label: 'EVIDENCE',    each: 3, cap: 6 },
+  evidence: { label: 'EVIDENCE',   each: 3, cap: 6 }, // a spill, a slipper someone picked up, a door left open
   tattles: { label: 'TATTLE',      each: 2, cap: 4 },
   palusot: { label: 'EXCUSE',      each: 3, cap: 3 }, // Kuya Ramil's excuse worked, but they wonder
 };

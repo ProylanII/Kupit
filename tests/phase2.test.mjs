@@ -62,9 +62,11 @@ test('adult paths through a closed door (opening it) to investigate a noise', ()
   w.noise({ x: c(5), y: c(5), r: 200, lure: true });
   for (const nz of w.noises) mama.hear(nz);
   assert.equal(mama.state, 'investigate');
-  step(w, 60 * 4);
-  assert.equal(w.map.ch(5, 3), 'd');
+  step(w, 60);
+  assert.equal(w.map.ch(5, 3), 'd', 'she opened it');
+  step(w, 60 * 3);
   assert.ok(mama.y > c(3), 'mama walked through the doorway');
+  assert.equal(w.map.ch(5, 3), 'D', 'and closed it behind her (A5)');
 });
 
 test('thrown tsinelas lures an adult to where it lands', () => {

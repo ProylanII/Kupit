@@ -57,6 +57,12 @@ const COVER_R = 6; // half-width of a person standing in the way
 export const BLEND_SEE = 30; // a kid walking with a guest is only noticed from this close
 
 const RETRY = 0.5; // seconds a blocked adult waits before planning its route again
+// A real search (design overhaul A3): after losing you they walk a few nearby spots and look around at each, then
+// stay wary for a while (their suspicion drains half as fast). How thorough depends on who it is.
+const LOOK_TIME = 0.9, WARY_TIME = 15;
+export const SEARCH_PTS = { mama: 3, tatay: 2, lola: 0, tita: 2, kuya: 2, tanod: 2, tindera: 1, ninang: 2, nena: 2, aso: 0 };
+export const LIGHT_CHECK = 0.4; // A2: chance an ordinary adult checks the one hiding spot right by where they lost you
+const LURE_MEMORY = 20;         // A4: seconds a thrown lure is remembered (the same trick twice only gets a look)
 
 export class Adult {
   // locks: the level's live lock map ("x,y" -> key colour); adults have no keys, so locked doors are walls to them
@@ -129,6 +135,48 @@ export class Adult {
   get searchTime() { return SEARCH_TIME * (this.cfg.searchMul || 1); }
   // where the eyes point: walking direction plus the flashlight sweep
   get va() { return this.a + this.lookOff; }
+
+  // Start searching around (x, y): n spots to walk to (default by who it is), then a look round of t seconds.
+  beginSearch(world, x, y, n = this.cfg.searchPts ?? SEARCH_PTS[this.type] ?? 2, t = this.searchTime) {
+    this.state = 'search';
+    this.searchPts = n > 0 ? this.pickSearchPts(world, x, y, n) : [];
+    this.lookT = 0;
+    this.searchT = t;
+    if (n > 0) this.wary = WARY_TIME;
+    if (this.searchPts.length) this.goTo(this.searchPts[0].x, this.searchPts[0].y);
+  }
+  // Up to n floor squares within three tiles of (x, y), a short walk away and not next to each other. They stay in
+  // the room where they lost you: a spot that is only reached through a doorway is not part of this search.
+  pickSearchPts(world, x, y, n) {
+    const tx = toTile(x), ty = toTile(y), rnd = world.rng || Math.random, cands = [], out = [];
+    const isDoor = (cx, cy) => { const ch = this.map.ch(cx, cy); return ch === 'D' || ch === 'd'; };
+    const inRoom = (cx, cy) => this.passable(cx, cy) && !isDoor(cx, cy);
+    for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
+      const cx = tx + dx, cy = ty + dy;
+      if ((dx || dy) && inRoom(cx, cy)) cands.push([cx, cy]);
+    }
+    for (let i = cands.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [cands[i], cands[j]] = [cands[j], cands[i]]; }
+    const sx = toTile(this.x), sy = toTile(this.y);
+    if (!inRoom(sx, sy)) return out; // standing in a doorway: just look round
+    for (const [cx, cy] of cands) {
+      if (out.length >= n) break;
+      if (out.some((q) => Math.abs(q.tx - cx) + Math.abs(q.ty - cy) < 2)) continue;
+      const path = findPath(this.map, sx, sy, cx, cy, inRoom, 600);
+      if (path && path.length <= 10) out.push({ x: cx * TILE + TILE / 2, y: cy * TILE + TILE / 2, tx: cx, ty: cy });
+    }
+    return out;
+  }
+  // A2: ordinary adults (not just bosses) sometimes check the one hiding spot right by where they lost you.
+  lightInspect(world, x, y) {
+    const c = this.cfg;
+    if (c.checksHides || c.dog || c.harmless || (SEARCH_PTS[this.type] ?? 2) === 0) return false;
+    const d = (h) => Math.hypot(h.x - x, h.y - y);
+    const ph = world.player.hidden;
+    const spot = ph && ph.kind === 'pocket' && d(ph) < 2 * TILE ? ph : world.hides.filter((h) => d(h) < 2 * TILE).sort((a, b) => d(a) - d(b))[0];
+    if (!spot || (world.rng || Math.random)() >= LIGHT_CHECK) return false;
+    this.inspectList = [spot];
+    return this.nextInspect();
+  }
 
   // Bosses (cfg.checksHides) look inside the hiding spots near where they lost you or heard something.
   startInspect(world, x, y) {
@@ -204,7 +252,7 @@ export class Adult {
       n = this.path[0];
       if (!n) return true;
     }
-    if (this.map.ch(n.tx, n.ty) === 'D') world.openDoor(n.tx, n.ty, this);
+    if (this.map.ch(n.tx, n.ty) === 'D' && world.openDoor(n.tx, n.ty, this)) this.openedDoor = { tx: n.tx, ty: n.ty };
     const dx = n.x - this.x, dy = n.y - this.y, d = Math.hypot(dx, dy);
     if (d < 1.5) { this.x = n.x; this.y = n.y; this.path.shift(); return this.path.length === 0; }
     const ta = Math.atan2(dy, dx);
@@ -256,6 +304,21 @@ export class Adult {
     }
     if (c.dog && c.ears && n.lure && !n.dogBark && n.from !== this && this.state !== 'eat') {
       this.barkAt = { x: goal.x, y: goal.y, t: 0.5 }; // the dog points its master at whatever it heard
+    }
+    if (n.lure && n.thrown) { // A4: the same trick in the same place: a look the second time, the thrower the third
+      const now = this.clock || 0;
+      this.lures = (this.lures || []).filter((l) => now - l.t < LURE_MEMORY);
+      const same = this.lures.filter((l) => Math.hypot(l.x - goal.x, l.y - goal.y) < 2 * TILE).length;
+      this.lures.push({ x: goal.x, y: goal.y, t: now });
+      if (same === 1) { this.hearT = 1.2; this.faceTo = Math.atan2(goal.y - this.y, goal.x - this.x); this.talk('HMM?', 0.8); return; }
+      if (same >= 2 && n.origin) { this.pendingLure = null; this.investigate(n.origin.x, n.origin.y); this.talk('SINO NAGHAHAGIS?', 1.6); this.wary = WARY_TIME; return; }
+    }
+    if (n.lure && n.again) { // A4: the radio they switched off is on again: straight there, and wary
+      this.pendingLure = null;
+      if (this.state !== 'investigate') this.talk('ANO BA YAN?!', 1.4);
+      this.investigate(goal.x, goal.y);
+      this.wary = WARY_TIME;
+      return;
     }
     if (n.lure) {
       if (delay > 0) { if (!this.pendingLure || this.pendingLure.t > delay) this.pendingLure = { x: goal.x, y: goal.y, t: delay }; }
@@ -320,6 +383,13 @@ export class Adult {
       hasLos(this.map, this, player) && !this.covered(player.x, player.y);
   }
 
+  // A spot (not a kid) in plain view: in the cone, within reach (capped at maxD), nothing in the way.
+  seesPoint(x, y, maxD = Infinity) {
+    if (this.cfg.harmless || this.cfg.range <= 0 || !this.awake) return false;
+    const dx = x - this.x, dy = y - this.y, d = Math.hypot(dx, dy);
+    return d < Math.min(this.range, maxD) && (d < 8 || Math.abs(angDiff(Math.atan2(dy, dx) - this.va)) < this.fov) && hasLos(this.map, this, { x, y });
+  }
+
   // The drawn cone stops at guests too, so what you see is what they see.
   clipCone() {
     if (!this.covers) return;
@@ -340,6 +410,13 @@ export class Adult {
   update(dt, world) {
     const c = this.cfg, player = world.focusFor ? world.focusFor(this) : world.player; // (two kids in KASABWAT)
     this.moving = false;
+    this.clock = (this.clock || 0) + dt;
+    if (this.wary > 0) this.wary -= dt;
+    // A5: a door they opened gets closed behind them once they are past it (habit)
+    if (this.openedDoor && Math.max(Math.abs(toTile(this.x) - this.openedDoor.tx), Math.abs(toTile(this.y) - this.openedDoor.ty)) >= 2) {
+      world.closeDoorBehind?.(this.openedDoor.tx, this.openedDoor.ty);
+      this.openedDoor = null;
+    }
     if (this.say && (this.say.t -= dt) <= 0) this.say = null;
     this.barkT = Math.max(0, this.barkT - dt);
     // in the middle of a routine? (only on a calm patrol, standing at the point that names it, with nothing heard)
@@ -347,6 +424,16 @@ export class Adult {
     const act = this.state === 'patrol' && this.hearT <= 0 && this.alert < 0.3 && (this.pts.length > 1 ? this.wait > 0 : Math.hypot(at.x - this.x, at.y - this.y) < 3) ? ACTIVITIES[at.act] : null;
     if (act && this.busy !== act && act.say && !this.say) this.talk(act.say, 1.6);
     this.busy = act || null;
+    // A5: Mama notices a door Jun left open on her way ('Why is this open?'), looks in the room beyond and closes it
+    if ((c.noticesDoors ?? this.type === 'mama') && this.awake && (this.state === 'patrol' || this.state === 'return') && world.playerOpened?.size) {
+      const look = world.noticeOpenDoor?.(this);
+      if (look) {
+        this.investigate(look.x, look.y);
+        this.talk("BAKIT BUKAS 'TO?", 1.8);
+        this.wary = WARY_TIME;
+        this.openedDoor = { tx: look.tx, ty: look.ty }; // she shuts it once she is through
+      }
+    }
 
     // guests and vehicles just follow their route
     if (c.harmless) {
@@ -371,7 +458,7 @@ export class Adult {
       this.seen = false;
       this.awake = true;
       this.pendingLure = null;
-      if (this.state === 'chase') { this.state = 'search'; this.searchT = this.searchTime; this.sawHide = false; }
+      if (this.state === 'chase') { this.beginSearch(world, this.x, this.y, 0); this.sawHide = false; }
       return;
     }
 
@@ -433,7 +520,7 @@ export class Adult {
         } else this.startChase(world, player);
       }
     } else if (this.state !== 'chase') {
-      this.alert = Math.max(0, this.alert - dt * (this.state === 'patrol' ? 0.9 : 0.4));
+      this.alert = Math.max(0, this.alert - dt * (this.state === 'patrol' ? (this.wary > 0 ? 0.45 : 0.9) : 0.4)); // wary: drains slower
     }
 
     // --- ranged (Mama's sandok): throws at what she sees, dodgeable by moving sideways
@@ -483,37 +570,44 @@ export class Adult {
         if ((done && !this.seen) || this.lostT > 5 || leashed) {
           this.alert = 0.6;
           this.sawHide = false;
-          if (leashed) { this.state = 'search'; this.searchT = 1; this.talk(c.shout, 1.5); break; }
-          if (!this.startInspect(world, this.last.x, this.last.y)) {
-            this.state = 'search';
-            this.searchT = this.searchTime;
-            this.talk('NASAAN NA?', 1.5);
+          if (leashed) { this.beginSearch(world, this.x, this.y, 0, 1); this.talk(c.shout, 1.5); break; }
+          if (!this.startInspect(world, this.last.x, this.last.y) && !this.lightInspect(world, this.last.x, this.last.y)) {
+            this.beginSearch(world, this.last.x, this.last.y);
+            this.talk("NASAAN NA 'YON?", 1.5);
           }
         }
         break;
       }
       case 'investigate': {
         if (this.follow(dt, c.speed * 1.15, world)) {
-          if (this.stuck) { this.food = null; this.state = 'search'; this.searchT = this.searchTime; break; } // way got blocked
+          if (this.stuck) { this.food = null; this.beginSearch(world, this.x, this.y, 0); break; } // way got blocked
           world.arrived(this);
           if (this.food && c.dog) {
             if (world.eatFood(this.food)) { this.state = 'eat'; this.eatT = 8; this.talk('NOM NOM', 2); world.emit({ type: 'bribed', who: this }); }
-            else this.state = 'search', this.searchT = 1;
+            else this.beginSearch(world, this.x, this.y, 0, 1);
             this.food = null;
-          } else if (!this.startInspect(world, this.target.x, this.target.y)) { this.state = 'search'; this.searchT = this.searchTime; }
+          } else if (!this.startInspect(world, this.target.x, this.target.y)) this.beginSearch(world, this.target.x, this.target.y, 1); // a lure: one look round
         }
         break;
       }
       case 'inspect':
         if (this.follow(dt, c.speed * 1.2, world)) {
           const h = this.inspectList.shift();
-          if (this.stuck) { if (!this.nextInspect()) { this.state = 'search'; this.searchT = 1.2; } break; } // can't reach that spot
+          if (this.stuck) { if (!this.nextInspect()) this.beginSearch(world, this.x, this.y, 0, 1.2); break; } // can't reach that spot
           if (player.hidden && player.hidden === h && !(player.graceT > 0)) { this.talk('NANDIYAN KA PALA!', 2); this.caught = true; return; }
           this.talk('WALA...', 1);
-          if (!this.nextInspect()) { this.state = 'search'; this.searchT = 1.2; }
+          if (!this.nextInspect()) this.beginSearch(world, this.x, this.y, 0, 1.2);
         }
         break;
       case 'search':
+        if (this.searchPts?.length) { // walk to each spot, look round, next
+          if (this.lookT > 0) {
+            this.lookT -= dt;
+            this.a += Math.sin(this.lookT * 5) * dt * 3;
+            if (this.lookT <= 0) { this.searchPts.shift(); if (this.searchPts.length) this.goTo(this.searchPts[0].x, this.searchPts[0].y); }
+          } else if (this.follow(dt, c.speed, world)) this.lookT = LOOK_TIME * (c.searchMul || 1);
+          break;
+        }
         this.a += Math.sin(this.searchT * 3) * dt * 3;
         if ((this.searchT -= dt) <= 0) { this.state = 'return'; this.goTo(this.pts[this.i].x, this.pts[this.i].y); }
         break;
