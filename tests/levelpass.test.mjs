@@ -112,8 +112,20 @@ test('L7 GATAS: the milk is the goal (quota 0); a spill leaves a puddle, and onl
   assert.equal(MISSIONS.noPuddle.ok(w), false);
 });
 
+test('L9 GABI: Jomar walks the long hall; 30 s before dinner Mama calls HUGAS KAMAY and walks to the kids rooms', () => {
+  const L = load('05-gabi');
+  assert.equal(L.targets.reduce((n, t) => n + t.coins, 0), 9);
+  const w = new World(L), mama = w.adults[0];
+  w.player.hidden = { kind: 'box', x: 0, y: 0 };
+  w.time = w.patience - 31;
+  let said = false, near = false;
+  for (let i = 0; i < 60 * 12; i++) { w.update(1 / 60, idle); if (mama.say?.text === 'HUGAS KAMAY!') said = true; if (tile(mama)[1] <= 7) near = true; }
+  assert.ok(said, 'the warning call');
+  assert.ok(near, 'she walked up to the hall by the kids rooms');
+});
+
 test('level pass: the rules hold for every level the pass has reached', () => {
-  for (const id of ['01-sala', '02-kusina', '03-buong-bahay', '04-bakuran', 'kwarto', 'gatas']) {
+  for (const id of ['01-sala', '02-kusina', '03-buong-bahay', '04-bakuran', 'kwarto', 'gatas', '05-gabi']) {
     const r = rules(load(id));
     for (const k of ['R1', 'R2', 'R6', 'R7']) assert.ok(r[k].ok, `${id} ${k} ${JSON.stringify(r[k])}`);
   }

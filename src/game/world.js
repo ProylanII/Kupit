@@ -218,14 +218,24 @@ export class World {
     if (this.puddles.length && this.puddles[0].t > 45) this.puddles.shift();
   }
 
-  // A staged beat (level "staged": { afterCoins, adult, to, delay, say }): once you have that many coins, that adult
-  // hears something and goes to look at a fixed spot, then shrugs and goes back. The tutorial uses it to teach TAGO.
+  // Staged beats (level "staged": one beat or a list): { afterCoins | left, adult, to, delay, say }. When you have
+  // that many coins (or KAIN NA has that many seconds left), that adult goes to a fixed spot, looks, shrugs and goes
+  // back. The tutorial uses one to teach TAGO; GABI's dinner warning is one ("HUGAS KAMAY!").
   stagedBeat(dt) {
-    const s = this.level.staged;
-    if (!s || this.stagedDone) return;
-    if (this.stagedT === undefined) { if (this.coins >= (s.afterCoins ?? 1)) this.stagedT = s.delay ?? 1; return; }
-    if ((this.stagedT -= dt) > 0) return;
-    this.stagedDone = true;
+    const list = [].concat(this.level.staged || []);
+    if (!list.length) return;
+    this.beats ??= list.map(() => ({ t: undefined, done: false }));
+    list.forEach((s, i) => {
+      const b = this.beats[i];
+      if (b.done) return;
+      if (b.t === undefined) {
+        const due = s.left !== undefined ? this.patience && this.patience - this.time <= s.left : this.coins >= (s.afterCoins ?? 1);
+        if (due) b.t = s.delay ?? 1;
+      } else if ((b.t -= dt) <= 0) { b.done = true; this.runBeat(s); }
+      if (i === 0) { this.stagedT = b.t; this.stagedDone = b.done; } // (the tutorial coach reads the first one)
+    });
+  }
+  runBeat(s) {
     const a = this.adults[s.adult | 0];
     if (!a || a.state === 'chase') return;
     a.busy = null; a.wait = 0; a.hearT = 0;

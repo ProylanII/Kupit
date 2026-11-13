@@ -12,16 +12,16 @@
  "tiles": [
   "###############",
   "#......#......#",
-  "#.BB...#...BB.#",
+  "#.BB...#A..BB.#",
   "#.BB...D...BB.#",
   "#K.....#......#",
   "###D#######D###",
   "#.............#",
-  "#..........A..#",
+  "#.#####.#######",
   "#..TTT...SSS..#",
   "#..TTT........#",
   "#...K.........#",
-  "#.............#",
+  "#......A......#",
   "######D####D###",
   "#,,,,,,#......#",
   "#,CCCC,#..H...#",
@@ -30,7 +30,7 @@
   "#,,W,,,#......#",
   "#,CC,,,#.K....#",
   "#,,,,,,#......#",
-  "#,,,,,,#......#",
+  "#,,,,,H#......#",
   "###############"
  ],
  "spawn": [
@@ -60,7 +60,7 @@
     8,
     10
    ],
-   "coins": 2,
+   "coins": 3,
    "time": 1.2
   },
   {
@@ -144,7 +144,7 @@
    "kind": "creak",
    "at": [
     5,
-    7
+    6
    ]
   },
   {
@@ -212,23 +212,58 @@
    "route": [
     [
      1,
-     6
-    ],
-    [
-     13,
      6,
      1
     ],
     [
      13,
-     11
-    ],
-    [
-     1,
-     11,
+     6,
      1
     ]
    ]
   }
- ]
+ ],
+ "staged": [
+  {
+   "left": 30,
+   "adult": 0,
+   "to": [
+    3,
+    6
+   ],
+   "delay": 0.2,
+   "say": "HUGAS KAMAY!"
+  }
+ ],
+ "hinala": {
+  "2": {
+   "news": "LOLA KEEPS HER BAYONG BY HER PILLOW",
+   "do": [
+    {
+     "move": 2,
+     "to": [
+      13,
+      2
+     ]
+    }
+   ]
+  },
+  "3": {
+   "news": "THE KITCHEN DOOR IS LOCKED NOW",
+   "do": [
+    {
+     "lock": [
+      6,
+      12
+     ],
+     "key": "red",
+     "keyAt": [
+      12,
+      9
+     ]
+    }
+   ]
+  }
+ },
+ "notes": "Jomar walks the long hall end to end (Ramil yells to send him the other way). Near-miss: 30 s before dinner Mama calls HUGAS KAMAY and walks up to the kids rooms, past wherever you are hiding."
 }
