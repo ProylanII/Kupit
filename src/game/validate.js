@@ -89,6 +89,7 @@ export function validateLevel(L) {
     if (has('noTrap') && !(L.traps || []).length) bad('mission noTrap needs traps');
     if (has('noHide') && !(L.hide || []).length) bad('mission noHide needs hiding spots');
     if (has('underNose') && !L.targets.some((t) => t.kind === 'ibalik' && t.owner)) bad('mission underNose needs ibalik stashes with owners');
+    if (has('catUnseen') && !L.escort) bad('mission catUnseen needs an escort');
     if (has('ligo') && !(L.targets.some((t) => t.owner === 'tatay') && L.adults.some((a) => a.type === 'tatay' && (a.route || []).some((p) => p[4] === 'ligo')))) bad('mission ligo needs Tatay with a shower stop and his wallet');
   }
   floor(L.spawn, 'spawn');

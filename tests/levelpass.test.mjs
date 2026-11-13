@@ -9,6 +9,7 @@ import { MISSIONS } from '../src/game/missions.js';
 
 const load = (f) => JSON.parse(readFileSync(new URL(`../src/data/levels/${f}.json`, import.meta.url), 'utf8'));
 const idle = { mv: { x: 0, y: 0, mag: 0, run: false }, action: false, actionPressed: false, throwPressed: false };
+const c = (t) => t * TILE + TILE / 2;
 const tile = (o) => [Math.floor(o.x / TILE), Math.floor(o.y / TILE)];
 
 test('L1 SALA: quota 3 from a bag of 4 (SAPAT NA), Mama on the sofa, the ad break turns her toward the bag', () => {
@@ -125,7 +126,7 @@ test('L9 GABI: Jomar walks the long hall; 30 s before dinner Mama calls HUGAS KA
 });
 
 test('level pass: the rules hold for every level the pass has reached', () => {
-  for (const id of ['01-sala', '02-kusina', '03-buong-bahay', '04-bakuran', 'kwarto', 'gatas', '05-gabi', 'sampayan', 'ibalik']) {
+  for (const id of ['01-sala', '02-kusina', '03-buong-bahay', '04-bakuran', 'kwarto', 'gatas', '05-gabi', 'sampayan', 'ibalik', 'barangay']) {
     const r = rules(load(id));
     for (const k of ['R1', 'R2', 'R6', 'R7']) assert.ok(r[k].ok, `${id} ${k} ${JSON.stringify(r[k])}`);
   }
@@ -177,4 +178,53 @@ test('Chapter 4 order is PALENGKE -> BARANGAY -> PARTY; save v5 moves a player w
   assert.equal(migrate({ ...fresh(), v: 4, unlocked: 14 }).unlocked, 13, 'the barangay is at 13 now');
   assert.equal(migrate({ ...fresh(), v: 4, unlocked: 13 }).unlocked, 13);
   assert.equal(migrate({ ...fresh(), v: 4, unlocked: 15 }).unlocked, 15, 'past both: unchanged');
+});
+
+const escortRoom = (extra = {}) => ({
+  id: 'esc', name: 'ESC', quota: 0, par: 60, escort: {}, outside: true,
+  tiles: ['####################', '#..................#', '#..................#', '#..................#', '####################'],
+  spawn: [2, 2], exit: [17, 2], targets: [], adults: [], ...extra,
+});
+const walk = (x, y) => ({ mv: { x, y, mag: 1, run: false }, action: false, actionPressed: false, throwPressed: false });
+
+test('L14 BARANGAY escort: Mingming follows a step behind, sits when you stop, and the exit waits for her', () => {
+  const w = new World(escortRoom()), e = w.escort, p = w.player;
+  for (let i = 0; i < 60; i++) w.update(1 / 60, walk(1, 0));
+  const gap = Math.hypot(p.x - e.x, p.y - e.y);
+  assert.ok(e.x < p.x && gap > 10 && gap < 40, `she is behind (gap ${gap.toFixed(1)})`);
+  for (let i = 0; i < 60; i++) w.update(1 / 60, idle);
+  assert.equal(e.moving, false, 'she sits when you stop');
+  e.x = c(3); e.y = c(2); e.trail = []; // left far behind
+  p.x = w.exit.x; p.y = w.exit.y;
+  w.update(1 / 60, idle);
+  assert.equal(w.status, 'play', 'the exit waits for Mingming');
+  e.x = p.x - 20; e.y = p.y;
+  w.update(1 / 60, idle);
+  assert.equal(w.status, 'clear');
+});
+
+test('L14 BARANGAY escort: she meows every 10 s unless hushed; a grown-up who sees her comes to look', () => {
+  const w = new World(escortRoom());
+  let meows = 0;
+  for (let i = 0; i < 60 * 21; i++) { w.update(1 / 60, i % 120 < 60 ? walk(1, 0) : walk(-1, 0)); meows += w.events.filter((e) => e.type === 'meow').length; w.events.length = 0; }
+  assert.equal(meows, 2, 'twice in 21 s of walking');
+  const h = new World(escortRoom());
+  let hushed = 0;
+  for (let i = 0; i < 60 * 21; i++) { h.update(1 / 60, idle); hushed += h.events.filter((e) => e.type === 'meow').length; h.events.length = 0; }
+  assert.equal(hushed, 0, 'standing still beside her hushes her');
+  const s = new World(escortRoom({ adults: [{ type: 'kapitbahay', at: [8, 2], face: Math.PI }] }));
+  s.player.hidden = null; s.player.x = c(1); s.escort.x = c(5); s.escort.y = c(2);
+  s.update(1 / 60, idle);
+  assert.equal(s.stats.catSeen, 1);
+  assert.equal(s.adults[0].say?.text, 'UY, PUSA!');
+  assert.equal(MISSIONS.catUnseen.ok(s), false);
+});
+
+test('L14 BARANGAY: outside the house only tanod close calls reach HINALA (+2 each)', async () => {
+  const { delta } = await import('../src/game/hinala.js');
+  const L = load('barangay');
+  assert.equal(delta({ catches: 2, spotted: 3, sobra: 4, tanod: 1 }, L).total, 2);
+  assert.equal(delta({ catches: 1 }, L).total, 0);
+  assert.ok(!L.adults.some((a) => ['mama', 'tatay', 'lola', 'tita', 'kuya'].includes(a.type)), 'no family out here');
+  assert.equal(L.targets.length, 0, 'nothing to take from strangers');
 });

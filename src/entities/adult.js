@@ -22,6 +22,8 @@ export const ADULT_TYPES = {
   // late-game community archetypes (built from the behaviours above)
   tanod: { name: 'TANOD', speed: 24, range: 92, fov: 0.42, rate: 1.9, scan: { amp: 0.85, speed: 1.4 }, tattle: { r: 190, windup: 0.3, say: 'PRRRT!' }, shout: 'TIGIL!', scold: 'CURFEW NA! UWI!' },
   tindera: { name: 'TINDERA', speed: 22, range: 72, fov: 0.95, rate: 1.8, tattle: { r: 130, windup: 0.4, say: 'MARE! ANAK MO!' }, leash: 64, shout: 'MARE! ANAK MO!', scold: 'BATA, HUWAG DIYAN!' },
+  // a neighbour out in the barangay (Chapter 4: no family out here); a recoloured adult, see render/sprites.js
+  kapitbahay: { name: 'KAPITBAHAY', speed: 18, range: 64, fov: 0.8, rate: 1.5, shout: 'UY, BATA!', scold: 'GABI NA, IJO! UWI NA!' },
   bisita: { name: 'BISITA', speed: 15, range: 0, fov: 0, rate: 0, harmless: true, cover: true, shout: '' },
   trike: { name: 'TRICYCLE', speed: 52, range: 0, fov: 0, rate: 0, harmless: true, cover: true, vehicle: true, shout: 'BEEP BEEP!' },
 };

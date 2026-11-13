@@ -40,12 +40,18 @@ export const INPUTS = {
   evidence: { label: 'EVIDENCE',   each: 3, cap: 6 }, // a spill, a slipper someone picked up, a door left open
   tattles: { label: 'TATTLE',      each: 2, cap: 4 },
   palusot: { label: 'EXCUSE',      each: 3, cap: 3 }, // Kuya Ramil's excuse worked, but they wonder
+  tanod:   { label: 'TANOD',       each: 2, cap: 6 }, // out in the barangay: "the tanod will tell your Tatay"
 };
 export const CLEAN = -5;      // nothing taken past the quota, no alarm, no close call: the house seems normal
 export const RETURNED = -2;   // IBALIK: per coin put back
 export function delta(r, L = {}) {
   const parts = [];
   if (L.hingi || L.epilogue) return { total: 0, parts };
+  if (L.outside) { // not the house: only what the tanod saw gets back home
+    const n = Math.min(INPUTS.tanod.cap, (r.tanod | 0) * INPUTS.tanod.each);
+    if (n) parts.push({ id: 'tanod', label: INPUTS.tanod.label, n });
+    return { total: n, parts };
+  }
   for (const [id, d] of Object.entries(INPUTS)) {
     const n = Math.min(d.cap, (r[id] | 0) * d.each);
     if (n) parts.push({ id, label: d.label, n });

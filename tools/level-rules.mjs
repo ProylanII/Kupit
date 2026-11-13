@@ -35,12 +35,12 @@ export function rules(L) {
   const riskiest = coinT.slice().sort((a, b) => near(a) - near(b))[0];
   out.R1 = { ratio: +ratio.toFixed(2), ok: !L.quota || L.giveBack || L.hingi || (ratio >= RATIO[0] && ratio <= RATIO[1] && (!richest || richest.coins === riskiest.coins)), note: richest && richest !== riskiest && richest.coins !== riskiest.coins ? `richest ${richest.at} is not the riskiest ${riskiest.at}` : '' };
   // R2: the way in = spawn -> richest stash; the way out = richest stash -> exit
-  const goal = (richest || L.targets[0]).at;
+  const goal = (richest || L.targets[0])?.at || L.exit; // (no stash at all: an escort level)
   const pin = findPath(map, L.spawn[0], L.spawn[1], goal[0], goal[1], pass) || [];
   const pout = findPath(map, goal[0], goal[1], L.exit[0], L.exit[1], pass) || [];
   const inSet = new Set(pin.map((p) => (p.tx ?? p[0]) + ',' + (p.ty ?? p[1])));
   const shared = pout.filter((p) => inSet.has((p.tx ?? p[0]) + ',' + (p.ty ?? p[1]))).length;
-  const overlap = pout.length ? shared / pout.length : 1;
+  const overlap = !richest ? 0 : pout.length ? shared / pout.length : 1; // (no stash: there is no way back to compare)
   const px = (p) => ({ x: p[0] * 16 + 8, y: p[1] * 16 + 8 });
   const walk = findPath(map, L.spawn[0], L.spawn[1], L.exit[0], L.exit[1], pass) || [];
   const sameRoom = hasLos(map, px(L.spawn), px(L.exit)) || walk.length < 8;

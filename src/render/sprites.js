@@ -119,6 +119,7 @@ export const KID_SLOTS = { // the top / bottom colours (base, shade) of each kid
 };
 export const VARIANTS = {
   bisita:  { base: 'tita', map: { '#2fa59b': '#ff9a3c', '#22807a': '#d9762a', '#7fe0d4': '#ffe36b', '#ff7eb6': '#2a1f33', '#d9578f': '#1b1424', '#ffb0d4': '#4a3d5c' } },
+  kapitbahay: { base: 'tatay', map: { '#f6f1e7': '#e0603a', '#cfc7b8': '#b04428', '#3a4f8a': '#5a5468', '#2b3b6a': '#46415a', '#2a1f33': '#9a94a8', '#1b1424': '#7a7488', '#4a3d5c': '#c4bfd0' } }, // a neighbour: grey hair, red shirt
   tindera: { base: 'nena', map: { '#4f7fd0': '#46e08a', '#3a62a8': '#2fa55b', '#6b3a5a': '#a8433f', '#4f2a44': '#7a2a2a', '#9a94a8': '#2a1f33', '#7a7488': '#1b1424', '#c4bfd0': '#4a3d5c' } },
   // the three kittens are one sprite in three coats
   tigre:   { base: 'kuting', map: {} },

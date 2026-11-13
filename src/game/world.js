@@ -44,6 +44,7 @@ function laundryRuns(map) {
 //   come out of hiding > kupit > hide > door > switch > device. Within a kind, the nearest one wins.
 export const ACT_PRIORITY = ['unhide', 'steal', 'hide', 'door', 'switch', 'device'];
 
+const ESCORT_GAP = 22, ESCORT_MEOW = 10, ESCORT_MEOW_R = 30, ESCORT_HERE = 34;
 const JINGLE_R = 36; // IBALIK: what jingling pockets add to the sound of running
 const FAMILY = new Set(['mama', 'tatay', 'lola', 'tita']);
 const CHAT = [ // by HINALA tier: [first line, the reply]
@@ -68,6 +69,10 @@ export class World {
     this.panyo = this.mods.panyo; // PANYO: stash openings it can still muffle this level
     this.palusot = this.mods.palusot; // PALUSOT: close calls Kuya Ramil can still talk away this level
     this.rollers = [];            // HOLEN: marbles rolling across the floor
+    // BARANGAY (level "escort"): Mingming follows a step behind you on your own path, stops when you stop, meows
+    // every 10 s unless you stand still beside her for a second, and runs back to you if a grown-up spots her. She
+    // cannot be caught. The exit only takes you once she is with you.
+    this.escort = level.escort ? { look: 'pusa', x: this.player.x - 16, y: this.player.y, trail: [], meowT: ESCORT_MEOW, hushT: 0, runT: 0, seenCd: 0, dir: 0, stepT: 0, moving: false, hidden: false } : null;
     this.puddles = [];            // GATAS: spilled milk left on the floor ({ x, y, t, found })
     this.playerOpened = new Set(); // A5: doors Jun opened and left open ("x,y"): someone passing may notice
     // KASABWAT (tag-team levels: "team": ["bing", "ramil"], "spawn2"): two kids, one controlled at a time. The other
@@ -199,6 +204,42 @@ export class World {
     this.map.set(tx, ty, 'D');
     this.emit({ type: 'door', x: tx * TILE + 8, y: ty * TILE + 8 });
   }
+  get escortHere() { return !this.escort || dist(this.escort, this.player) < ESCORT_HERE; }
+  escortUpdate(dt) {
+    const e = this.escort, p = this.player;
+    if (!e) return;
+    const last = e.trail[e.trail.length - 1];
+    if (!last || Math.hypot(p.x - last.x, p.y - last.y) > 3) { e.trail.push({ x: p.x, y: p.y }); if (e.trail.length > 80) e.trail.shift(); }
+    // where to be: the point on your trail ESCORT_GAP px behind you
+    let tg = e.trail[0] || p, acc = 0;
+    for (let i = e.trail.length - 1; i > 0; i--) { acc += dist(e.trail[i], e.trail[i - 1]); if (acc >= ESCORT_GAP) { tg = e.trail[i - 1]; break; } }
+    if (dist(e, p) < ESCORT_GAP - 2 && !(e.runT > 0)) tg = e; // close enough: she sits
+    const dx = tg.x - e.x, dy = tg.y - e.y, d = Math.hypot(dx, dy), sp = (e.runT > 0 ? 95 : Math.max(48, dist(e, p) > 48 ? 80 : 48)) * dt;
+    e.moving = d > 1.5;
+    if (e.moving) { const k = Math.min(1, sp / d); e.x += dx * k; e.y += dy * k; e.stepT += dt * 9; e.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 1 : 2) : (dy < 0 ? 3 : 0); }
+    if (e.runT > 0) e.runT -= dt;
+    if (e.seenCd > 0) e.seenCd -= dt;
+    e.hidden = !!p.hidden && dist(e, p) < 26; // you hide, she tucks in beside you
+    // a hush: stand still right beside her for a second
+    e.hushT = !p.moving && dist(e, p) < 24 ? e.hushT + dt : 0;
+    if (e.hushT >= 1) e.meowT = ESCORT_MEOW;
+    if ((e.meowT -= dt) <= 0) {
+      e.meowT = ESCORT_MEOW;
+      if (!this.masked(e.x, e.y)) this.noise({ x: e.x, y: e.y, r: ESCORT_MEOW_R, lure: true });
+      this.emit({ type: 'meow', x: e.x, y: e.y });
+    }
+    if (e.hidden || e.seenCd > 0) return;
+    for (const a of this.adults) {
+      if (a.cfg.harmless || a.cfg.dog || a.state === 'chase' || !a.seesPoint(e.x, e.y)) continue;
+      a.investigate(e.x, e.y);
+      a.talk('UY, PUSA!', 1.6);
+      this.stats.catSeen = (this.stats.catSeen | 0) + 1;
+      e.runT = 1.5; e.seenCd = 4;
+      this.emit({ type: 'catSeen', who: a });
+      break;
+    }
+  }
+
   // GATAS: a puddle dries in 45 s. An adult who sees one first comes to look ("Why is it wet here?"): evidence.
   checkPuddles(dt) {
     for (const pd of this.puddles) {
@@ -781,6 +822,7 @@ export class World {
     this.chatter(dt);
     this.stagedBeat(dt);
     this.checkPuddles(dt);
+    this.escortUpdate(dt);
     this.hearNoises(dt);
     if (catcher) { this.caught(catcher); if (this.status !== 'play' || this.scold) return; }
 
@@ -805,7 +847,8 @@ export class World {
       if (m.strict && !this.missionLost[i] && !m.ok(this)) { this.missionLost[i] = true; this.emit({ type: 'missionLost', id: this.missionIds[i], i }); }
     }
 
-    if (this.open && !p.hidden && dist(p, this.exit) < 10) {
+    if (this.open && !p.hidden && dist(p, this.exit) < 10 && !this.escortHere && !this.waitedCat) { this.waitedCat = true; this.talk('MINGMING, DITO!', 1.4); }
+    if (this.open && !p.hidden && dist(p, this.exit) < 10 && this.escortHere) {
       if (this.kids && this.kids.some((k) => k !== p && !k.out)) { // one is out: now bring the other
         p.out = true;
         this.emit({ type: 'teamOut', who: this.mods.charId });
@@ -865,6 +908,7 @@ export class World {
       return;
     }
     this.catches++;
+    if (a.type === 'tanod') this.stats.tanod = (this.stats.tanod | 0) + 1; // (outside: this is what gets back home)
     if (this.catches >= this.lives) { this.fail('seen', a); return; }
     this.spill();
     // (putting coins back: what is back stays back)
@@ -982,7 +1026,7 @@ export class World {
     const emptied = this.targets.filter((t) => t.perCoin && t.done).length;
     this.result = { coins: this.coins, time: this.time, stars: missions.filter(Boolean).length, missions, fast, stealth, catches: this.catches, spotted: this.spotted, bonus: this.bonus,
       sobra: this.sobra, emptied, takenBy: this.takenBy(), spills: this.stats.spills, tattles: this.stats.tattles, palusot: this.stats.palusot,
-      evidence: this.stats.evidence }; // things left behind that someone found (a slipper, an open door, a puddle)
+      evidence: this.stats.evidence, tanod: this.stats.tanod | 0 }; // things left behind that someone found (a slipper, an open door, a puddle)
     this.emit({ type: 'clear' });
   }
 
@@ -997,6 +1041,7 @@ export class World {
       p.hidden = null; p.hideT = 0;
       p.x = e.x + dx * TILE; p.y = e.y + dy * TILE;
     }
+    if (this.escort) { this.escort.x = this.player.x; this.escort.y = this.player.y; this.escort.trail = []; } // (Mingming comes too)
   }
   devNextPhase() { const ph = this.bossPhases[this.phase]; if (ph) this.coins = Math.max(this.coins, ph.at); return !!ph; }
   devClear() { if (this.status === 'play') this.finish(); }

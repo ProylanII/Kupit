@@ -312,6 +312,8 @@ export class Play {
       case 'door': case 'switch': sfx.click(); break;
       case 'tune': if (this.onScreen(e.who.x, e.who.y, 60)) sfx.tune(); break;
       case 'jingle': sfx.jingle(); break;
+      case 'meow': if (this.onScreen(e.x, e.y, 40)) sfx.meow(); break;
+      case 'catSeen': sfx.alert(); this.toast = { text: 'THEY SAW MINGMING! SHE RUNS TO YOU', col: C.orange, t: 2 }; break;
       case 'ringtone': if (this.onScreen(e.x, e.y, 40)) sfx.ringtone(); break;
       case 'honk': if (this.onScreen(e.who.x, e.who.y, 40)) sfx.horn(); break;
       case 'callout': this.kick(1); break;
@@ -569,6 +571,7 @@ export class Play {
     for (const a of w.adults) actors.push(a);
     for (const c of this.cats) actors.push(c);
     if (!p.hidden) { actors.push(p); for (const k of this.kittens) actors.push(k); }
+    if (w.escort && !w.escort.hidden) actors.push(w.escort); // Mingming, a step behind
     // KASABWAT: the kid you left behind, crouched where you left them
     for (const k of w.kids || []) if (k !== p && !k.out && !k.hidden) actors.push({ look: k.look, x: k.x, y: k.y, dir: k.dir, pose: 'reach', partner: true });
     actors.sort((u, v) => u.y - v.y);
@@ -946,8 +949,8 @@ export class Play {
     g.fillStyle = C.ink; g.fillRect(0, MAP_H, VIEW_W, VIEW_H - MAP_H);
     g.fillStyle = C.wallD; g.fillRect(0, MAP_H, VIEW_W, 1);
     const pr = w.prompt;
-    const left = this.level.quota - w.coins, need = left > 0 ? `${this.level.giveBack ? 'PUT BACK' : this.level.hingi ? 'ASK FOR' : 'NEED'} ${left} MORE` : 'GET THE MILK';
-    drawText(g, pr ? pr.label : w.open ? 'GO TO THE EXIT!' : need, tx, MAP_H + 8, pr ? C.gold : w.open ? C.green : C.gray, al);
+    const left = this.level.quota - w.coins, need = left > 0 ? `${this.level.giveBack ? 'PUT BACK' : this.level.hingi ? 'ASK FOR' : 'NEED'} ${left} MORE` : w.escort ? 'BRING MINGMING TO THE DESK' : 'GET THE MILK';
+    drawText(g, pr ? pr.label : w.open ? (w.escort && !w.escortHere ? 'MINGMING! STAY CLOSE' : w.escort ? 'TO THE VACCINATION DESK!' : 'GO TO THE EXIT!') : need, tx, MAP_H + 8, pr ? C.gold : w.open ? C.green : C.gray, al);
     if (w.player.blend) drawText(g, 'BLENDING IN', tx, MAP_H + 17, C.green, al);
     let kx = L ? VIEW_W - 9 : 9;
     for (const k of w.player.keys) { drawObj(g, 'key', kx, MAP_H + 24, k); kx += L ? -10 : 10; }
