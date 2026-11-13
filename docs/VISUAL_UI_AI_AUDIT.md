@@ -393,7 +393,7 @@ needed (see V1), but the diagnosis has changed.
 | U11 | **Speech bubbles** | REFINE | Small all-caps bubbles. Bubbles near the top can sit under the HUD. Chase bubbles turn red (good). | Mixed-case text; keep bubbles below the HUD band; routine bubbles get a small icon (pot, broom, phone) so they can be read at a glance. | Medium | S | U1, U3 |
 | U12 | **Pause** | KEEP, REFINE | Clear menu plus missions. Seven items, with the dev item only in dev. | Add the current HINALA line once it exists; group as Resume / Restart / then the rest. | Low | S | 5.2 |
 | U13 | **Caught screen** (code only) | REDESIGN | Catcher portrait plus "CAUGHT!", or "HULI KA!" after an escape-timer failure. | Blueprint 3.1 (MUNTIK NA): amber, not red, and HULI KA reserved for the ending. | Critical (part of Blueprint 3.1) | S | 3.1 |
-| U14 | **Clear screen** | REFINE + BUG | **The player sprite is drawn on top of the dim overlay, right between the words "NICE" and "KUPIT!"** (both clear captures). The stats are a centred cluster of small lines. On the storm results, "NEVER GET CAUGHT — NEW!" appears immediately after the ending where Jun is caught. | Fix the draw order. Layout: headline → three missions → a coins row → an unlocks row, with more spacing. Rename the mission to "NO CLOSE CALLS" (Blueprint 3.1). Add the HINALA breakdown (5.2). | High | S | 3.1, 5.2 |
+| U14 | **Clear screen** | REFINE | The level shows through the dim behind the headline, so the player can look like part of the words (first reported here as a draw-order bug; a live check disproved that, see P1). The stats are a centred cluster of small lines. On the storm results, "NEVER GET CAUGHT — NEW!" appears immediately after the ending where Jun is caught. | A solid panel behind the results (done in Phase 1). Layout: headline → three missions → a coins row → an unlocks row, with more spacing. Rename the mission to "NO CLOSE CALLS" (Blueprint 3.1). Add the HINALA breakdown (5.2). | High | S | 3.1, 5.2 |
 | U15 | **Aling Nena's store** | REFINE | A flat list, with the near-invisible line "FOR MINGMING AND THE KITTENS" repeated on every row. Nena is never shown. Buying anything shows no preview. | Nena's portrait at the counter with a changing line. Delete the repeated line. Show each item's effect on the hideout as a thumbnail. Gear as new actions (Blueprint 5.4). | Medium | M | 5.4 |
 | U16 | **Gear and cosmetics sub-stores** (code only) | REDESIGN | Stat bars for percentage upgrades. | Replaced by the gear-as-actions list (Blueprint 5.4). Each item gets an icon and a one-line "what it lets you do". | Medium | M | 5.4 |
 | U17 | **The Crew** | REFINE | Readable cards, but most of the screen is empty. "JOINS IN THE STORY" in dark grey. It's the only place to pick a kid. | Becomes a reference and outfit screen. Picking moves to the pre-level card (6.1). Show each skill with a small animated example. | Medium | M | 6.1 |
@@ -592,10 +592,11 @@ needed (see V1), but the diagnosis has changed.
 
 ## 4. Overall polish
 
-**P1 · Clear-screen draw-order bug** — High · S
-- The player sprite appears on top of the dim overlay between the headline words, in both clear captures. It's the
-  most-seen screen in the game.
-- **Depends on:** the render order in the clear state.
+**P1 · Clear-screen readability** (first reported as a draw-order bug; corrected) — High · S — **fixed in Phase 1**
+- A live check on 2026-11-13 showed Jun's pixels at the headline *are* dimmed (skin ≈ (81, 64, 64) under the 75%
+  dim). There is no draw-order bug. Jun just stands where the headline's word gap falls, and the faintly visible
+  level reads as part of the title.
+- Fix: a near-solid panel behind the results text on the clear and caught screens (`panel()` in `main.js`).
 
 **P2 · No footsteps or room ambience** — REFINE · High · M
 - **Problem:** The sound cue list is: alert, buy, caught, clasp, clear, click, coin, creak, hide, horn, jingle, meow,
@@ -703,7 +704,7 @@ needed (see V1), but the diagnosis has changed.
 | Speech bubbles | REFINE | U11 |
 | Pause | KEEP / REFINE | U12 |
 | Caught screen | REDESIGN | U13 |
-| Clear screen | REFINE + bug | U14, P1 |
+| Clear screen | REFINE | U14, P1 |
 | Store | REFINE | U15 |
 | Gear / cosmetics stores | REDESIGN | U16 |
 | Crew | REFINE | U17 |
@@ -738,7 +739,7 @@ needed (see V1), but the diagnosis has changed.
 | Ninang | REDESIGN | A22 |
 | Bisita | KEEP / REFINE | A23 |
 | Aling Nena | KEEP | A25 |
-| Clear-screen bug | fix | P1 |
+| Clear-screen readability | REFINE (done) | P1 |
 | Sound cues | REFINE | P2 |
 | Juice | REFINE | P3 |
 | Environmental storytelling | REFINE | P4 |
@@ -747,8 +748,8 @@ needed (see V1), but the diagnosis has changed.
 | Phone first tips | REFINE | P7 |
 | Hideout | KEEP / REFINE | P8 |
 
-**Totals (93 rows, classified by the first word):** 27 KEEP (including the "KEEP / REFINE" rows) · 43 REFINE ·
-19 REDESIGN · 3 REPLACE · 1 bug fix.
+**Totals (93 rows, classified by the first word):** 27 KEEP (including the "KEEP / REFINE" rows) · 44 REFINE ·
+19 REDESIGN · 3 REPLACE (the clear-screen "bug" turned out to be a REFINE, see P1).
 
 ---
 
@@ -785,6 +786,6 @@ needed (see V1), but the diagnosis has changed.
 5. **V8** — sleep and phone poses that read.
 6. **V11 / A24** — the tricycle.
 7. **V17 / V12** — tsinelas and bayong recognisability.
-8. **U1 + P1** — the HUD band and the clear-screen bug.
+8. **U1** — the HUD band (P1, the clear-screen panel, is done).
 9. **U2** — phone layout.
 10. **P2** — footsteps and ambience.

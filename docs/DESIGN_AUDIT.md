@@ -842,7 +842,9 @@ From `sheet.png` and the QA captures.
 - **Expected impact:** Scenes feel located. The ending in a rain-soaked sala with lights on will hit much harder.
 
 **[F5] Visual bugs seen in the QA captures.** *Medium — verify*
-- On the clear screen (`desktop-clear-stars.png`), the player sprite draws on top of the "NICE KUPIT!" headline, between the words, undimmed.
+- On the clear screen, Jun seemed to draw on top of the "NICE KUPIT!" headline. *Corrected 2026-11-13:* a live check
+  showed he is dimmed like the rest of the level and simply stands in the word gap; a solid results panel fixes the
+  look (Phase 1).
 - In HINGI, the laundry tiles render as an unexplained "||||" block (L17-c).
 
 **[F6] Motion.** *Not inspected*

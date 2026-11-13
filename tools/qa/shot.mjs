@@ -1,7 +1,7 @@
 // Screenshots for looking at the game by eye (art, levels, story panels):
 //   node tools/qa/shot.mjs http://localhost:8080 outDir level:3 level:14@6 story:ENDING:0 story:ENDING:3 title map clear:3 paused:2
 // level:N[@seconds] = level N (1-based) after that many seconds; story:NAME:panel = a story scene (INTRO, ENDING,
-// EPILOGUE or a level id from BEFORE); clear:N = level N's clear screen; paused:N; title; map.
+// EPILOGUE, a level id from BEFORE, or after-<id> for AFTER); clear:N = level N's clear screen; paused:N; title; map.
 import { mkdirSync } from 'node:fs';
 import { launch, openPage, sleep, state } from './browser.mjs';
 
@@ -25,7 +25,7 @@ for (const s of shots) {
   } else if (kind === 'story') {
     await page.evaluate(async (nm, i) => {
       const m = await import('./src/data/story.js');
-      const panels = m[nm] || m.BEFORE[nm] || m.AFTER?.[nm];
+      const panels = nm.startsWith('after-') ? m.AFTER[nm.slice(6)] : m[nm] || m.BEFORE[nm]; // after-ibalik = an after-scene
       window.__kupit.story(panels, Number(i) || 0);
     }, a, b);
     await sleep(1600);

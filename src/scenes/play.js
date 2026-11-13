@@ -77,7 +77,7 @@ const TIPS = {
   laundry: 'LAUNDRY HIDES YOU. NOBODY SEES THROUGH IT',
   routine: 'BUSY ADULTS SEE LESS. WATCH WHAT THEY ARE DOING',
   kain: 'KAIN NA BAR: GET OUT BEFORE DINNER TIME!',
-  caught: (p) => `MUNTIK NA! COINS DROPPED. ${p.world.livesLeft} ${p.world.livesLeft === 1 ? 'CHANCE' : 'CHANCES'} LEFT`,
+  caught: 'CLOSE CALL: DROPPED COINS GO BACK TO THEIR STASH',
   dog: 'ASO BARKS WHEN HE SEES YOU. PANDESAL BRIBES HIM',
   tanod: "TANOD'S FLASHLIGHT SWEEPS. HIS WHISTLE CALLS ALL",
   tindera: 'TINDERA SHOUTS, BUT NEVER LEAVES HER STALL',
@@ -275,7 +275,7 @@ export class Play {
         if (e.final) { sfx.sentBack(); this.buzz([80, 40, 140]); this.kick(6); if (settings.flash) this.flash = 0.6; }
         else {
           sfx.muntik(); this.buzz([60, 30, 60]); this.kick(4); if (settings.flash) this.flash = 0.45;
-          this.toast = { text: e.lost ? `MUNTIK NA! YOU DROPPED ${e.lost} ${e.lost === 1 ? 'COIN' : 'COINS'}` : 'MUNTIK NA!', col: C.orange, t: 2.4 };
+          this.toast = { text: e.lost ? `YOU DROPPED ${e.lost} ${e.lost === 1 ? 'COIN' : 'COINS'}` : 'NOTHING DROPPED', col: C.orange, t: 2.4 };
           this.showTip('caught');
         }
         break;
@@ -569,7 +569,7 @@ export class Play {
     for (const q of this.parts) { g.globalAlpha = Math.min(1, q.l * 2); drawCoin(g, q.x, q.y); }
     g.globalAlpha = 1;
     if (w.say) bubble(g, w.say.text, p.x, Math.round(p.y) - 30, this.cx);
-    for (const a of w.adults) if (a.say) bubble(g, a.say.text, a.x, Math.round(a.y) - 34, this.cx, C.ink, a.state === 'chase' || w.scold?.who === a ? C.red : C.white);
+    for (const a of w.adults) if (a.say) bubble(g, a.say.text, a.x, Math.round(a.y) - 34, this.cx, C.ink, w.scold?.who === a ? C.orange : a.state === 'chase' ? C.red : C.white);
     g.restore();
     if (p.carry) drawTarget(g, 'gatas', p.x - this.cx + sx, p.y - this.cy + sy - 21, false);
     if (this.level.storm) this.drawStorm(g, fd);

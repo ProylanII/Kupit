@@ -144,6 +144,12 @@ function ptEvent(e, w) {
 function dim(a = 0.6) {
   g.globalAlpha = a; g.fillStyle = C.ink; g.fillRect(0, 0, VIEW_W, VIEW_H); g.globalAlpha = 1;
 }
+// A near-solid band behind results text, so the level showing through the dim (a kid standing right where the
+// headline is) never reads as part of the words.
+function panel(y0, y1, a = 0.88) {
+  g.globalAlpha = a; g.fillStyle = C.ink; g.fillRect(0, y0, VIEW_W, y1 - y0); g.globalAlpha = 1;
+  g.fillStyle = C.wallD; g.fillRect(0, y0, VIEW_W, 1); g.fillRect(0, y1 - 1, VIEW_W, 1);
+}
 
 // Returns the activated item index (or -1). Handles keyboard up/down/enter and taps.
 // `ready` blocks input briefly so a stray tap doesn't skip a screen.
@@ -685,6 +691,7 @@ const END_Y = 236;
 function drawCaught() {
   play.draw(g);
   dim();
+  panel(30, 186);
   const a = play.catcher;
   // Out of chances (or too slow): Jun is sent back to his room. Amber, not red, and never "HULI KA!": the family
   // only finds out what he has been doing in the story's ending.
@@ -718,6 +725,7 @@ const clearItems = () => {
 function drawClear() {
   play.draw(g);
   dim(0.75);
+  panel(50, 230);
   const r = play.result;
   const last = !run && idx === levels.length - 1;
   const head = run ? 'HOUSE CLEARED!' : cur.clearText || (cur.boss ? 'BOSS BEATEN!' : 'NICE KUPIT!');
