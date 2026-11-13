@@ -9,7 +9,7 @@ import { World } from './world.js';
 
 export const KINDS = {
   items: ['tsinelas', 'pandesal', 'key'], hide: ['box', 'curtain', 'basket'],
-  devices: ['tv', 'radio', 'videoke'], traps: ['creak', 'lego'], targets: ['purse', 'bayong', 'wallet', 'piggy', 'candy', 'gatas', 'kuting', 'ibalik', 'regalo'],
+  devices: ['tv', 'radio', 'videoke'], traps: ['creak', 'lego'], targets: ['purse', 'bayong', 'wallet', 'piggy', 'candy', 'gatas', 'kuting', 'ibalik', 'regalo', 'bilin'],
 };
 
 // Player reachability with keys and switch-operated gates, iterated to a fixpoint.
@@ -90,6 +90,7 @@ export function validateLevel(L) {
     if (has('noHide') && !(L.hide || []).length) bad('mission noHide needs hiding spots');
     if (has('underNose') && !L.targets.some((t) => t.kind === 'ibalik' && t.owner)) bad('mission underNose needs ibalik stashes with owners');
     if (has('catUnseen') && !L.escort) bad('mission catUnseen needs an escort');
+    if (has('noGossip') && !L.adults.some((a) => a.type === 'tindera') ) bad('mission noGossip needs a tindera');
     if (has('ligo') && !(L.targets.some((t) => t.owner === 'tatay') && L.adults.some((a) => a.type === 'tatay' && (a.route || []).some((p) => p[4] === 'ligo')))) bad('mission ligo needs Tatay with a shower stop and his wallet');
   }
   floor(L.spawn, 'spawn');

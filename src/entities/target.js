@@ -13,6 +13,7 @@ export const TARGET_KINDS = {
   gatas:    { name: 'GATAS',  hold: 1.0, verb: 'KUNIN',  tip: 'MILK! WALK IT OUT SLOWLY. RUNNING SPILLS IT' },
   kuting:   { name: 'KUTING', hold: 1.0, verb: 'SAGIP',  tick: { every: 0.9, r: 30 }, end: { r: 0, say: 'MEOW!' }, tip: 'A KITTEN! IT MEOWS AS YOU PICK IT UP' },
   ibalik:   { name: 'PITAKA', hold: 1.0, verb: 'IBALIK', end: { r: 36, say: 'KLIK!' }, tip: 'PUT THE COINS BACK. QUIETLY' },
+  bilin:    { name: 'BILIN',  hold: 0.8, verb: 'KUNIN',  tip: 'AN ERRAND: JUST PICK IT UP. BUT NOT WHERE MAMA SEES' }, // PALENGKE: free things, an errand
   regalo:   { name: 'HINGI',  hold: 0.6, verb: 'HINGI',  tip: 'NO SNEAKING. JUST ASK!' },
   alkansya: { name: 'ALKANSYA', hold: 1.0, tick: { every: 0.6, r: 30 }, end: { r: 50, say: 'KLING!' }, tip: 'SECRET ALKANSYA! BONUS COINS' },
 };

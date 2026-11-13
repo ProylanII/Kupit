@@ -949,8 +949,8 @@ export class Play {
     g.fillStyle = C.ink; g.fillRect(0, MAP_H, VIEW_W, VIEW_H - MAP_H);
     g.fillStyle = C.wallD; g.fillRect(0, MAP_H, VIEW_W, 1);
     const pr = w.prompt;
-    const left = this.level.quota - w.coins, need = left > 0 ? `${this.level.giveBack ? 'PUT BACK' : this.level.hingi ? 'ASK FOR' : 'NEED'} ${left} MORE` : w.escort ? 'BRING MINGMING TO THE DESK' : 'GET THE MILK';
-    drawText(g, pr ? pr.label : w.open ? (w.escort && !w.escortHere ? 'MINGMING! STAY CLOSE' : w.escort ? 'TO THE VACCINATION DESK!' : 'GO TO THE EXIT!') : need, tx, MAP_H + 8, pr ? C.gold : w.open ? C.green : C.gray, al);
+    const left = this.level.quota - w.coins, need = left > 0 ? `${this.level.giveBack ? 'PUT BACK' : this.level.hingi ? 'ASK FOR' : 'NEED'} ${left} MORE` : w.escort ? 'BRING MINGMING TO THE DESK' : w.missing?.kind === 'bilin' ? `ERRAND: ${w.targets.filter((t) => t.must && !t.done).length} LEFT` : 'GET THE MILK';
+    drawText(g, pr ? pr.label : w.open ? (w.escort && !w.escortHere ? 'WAIT FOR MINGMING' : w.escort ? 'TO THE VET DESK!' : 'GO TO THE EXIT!') : need, tx, MAP_H + 8, pr ? C.gold : w.open ? C.green : C.gray, al);
     if (w.player.blend) drawText(g, 'BLENDING IN', tx, MAP_H + 17, C.green, al);
     let kx = L ? VIEW_W - 9 : 9;
     for (const k of w.player.keys) { drawObj(g, 'key', kx, MAP_H + 24, k); kx += L ? -10 : 10; }

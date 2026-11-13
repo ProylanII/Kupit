@@ -65,10 +65,9 @@ export const BEFORE = {
     { who: 'ramil', mood: 'shock', lines: ['Jun... he is starting to notice.', 'Tatay is setting the dog loose.'] },
     { who: 'jun', lines: ['Then we have to be quieter.', 'Mingming needs that fish.'] },
   ],
-  '08-palengke': [
-    { who: 'nena', lines: ['Sardines again, ijo? And milk?', 'Every week. For a school project?'] },
-    { who: 'nene', lines: ['It is for Mingming! She has', 'babies! ...Oops.'] },
-    { who: 'nena', mood: 'happy', lines: ["Ay, a mama cat! Why didn't you", 'say so? For her, I give a discount.'], join: 'nene', flag: 'nena' },
+  '08-palengke': [ // the errand (the "Oops" happens at the stall, after the level)
+    { who: 'nene', lines: ['Kuya Jun, can I come?', 'The tinderas all love me.'], join: 'nene' },
+    { who: 'jun', lines: ['Fish scraps, the free box at', 'the bakery, sardines from Aling', "Nena. And Mama is at the market."] },
   ],
   'boss4-fiesta': [ // Ninang's Christmas party. Lola's line seeds the ending: Mama once hid a cat too.
     { who: 'lola', lines: ['Apo, you look like your Mama', 'at your age. Always under the', 'house, that one.'] },
@@ -91,6 +90,11 @@ export const BEFORE = {
 
 // Shown once, right after the first clear of the level with that id (before the results).
 export const AFTER = {
+  '08-palengke': [ // at Aling Nena's stall
+    { who: 'nena', lines: ['Sardines again, ijo? And milk?', 'Every week. For a school project?'] },
+    { who: 'nene', lines: ['It is for Mingming! She has', 'babies! ...Oops.'] },
+    { who: 'nena', mood: 'happy', lines: ["Ay, a mama cat! Why didn't you", 'say so? For her, I give a discount.'], flag: 'nena' },
+  ],
   '07-sampayan': [ // KASABWAT: the two of them, together for once
     { who: 'ramil', lines: ['The washing is out, Bing. You go', 'under the tables, I keep watch.'] },
     { who: 'bing', mood: 'happy', lines: ['Then we both get out.', 'Together, Kuya.'] },

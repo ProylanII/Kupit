@@ -126,7 +126,7 @@ test('L9 GABI: Jomar walks the long hall; 30 s before dinner Mama calls HUGAS KA
 });
 
 test('level pass: the rules hold for every level the pass has reached', () => {
-  for (const id of ['01-sala', '02-kusina', '03-buong-bahay', '04-bakuran', 'kwarto', 'gatas', '05-gabi', 'sampayan', 'ibalik', 'barangay']) {
+  for (const id of ['01-sala', '02-kusina', '03-buong-bahay', '04-bakuran', 'kwarto', 'gatas', '05-gabi', 'sampayan', 'ibalik', 'barangay', 'palengke']) {
     const r = rules(load(id));
     for (const k of ['R1', 'R2', 'R6', 'R7']) assert.ok(r[k].ok, `${id} ${k} ${JSON.stringify(r[k])}`);
   }
@@ -227,4 +227,27 @@ test('L14 BARANGAY: outside the house only tanod close calls reach HINALA (+2 ea
   assert.equal(delta({ catches: 1 }, L).total, 0);
   assert.ok(!L.adults.some((a) => ['mama', 'tatay', 'lola', 'tita', 'kuya'].includes(a.type)), 'no family out here');
   assert.equal(L.targets.length, 0, 'nothing to take from strangers');
+});
+
+test('L13 PALENGKE: an errand of three free things (no coins); the exit opens once all three are picked up', async () => {
+  const { BEFORE, AFTER } = await import('../src/data/story.js');
+  const L = load('palengke');
+  assert.equal(L.quota, 0);
+  assert.deepEqual(L.targets.map((t) => [t.kind, t.coins, t.must]), [['bilin', 0, true], ['bilin', 0, true], ['bilin', 0, true]]);
+  const w = new World(L);
+  assert.equal(w.open, false);
+  for (const t of w.targets) t.done = true;
+  assert.equal(w.open, true);
+  assert.ok(BEFORE['08-palengke'].some((p) => p.join === 'nene'), 'Nene joins before the errand');
+  assert.ok(AFTER['08-palengke'].some((p) => p.flag === 'nena'), "the Oops (and the discount) happens at Nena's stall, after");
+});
+
+test('L13 PALENGKE: a tindera gossip that Mama hears fails noGossip', () => {
+  const w = new World(load('palengke'));
+  const tindera = w.adults.find((a) => a.type === 'tindera'), mama = w.adults.find((a) => a.type === 'mama');
+  w.player.hidden = { kind: 'box', x: 0, y: 0 };
+  w.noise({ x: mama.x + 10, y: mama.y, r: 130, lure: true, from: tindera, tattle: true });
+  w.hearNoises(1 / 60);
+  assert.equal(w.stats.gossip, 1);
+  assert.equal(MISSIONS.noGossip.ok(w), false);
 });

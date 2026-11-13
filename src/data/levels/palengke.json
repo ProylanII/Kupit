@@ -1,12 +1,12 @@
 {
  "id": "08-palengke",
  "name": "PALENGKE",
- "hint": "STALLS BLOCK THE VIEW. TINDERAS TELL MAMA EVERYTHING",
+ "hint": "THE ERRAND: 3 FREE THINGS, THEN ALING NENA'S STALL",
  "suggest": "nene",
  "suggestWhy": "THE TINDERAS MELT FOR A CUTE FACE",
  "missions": [
-  "noCatch",
-  "sakto"
+  "noGossip",
+  "noCatch"
  ],
  "tiles": [
   "############################",
@@ -48,44 +48,44 @@
   26,
   1
  ],
- "quota": 8,
- "par": 190,
+ "quota": 0,
+ "par": 90,
  "targets": [
   {
-   "kind": "purse",
+   "kind": "bilin",
    "at": [
-    2,
-    8
+    10,
+    3
    ],
-   "coins": 3,
-   "time": 1.6
+   "coins": 0,
+   "time": 0.8,
+   "must": true,
+   "owner": "tindera",
+   "label": "FISH SCRAPS"
   },
   {
-   "kind": "wallet",
+   "kind": "bilin",
    "at": [
-    13,
-    14
+    12,
+    25
    ],
-   "coins": 2,
-   "time": 1.3
+   "coins": 0,
+   "time": 0.8,
+   "must": true,
+   "owner": "tindera",
+   "label": "FREE BOX"
   },
   {
-   "kind": "purse",
+   "kind": "bilin",
    "at": [
-    26,
-    15
+    24,
+    2
    ],
-   "coins": 3,
-   "time": 1.6
-  },
-  {
-   "kind": "piggy",
-   "at": [
-    2,
-    26
-   ],
-   "coins": 2,
-   "time": 1.3
+   "coins": 0,
+   "time": 0.8,
+   "must": true,
+   "owner": "nena",
+   "label": "SARDINAS"
   }
  ],
  "items": [
@@ -101,13 +101,6 @@
    "at": [
     26,
     26
-   ]
-  },
-  {
-   "kind": "pandesal",
-   "at": [
-    13,
-    20
    ]
   }
  ],
@@ -182,7 +175,7 @@
   {
    "kind": "curtain",
    "at": [
-    13,
+    14,
     25
    ]
   }
@@ -316,6 +309,50 @@
      28
     ]
    ]
+  },
+  {
+   "type": "nena",
+   "at": [
+    25,
+    2
+   ],
+   "face": 1.5708,
+   "cfg": {
+    "harmless": true
+   }
   }
- ]
+ ],
+ "clearText": "TO ALING NENA'S!",
+ "hinala": {
+  "2": {
+   "news": "MAMA SHOPS AT THE FISH STALL NOW",
+   "do": [
+    {
+     "stop": 2,
+     "at": [
+      9,
+      4,
+      5,
+      -1.5708,
+      "kwento"
+     ]
+    }
+   ]
+  },
+  "3": {
+   "news": "TATAY WAITS BY THE EXIT AISLE NOW",
+   "do": [
+    {
+     "stop": 4,
+     "at": [
+      23,
+      3,
+      6,
+      0
+     ]
+    }
+   ]
+  }
+ },
+ "notes": "An errand: three free things (no coins, nothing taken from the stalls). The family is shopping here; tinderas gossip (HINALA +2, and a mission if it reaches Mama). Near-miss: the two tinderas chatting turn as you pass behind their stall. Nene's \"Oops\" plays after the level, at the stall."
 }

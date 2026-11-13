@@ -603,6 +603,7 @@ export class World {
         // react a beat later the farther away the sound was (a crowd turns one by one, not all at once)
         const delay = nz.lure ? Math.min(0.35, d / (nz.tattle || nz.dogBark ? 500 : 900)) : 0;
         if (nz.cont) nz.dt = dt;
+        if (nz.tattle && nz.from?.type === 'tindera' && a.type === 'mama') this.stats.gossip = (this.stats.gossip | 0) + 1; // (mission noGossip)
         a.hear(nz, d, delay);
       }
     }

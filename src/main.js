@@ -946,7 +946,7 @@ function afterPlay() {
   if (!run && cur.ending && !save.story.ending) {
     startStory(ENDING, () => { save.story.ending = true; persist(); setMode('clear'); starShown = [false, false, false]; sfx.clear(); });
   } else if (!run && AFTER[cur.id] && !save.story.after[cur.id]) { // a scene that closes this level's story beat
-    startStory(AFTER[cur.id], () => { save.story.after[cur.id] = true; persist(); setMode('clear'); starShown = [false, false, false]; });
+    startStory(AFTER[cur.id], () => { save.story.after[cur.id] = true; for (const p of AFTER[cur.id]) if (p.flag) save.story[p.flag] = true; persist(); setMode('clear'); starShown = [false, false, false]; });
   }
 }
 
