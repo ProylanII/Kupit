@@ -65,6 +65,7 @@ const RETRY = 0.5; // seconds a blocked adult waits before planning its route ag
 const LOOK_TIME = 0.9, WARY_TIME = 15;
 export const SEARCH_PTS = { mama: 3, tatay: 2, lola: 0, tita: 2, kuya: 2, tanod: 2, tindera: 1, ninang: 2, nena: 2, aso: 0 };
 export const LIGHT_CHECK = 0.4; // A2: chance an ordinary adult checks the one hiding spot right by where they lost you
+const RUN_SEEN = 1.6;          // a running (or dashing) kid fills an adult's alert this much faster
 const BUMP_DIST = 9;           // A11: walking into an awake adult startles them
 const YIELD_MAX = 0.8;          // A8: longest an adult waits for someone in the way before stepping through
 const LURE_MEMORY = 20;         // A4: seconds a thrown lure is remembered (the same trick twice only gets a look)
@@ -260,7 +261,7 @@ export class Adult {
       n = this.path[0];
       if (!n) return true;
     }
-    if (this.map.ch(n.tx, n.ty) === 'D' && world.openDoor(n.tx, n.ty, this)) this.openedDoor = { tx: n.tx, ty: n.ty };
+    if (this.map.ch(n.tx, n.ty) === 'D' && world.openDoor(n.tx, n.ty, this)) this.openedDoor = { tx: n.tx, ty: n.ty, reached: true };
     const dx = n.x - this.x, dy = n.y - this.y, d = Math.hypot(dx, dy);
     if (d < 1.5) { this.x = n.x; this.y = n.y; this.path.shift(); return this.path.length === 0; }
     const ta = Math.atan2(dy, dx);
@@ -480,7 +481,9 @@ export class Adult {
       if (!this.say) this.talk('FWIT FWIW~', 1);
     }
     // A5: a door they opened gets closed behind them once they are past it (habit)
-    if (this.openedDoor && Math.max(Math.abs(toTile(this.x) - this.openedDoor.tx), Math.abs(toTile(this.y) - this.openedDoor.ty)) >= 2) {
+    const dd = this.openedDoor && Math.max(Math.abs(toTile(this.x) - this.openedDoor.tx), Math.abs(toTile(this.y) - this.openedDoor.ty));
+    if (this.openedDoor && dd <= 1) this.openedDoor.reached = true; // (a door she noticed from across the room: only once she has been through it)
+    if (this.openedDoor?.reached && dd >= 2) {
       world.closeDoorBehind?.(this.openedDoor.tx, this.openedDoor.ty);
       this.openedDoor = null;
     }
@@ -582,7 +585,7 @@ export class Adult {
       const dist = Math.hypot(player.x - this.x, player.y - this.y);
       // close range fills fast; the outer 30% of the cone (far, or off to the side) fills at half rate (A9)
       const edge = dist > 0.7 * this.range * (player.darkMul ?? 1) || Math.abs(angDiff(Math.atan2(player.y - this.y, player.x - this.x) - this.va)) > 0.7 * this.fov;
-      if (this.state !== 'chase') this.alert += dt * c.rate * (world.mods?.alertRate ?? 1) * (dist < 32 ? 2.5 : edge ? 0.5 : 1);
+      if (this.state !== 'chase') this.alert += dt * c.rate * (world.mods?.alertRate ?? 1) * (dist < 32 ? 2.5 : edge ? 0.5 : 1) * (player.running || player.dashT > 0 ? RUN_SEEN : 1); // (running catches the eye)
       if (this.state !== 'chase' || dist < 24) this.a += angDiff(Math.atan2(player.y - this.y, player.x - this.x) - this.va) * Math.min(1, dt * 8);
       if (this.alert >= 1 && this.state !== 'chase') {
         if (c.dog) {

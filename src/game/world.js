@@ -200,7 +200,8 @@ export class World {
   closeDoorBehind(tx, ty) {
     if (this.map.ch(tx, ty) !== 'd') return;
     const inIt = (o) => Math.floor(o.x / TILE) === tx && Math.floor(o.y / TILE) === ty;
-    if ((this.kids || [this.player]).some(inIt) || this.adults.some(inIt)) return;
+    const cx = tx * TILE + TILE / 2, cy = ty * TILE + TILE / 2;
+    if ((this.kids || [this.player]).some((k) => Math.hypot(k.x - cx, k.y - cy) < 1.5 * TILE) || this.adults.some(inIt)) return; // never in a kid's face
     this.map.set(tx, ty, 'D');
     this.emit({ type: 'door', x: tx * TILE + 8, y: ty * TILE + 8 });
   }
@@ -817,7 +818,7 @@ export class World {
       if (!wasChasing && a.state === 'chase') this.spotted++;
       this.maxAlert = Math.max(this.maxAlert, a.alert);
       if (a.cfg.vehicle) this.trikeHit(a);
-      if (a.caught && this.god) { a.caught = false; a.state = 'search'; a.searchT = 1; a.alert = 0.5; }
+      if (a.caught && this.god) { a.caught = false; a.state = 'search'; a.searchT = 1; a.alert = 0.5; this.player.graceT = Math.max(this.player.graceT || 0, 1); } // (god mode: the same moment of grace a real catch gives)
       if (a.caught && !catcher) catcher = a;
     }
     this.chatter(dt);

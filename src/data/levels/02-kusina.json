@@ -109,7 +109,7 @@
     [
      2,
      2,
-     3.5,
+     2.5,
      -1.5708,
      "luto"
     ],
@@ -121,12 +121,14 @@
     [
      10,
      6,
-     1.5
+     2,
+     1.5708
     ],
     [
-     2,
+     3,
      6,
-     1
+     2,
+     1.5708
     ]
    ]
   },
@@ -138,7 +140,7 @@
    ],
    "face": 3.14159,
    "sweep": 0.6,
-   "phase": 4
+   "phase": 0
   }
  ],
  "notes": "Near-miss: when her cooking stop ends Mama turns from the stove toward the coin jar beside it. The exit is the back door at the end of the kitchen side hall."
