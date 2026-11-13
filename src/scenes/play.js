@@ -312,6 +312,8 @@ export class Play {
       case 'door': case 'switch': sfx.click(); break;
       case 'tune': if (this.onScreen(e.who.x, e.who.y, 60)) sfx.tune(); break;
       case 'jingle': sfx.jingle(); break;
+      case 'getUp': sfx.creak(); this.toast = { text: 'LOLA IS GETTING UP!', col: C.orange, t: 2 }; break;
+      case 'sleepTalk': if (this.onScreen(e.who.x, e.who.y, 30)) sfx.hide(); break;
       case 'meow': if (this.onScreen(e.x, e.y, 40)) sfx.meow(); break;
       case 'catSeen': sfx.alert(); this.toast = { text: 'THEY SAW MINGMING! SHE RUNS TO YOU', col: C.orange, t: 2 }; break;
       case 'ringtone': if (this.onScreen(e.x, e.y, 40)) sfx.ringtone(); break;
@@ -523,7 +525,11 @@ export class Play {
     // floor-level stuff
     for (const t of w.traps) {
       if (t.kind === 'lego') drawObj(g, 'lego', t.x, t.y);
-      else { g.fillStyle = C.woodLine; g.fillRect(t.x - 6, t.y - 1, 12, 1); g.fillRect(t.x - 3, t.y + 3, 8, 1); }
+      else { // a loose board: a darker plank, its ends lifted (so a careful player can see the safe line)
+        g.globalAlpha = 0.55; g.fillStyle = C.ink; g.fillRect(t.x - 7, t.y - 2, 14, 5); g.globalAlpha = 1;
+        g.fillStyle = C.woodLine; g.fillRect(t.x - 7, t.y - 3, 14, 1); g.fillRect(t.x - 7, t.y + 3, 14, 1);
+        g.fillStyle = C.white; g.fillRect(t.x - 6, t.y - 1, 1, 1); g.fillRect(t.x + 5, t.y - 1, 1, 1);
+      }
     }
     this.drawDynamicTiles(g);
     for (const pd of this.world.puddles) { // spilled milk (it fades as it dries)
@@ -572,6 +578,11 @@ export class Play {
     for (const c of this.cats) actors.push(c);
     if (!p.hidden) { actors.push(p); for (const k of this.kittens) actors.push(k); }
     if (w.escort && !w.escort.hidden) actors.push(w.escort); // Mingming, a step behind
+    this.holdRing = w.doorHold ? Math.min(1, w.doorHold.t / 1.5) : 0;
+    if (this.holdRing > 0) { // opening a creaky door slowly: a ring of dots fills around your feet
+      const n = 16, k = Math.floor(this.holdRing * n);
+      for (let i = 0; i < n; i++) { const an = -Math.PI / 2 + (i / n) * Math.PI * 2; g.fillStyle = i < k ? C.green : C.ink; g.fillRect(Math.round(p.x + Math.cos(an) * 11), Math.round(p.y + 2 + Math.sin(an) * 7), 2, 2); }
+    }
     // KASABWAT: the kid you left behind, crouched where you left them
     for (const k of w.kids || []) if (k !== p && !k.out && !k.hidden) actors.push({ look: k.look, x: k.x, y: k.y, dir: k.dir, pose: 'reach', partner: true });
     actors.sort((u, v) => u.y - v.y);
@@ -739,7 +750,7 @@ export class Play {
     const c = this.world.cover;
     if (!c) return;
     g.globalAlpha = 0.8; g.fillStyle = C.ink; g.fillRect(VIEW_W / 2 - 56, 32, 112, 11); g.globalAlpha = 1;
-    drawText(g, c === 'thunder' ? 'KULOG! NOBODY CAN HEAR YOU' : 'VIDEOKE! NOBODY CAN HEAR YOU', VIEW_W / 2, 35, C.green, { align: 'center' });
+    drawText(g, c === 'thunder' ? 'KULOG! NOBODY CAN HEAR YOU' : c === 'snore' ? 'HILIK! NOBODY CAN HEAR YOU' : 'VIDEOKE! NOBODY CAN HEAR YOU', VIEW_W / 2, 35, C.green, { align: 'center' });
   }
 
   // The level's three missions, shown for the first seconds of a run (and on the pause screen).
@@ -790,7 +801,8 @@ export class Play {
     }
     if (napping) {
       const b = Math.floor(performance.now() / 500) % 2;
-      drawText(g, a.cfg.depth && a.depth < 0.35 ? 'Z' : 'ZZ', cx + 4, top - 6 - b, a.cfg.depth && a.depth < 0.35 ? C.orange : C.white, { shadow: C.ink });
+      if (a.snoring) drawText(g, 'ZZZ', cx + 3, top - 12 - b, C.white, { scale: 2, shadow: C.ink }); // a loud snore: move now
+      else drawText(g, a.cfg.depth && a.depth < 0.35 ? 'Z' : 'ZZ', cx + 4, top - 6 - b, a.cfg.depth && a.depth < 0.35 ? C.orange : C.white, { shadow: C.ink });
     } else if (!a.awake && a.cfg.cook) { // stirring the pot
       drawObj(g, 'pot', cx + (dir === 1 ? -9 : 9), Math.round(a.y) - 1);
       if (Math.floor(performance.now() / 400) % 2) drawText(g, '~', cx + (dir === 1 ? -10 : 8), Math.round(a.y) - 11, C.white);

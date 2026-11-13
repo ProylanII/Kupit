@@ -45,6 +45,7 @@ function laundryRuns(map) {
 export const ACT_PRIORITY = ['unhide', 'steal', 'hide', 'door', 'switch', 'device'];
 
 const ESCORT_GAP = 22, ESCORT_MEOW = 10, ESCORT_MEOW_R = 30, ESCORT_HERE = 34;
+const CREAKY_HOLD = 1.5, CREAKY_R = 96; // a creaky door: hold this long to open it quietly; its creak carries this far
 const JINGLE_R = 36; // IBALIK: what jingling pockets add to the sound of running
 const FAMILY = new Set(['mama', 'tatay', 'lola', 'tita']);
 const CHAT = [ // by HINALA tier: [first line, the reply]
@@ -73,6 +74,9 @@ export class World {
     // every 10 s unless you stand still beside her for a second, and runs back to you if a grown-up spots her. She
     // cannot be caught. The exit only takes you once she is with you.
     this.escort = level.escort ? { look: 'pusa', x: this.player.x - 16, y: this.player.y, trail: [], meowT: ESCORT_MEOW, hushT: 0, runT: 0, seenCd: 0, dir: 0, stepT: 0, moving: false, hidden: false } : null;
+    this.creaky = new Set((level.creakyDoors || []).map((p) => p.join())); // doors that creak unless opened slowly (hold ACT)
+    this.doorHold = null; // { obj, key, t } while ACT is held on a creaky door
+    this.finale = null;   // the boss finale in progress (Blueprint 8): { type, t, ... }
     this.puddles = [];            // GATAS: spilled milk left on the floor ({ x, y, t, found })
     this.playerOpened = new Set(); // A5: doors Jun opened and left open ("x,y"): someone passing may notice
     // KASABWAT (tag-team levels: "team": ["bing", "ramil"], "spawn2"): two kids, one controlled at a time. The other
@@ -180,6 +184,7 @@ export class World {
   // Is a sound made at (x, y) drowned out? Thunder covers the whole map, a videoke only what is near it.
   masked(x, y) {
     if (this.thunder) return 'thunder';
+    for (const a of this.adults) if (a.snoring && Math.hypot(a.x - x, a.y - y) < a.cfg.snore.r) return 'snore'; // LOLA: a loud snore
     for (const v of this.videokes) if (v.singing && Math.hypot(v.x - x, v.y - y) < v.r) return 'videoke';
     return null;
   }
@@ -238,6 +243,42 @@ export class World {
       e.runT = 1.5; e.seenCd = 4;
       this.emit({ type: 'catSeen', who: a });
       break;
+    }
+  }
+
+  // A creaky door: hold ACT for 1.5 s and it opens without a sound; let go early and it creaks open (MEDYAS halves it).
+  holdDoor(dt, input, ctx) {
+    const h = this.doorHold, { tx, ty } = h.obj;
+    if (this.map.ch(tx, ty) !== 'D') { this.doorHold = null; return; }
+    const still = input.action && ctx?.kind === 'door' && ctx.obj.tx === tx && ctx.obj.ty === ty;
+    if (still) {
+      h.t += dt;
+      if (h.t < CREAKY_HOLD) return;
+      this.map.set(tx, ty, 'd');
+      this.playerOpened.add(h.key);
+      this.emit({ type: 'door', x: h.obj.x, y: h.obj.y, quiet: true });
+    } else {
+      this.map.set(tx, ty, 'd');
+      this.playerOpened.add(h.key);
+      this.noise({ x: h.obj.x, y: h.obj.y, r: this.mods.medyas ? CREAKY_R / 2 : CREAKY_R, lure: true });
+      this.talk('KREEEEK!', 1.2);
+      this.emit({ type: 'creak' });
+    }
+    this.doorHold = null;
+  }
+
+  // Boss finales (Blueprint 8): each boss ends its own way. Started by the last boss phase ("finale": {...}).
+  finaleUpdate(dt) {
+    const f = this.finale;
+    if (!f || this.status !== 'play') return;
+    f.t += dt;
+    const boss = this.adults[this.level.boss?.index ?? 0];
+    if (f.type === 'silentExit' && f.getUp && !f.up && f.t >= f.getUp && boss) { // waiting it out is not free
+      f.up = true;
+      boss.cfg.speed = f.getUpSpeed ?? 14;
+      boss.investigate(f.to[0] * TILE + TILE / 2, f.to[1] * TILE + TILE / 2);
+      boss.talk('SINO BA YAN...?', 1.8);
+      this.emit({ type: 'getUp', who: boss });
     }
   }
 
@@ -498,6 +539,7 @@ export class World {
     for (const [x, y] of ph.open || []) { this.pendingGates.delete(x + ',' + y); if (this.map.ch(x, y) === 'G') this.map.set(x, y, 'g'); }
     for (const [x, y] of ph.close || []) this.closeGate(x, y);
     if (ph.escape) this.escapeT = ph.escape;
+    if (ph.finale) this.finale = { ...ph.finale, t: 0 };
     this.emit({ type: 'phase', text: ph.banner || '', n: this.phase });
   }
 
@@ -650,7 +692,12 @@ export class World {
     // --- actions
     let ctx = this.context();
     if (p.hidden && input.mv.mag > 0.6) { this.interact({ kind: 'unhide' }); ctx = this.context(); }
-    else if (input.actionPressed && ctx && ctx.kind !== 'steal') { this.interact(ctx); ctx = this.context(); }
+    else if (input.actionPressed && ctx && ctx.kind !== 'steal') {
+      const key = ctx.kind === 'door' ? ctx.obj.tx + ',' + ctx.obj.ty : null;
+      if (key && this.creaky.has(key) && map.ch(ctx.obj.tx, ctx.obj.ty) === 'D' && !this.locks.has(key)) this.doorHold = { obj: ctx.obj, key, t: 0 };
+      else { this.interact(ctx); ctx = this.context(); }
+    }
+    if (this.doorHold) this.holdDoor(dt, input, ctx);
     this.prompt = ctx;
     const stealing = !p.hidden && input.action && ctx?.kind === 'steal';
     p.stealing = stealing; // drawn with the 'reach' pose
@@ -823,6 +870,7 @@ export class World {
     }
     this.chatter(dt);
     this.stagedBeat(dt);
+    this.finaleUpdate(dt);
     this.checkPuddles(dt);
     this.escortUpdate(dt);
     this.hearNoises(dt);

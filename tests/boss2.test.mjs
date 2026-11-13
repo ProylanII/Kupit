@@ -130,19 +130,28 @@ test('a final phase can drop a shutter (an open gate closes); the lever opens it
   assert.equal(w.map.ch(7, 18), 'g', 'lever opens it');
 });
 
-test('every boss level ends with an escape phase and a boss that checks hiding spots', () => {
+// Blueprint 8.0: every boss ends its own way. A finale type from the list, no two the same, and only carryOut
+// keeps an escape timer by default. (Bosses not redesigned yet keep the old escape finale until their turn.)
+test('every boss declares its own finale; only carryOut keeps an escape timer', () => {
   const dir = new URL('../src/data/levels/', import.meta.url);
   const files = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8'));
+  const TYPES = ['silentExit', 'seat', 'carryOut', 'photo', 'flood'], seen = new Set();
   let bosses = 0;
   for (const f of files) {
     const L = JSON.parse(readFileSync(new URL(f, dir), 'utf8'));
     if (!L.boss) continue;
     bosses++;
     const last = L.boss.phases[L.boss.phases.length - 1];
-    assert.ok(last.escape >= 20, `${f} final phase has an escape timer`);
-    assert.equal(last.at, L.quota, `${f} escape starts when the quota is met`);
+    assert.equal(last.at, L.quota, `${f} the finale starts when the quota is met`);
     const boss = L.adults[L.boss.index ?? 0];
     assert.ok(boss.cfg?.checksHides || L.adults.some((a) => a.cfg?.tracker), `${f} boss checks hides (or tracks)`);
+    const type = L.boss.finale;
+    if (!type) { assert.ok(last.escape >= 20, `${f} (not redesigned yet) final phase has an escape timer`); continue; }
+    assert.ok(TYPES.includes(type), `${f} finale ${type}`);
+    assert.ok(!seen.has(type), `${f} finale ${type} is already used`);
+    seen.add(type);
+    assert.equal(last.finale?.type, type, `${f} its last phase starts the finale`);
+    if (type !== 'carryOut') assert.ok(!last.escape, `${f} ${type} has no escape timer`);
   }
   assert.equal(bosses, 5);
 });

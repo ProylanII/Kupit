@@ -210,8 +210,9 @@ export class Adult {
   // Boss phases change an adult mid-level: new stats, cycle, sweep or patrol route.
   // null removes a stat (e.g. cycle: null = never sleeps again).
   retune(m) {
-    const { index, route, sweep, ...stats } = m;
+    const { index, route, sweep, face, ...stats } = m;
     if (sweep !== undefined) this.sweep = sweep;
+    if (face !== undefined) { this.baseA = face; this.a = face; } // (she turns over)
     for (const [k, v] of Object.entries(stats)) { if (v === null) delete this.cfg[k]; else this.cfg[k] = v; }
     if ('cycle' in stats && !this.cfg.cycle) this.awake = true;
     if (route) {
@@ -345,6 +346,7 @@ export class Adult {
       this.talk('HM?!', 1);
     }
     if (n.food && !c.dog) return;
+    if (c.calls && c.hairTrigger && n.from !== this) { this.callCatch(); return; } // LOLA's finale: one sound is enough
     if (c.hairTrigger && n.from !== this) { // final phase: any sound and she comes running
       this.state = 'chase'; this.alert = 1; this.lostT = 0; this.repathT = 0;
       this.last = { x: goal.x, y: goal.y };
@@ -390,6 +392,15 @@ export class Adult {
     if (!this.cfg.dog || this.state === 'chase' || this.state === 'eat' || this.food) return;
     if (this.goTo(food.x, food.y)) { this.state = 'investigate'; this.food = food; this.target = food; this.awake = true; }
   }
+
+  // The silent-exit finale: she doesn't get up, she just asks. That is a close call.
+  callCatch() {
+    if (this.caught) return;
+    this.talk("APO? IKAW BA 'YAN?", 2);
+    this.caught = true;
+  }
+  // Is she in the loud part of a snore right now? (it drowns out everything near her)
+  get snoring() { const s = this.cfg.snore; return !!s && !this.awake && ((this.snoreT || 0) % s.every) < s.dur; }
 
   // A15: Lola doesn't run after anyone. She calls out ('Apo? Is that you?'), and whoever hears comes to her.
   callOut(world) {
@@ -565,7 +576,13 @@ export class Adult {
     } else this.awake = true;
     if (!this.awake) {
       if (wasAwake) this.depth = 1; // falls asleep: a fresh, deep sleep
-      else if (c.depth) this.depth = Math.min(1, this.depth + dt * 0.04);
+      else if (c.depth) this.depth = Math.min(1, this.depth + dt * 0.04 * (c.depthRegen ?? 1));
+      if (c.snore) this.snoreT = (this.snoreT || 0) + dt; // the snore rhythm runs while she sleeps
+      if (c.sleepTalk && (this.talkT = (this.talkT ?? 5) - dt) <= 0) { // a harmless false alarm
+        this.talkT = 6 + ((world.rng || Math.random)() * 6);
+        this.talk('APO...?', 1.4);
+        world.emit({ type: 'sleepTalk', who: this });
+      }
       this.seen = false;
       this.pendingLure = null;
       this.alert = Math.max(0, this.alert - dt * 1.5);
@@ -596,7 +613,8 @@ export class Adult {
             this.barkT = 2.5;
           }
           this.alert = 0.55;
-        } else if (this.type === 'lola' && !c.depth && !c.checksHides && !c.hunt) this.callOut(world);
+        } else if (c.calls) this.callCatch();
+        else if (this.type === 'lola' && !c.depth && !c.checksHides && !c.hunt) this.callOut(world);
         else this.startChase(world, player);
       }
     } else if (this.state !== 'chase') {

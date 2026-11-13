@@ -1,7 +1,7 @@
 {
  "id": "boss1-lola",
  "name": "LOLA'S SIESTA",
- "hint": "EVERY NOISE DRAINS LOLA'S SLEEP. KEEP IT QUIET",
+ "hint": "MOVE WHILE SHE SNORES. HOLD ACT TO OPEN THE DOOR SLOWLY",
  "missions": [
   "noWake",
   "noTrap"
@@ -13,81 +13,59 @@
   "phases": [
    {
     "at": 2,
-    "banner": "LOLA IS STIRRING...",
+    "banner": "LOLA TURNS OVER...",
     "adult": {
      "index": 0,
-     "cycle": {
-      "on": 6,
-      "off": 6
+     "face": 3.14159,
+     "snore": {
+      "every": 5,
+      "dur": 1.5,
+      "r": 64
      }
     }
    },
    {
     "at": 4,
-    "banner": "MAMA HEARD SOMETHING!",
+    "banner": "LOLA TALKS IN HER SLEEP",
     "adult": {
      "index": 0,
-     "cycle": {
-      "on": 7,
-      "off": 5
-     }
-    },
-    "spawn": [
-     {
-      "type": "mama",
-      "route": [
-       [
-        2,
-        15,
-        1
-       ],
-       [
-        12,
-        15,
-        1
-       ],
-       [
-        12,
-        18,
-        1
-       ],
-       [
-        2,
-        18,
-        1
-       ]
-      ],
-      "cfg": {
-       "checksHides": true
-      }
-     }
-    ]
+     "sleepTalk": true,
+     "depthRegen": 0.5
+    }
    },
    {
     "at": 6,
-    "banner": "LOLA WOKE UP! WALANG INGAY!",
-    "escape": 25,
+    "banner": "LOLA SITS UP. WALANG INGAY!",
     "adult": {
      "index": 0,
      "cycle": null,
      "sleepy": false,
-     "hunt": {
-      "every": 4,
-      "spread": 24
-     },
-     "speed": 24,
-     "sweep": 1.2,
-     "hairTrigger": true
+     "hairTrigger": true,
+     "calls": true,
+     "sweep": 0.6,
+     "snore": null,
+     "sleepTalk": null,
+     "speed": 0
+    },
+    "finale": {
+     "type": "silentExit",
+     "getUp": 25,
+     "getUpSpeed": 14,
+     "to": [
+      11,
+      12
+     ]
     }
    }
-  ]
+  ],
+  "finale": "silentExit"
  },
  "tiles": [
   "###############",
   "#.....A.......#",
   "#.BB.......BB.#",
   "#.BB.......BB.#",
-  "#.............#",
+  "#.........H...#",
   "#...........K.#",
   "#.............#",
   "#..K..P.P.....#",
@@ -96,7 +74,7 @@
   "#..TT.....TT..#",
   "#.........H...#",
   "#.............#",
-  "###D#######D###",
+  "###########D###",
   "#.............#",
   "#.............#",
   "#..PP..SS..PP.#",
@@ -107,8 +85,8 @@
   "###############"
  ],
  "spawn": [
-  7,
-  19
+  2,
+  12
  ],
  "exit": [
   13,
@@ -121,28 +99,21 @@
    "kind": "bayong",
    "at": [
     9,
-    5
+    4
    ],
-   "coins": 2,
+   "coins": 3,
    "time": 2
   },
   {
-   "kind": "bayong",
+   "kind": "purse",
    "at": [
-    5,
-    6
+    11,
+    4
    ],
-   "coins": 2,
-   "time": 2
-  },
-  {
-   "kind": "bayong",
-   "at": [
-    7,
-    3
-   ],
-   "coins": 2,
-   "time": 2
+   "coins": 5,
+   "time": 2,
+   "owner": "lola",
+   "label": "PANG-GAMOT NI LOLA"
   }
  ],
  "items": [
@@ -196,19 +167,12 @@
   {
    "kind": "box",
    "at": [
-    11,
+    7,
     8
    ]
   }
  ],
  "traps": [
-  {
-   "kind": "creak",
-   "at": [
-    7,
-    7
-   ]
-  },
   {
    "kind": "creak",
    "at": [
@@ -219,15 +183,29 @@
   {
    "kind": "lego",
    "at": [
-    10,
-    4
+    5,
+    9
    ]
   },
   {
    "kind": "creak",
    "at": [
-    7,
+    10,
     12
+   ]
+  },
+  {
+   "kind": "creak",
+   "at": [
+    12,
+    12
+   ]
+  },
+  {
+   "kind": "creak",
+   "at": [
+    12,
+    11
    ]
   }
  ],
@@ -242,7 +220,7 @@
   {
    "type": "lola",
    "at": [
-    7,
+    10,
     5
    ],
    "face": 1.5708,
@@ -256,8 +234,20 @@
     },
     "lightSleeper": true,
     "checksHides": true,
-    "depth": true
+    "depth": true,
+    "snore": {
+     "every": 4,
+     "dur": 1.5,
+     "r": 64
+    }
    }
   }
- ]
+ ],
+ "creakyDoors": [
+  [
+   11,
+   13
+  ]
+ ],
+ "notes": "Snore masking every 4 s (1.5 s, 64 px). Finale: she sits up, any sound or sight is a close call; three creaky boards guard the door with one safe line down column 11; hold ACT 1.5 s to open the creaky door quietly; after 25 s she gets up and shuffles to the door."
 }

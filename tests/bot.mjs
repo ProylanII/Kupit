@@ -69,7 +69,8 @@ export function playBot(L, { run = false, maxT = 900, lives = 3, god = true } = 
       const n = path && path[0];
       if (n) {
         if (map.ch(n.tx, n.ty) === 'D') { // open it first
-          if (ctx && (ctx.kind === 'door' || ctx.kind === 'locked') && pressT <= 0) { inp.actionPressed = true; inp.action = true; pressT = 0.3; }
+          if (w.doorHold) inp.action = true; // a creaky door: keep holding until it opens quietly
+          else if (ctx && (ctx.kind === 'door' || ctx.kind === 'locked') && pressT <= 0) { inp.actionPressed = true; inp.action = true; pressT = 0.3; }
           else if (ctx && ctx.kind !== 'door' && ctx.kind !== 'locked' && Math.hypot(n.x - p.x, n.y - p.y) < REACH) return fail(`door ${n.tx},${n.ty}: ACT says ${ctx.kind} (${ctx.obj?.kind || ''} at ${ctx.obj ? tileOf(ctx.obj) : ''})`, t);
           else if (!ctx || ctx.kind !== 'door') inp.mv = dirTo(n);
         } else {
