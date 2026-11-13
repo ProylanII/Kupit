@@ -379,7 +379,7 @@ export class Adult {
     const dx = player.x - this.x, dy = player.y - this.y, dist = Math.hypot(dx, dy);
     if (player.blend && this.state !== 'chase' && dist > BLEND_SEE) return false; // one more kid in the crowd
     if (player.under && dist > UNDER_SEE) return false; // MALIIT: under the table, out of sight
-    return dist < this.range && Math.abs(angDiff(Math.atan2(dy, dx) - this.va)) < this.fov &&
+    return dist < this.range * (player.darkMul ?? 1) && Math.abs(angDiff(Math.atan2(dy, dx) - this.va)) < this.fov && // (A6: the dark hides you)
       hasLos(this.map, this, player) && !this.covered(player.x, player.y);
   }
 

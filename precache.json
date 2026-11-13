@@ -1,5 +1,5 @@
 {
-  "version": "0e5c16f1",
+  "version": "d6461093",
   "files": [
     "assets/sprites/atlas.json",
     "assets/sprites/sheet.png",
@@ -58,6 +58,7 @@
     "src/scenes/shop.js",
     "src/ui/font.js",
     "src/ui/menu.js",
+    "src/world/light.js",
     "src/world/los.js",
     "src/world/pathfind.js",
     "src/world/sound.js",

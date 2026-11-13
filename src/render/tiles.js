@@ -2,14 +2,11 @@
 // Pass order: floors -> contact shadows -> furniture -> walls (with wall decor) -> window light.
 import { TILE, FURNITURE } from '../world/tilemap.js';
 import { C } from './palette.js';
+import { tileHash as hash } from '../world/light.js'; // (shared: window placement is also a gameplay rule at night)
 
 const r = (g, c, x, y, w, h) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
 const shade = (g, a, x, y, w, h, c = C.ink) => { g.globalAlpha = a; r(g, c, x, y, w, h); g.globalAlpha = 1; };
-const hash = (x, y, s = 0) => {
-  let h = (x * 374761393 + y * 668265263 + s * 2147483647) | 0;
-  h = Math.imul(h ^ (h >>> 13), 1274126177);
-  return (h ^ (h >>> 16)) >>> 0;
-};
+
 
 const FURN = new Set(FURNITURE);
 const LOW_SHADOW = new Set('PHW'); // small round things: no long contact shadow

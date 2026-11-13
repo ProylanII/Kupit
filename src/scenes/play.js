@@ -1,6 +1,7 @@
 // Draws a World and turns its events into sound/particles. All rules live in game/world.js.
 import { TILE } from '../world/tilemap.js';
 import { angDiff } from '../world/los.js';
+import { DARK_MUL, BROWNOUT_MUL, inLight } from '../world/light.js';
 import { World } from '../game/world.js';
 import { buildBackground, drawLaundry, drawTallTop } from '../render/tiles.js';
 import { drawActor, drawTarget, drawCoin, drawObj, drawPortrait, getSprite, drawStar, KEY_COLORS } from '../render/sprites.js';
@@ -93,6 +94,7 @@ const TIPS = {
   maliit: 'MALIIT: UNDER HERE ONLY SOMEONE RIGHT NEXT TO YOU SEES',
   palusot: 'ONE EXCUSE A LEVEL. THEY STILL WONDER (HINALA +3)',
   team: 'TWO OF YOU: Z (OR THE PURPLE BUTTON) SWITCHES KIDS',
+  dark: 'IN THE DARK THEY ONLY SEE YOU UP CLOSE. AVOID LIGHT',
 };
 
 export class Play {
@@ -181,6 +183,7 @@ export class Play {
       if (new Set(p.items).size > 1) this.showTip('cycle');
       if (w.time > 2 && !this.level.tutorial && w.abilityCd <= 0) this.showTip('skill');
       if (w.patience && w.time > 1) this.showTip('kain');
+      if (this.level.night && w.time > 1.5) this.showTip('dark');
       if (w.time > 0.5) for (const a of w.adults) {
         if (a.type === 'aso') this.showTip('dog');
         else if (['tanod', 'tindera', 'bisita', 'trike'].includes(a.type)) this.showTip(a.type);
@@ -336,8 +339,9 @@ export class Play {
   // exact boundary is never in doubt. Calm = pale yellow, suspicious = stronger and dotted, about to chase = red
   // and solid: the state reads by brightness and texture as well as by colour.
   drawCones(g) {
-    const d = this.coneData.data, cx = this.cx, cy = this.cy;
+    const d = this.coneData.data, cx = this.cx, cy = this.cy, W = this.world;
     d.fill(0);
+    const night = !!this.level.night && !(W.flashT > 0), darkK = this.level.brownout ? BROWNOUT_MUL : DARK_MUL;
     for (const a of this.world.adults) {
       if (!a.awake || a.freezeT > 0 || a.cfg.harmless) continue; // charmed adults see nothing, so no cone
       const range = a.range, fov = a.fov, va = a.va;
@@ -348,6 +352,9 @@ export class Play {
       const base = 62 + 110 * t; // calm cones stay out of the way of the room art
       const x0 = Math.max(cx, Math.floor(a.x - range)), x1 = Math.min(cx + VIEW_W - 1, Math.ceil(a.x + range));
       const y0 = Math.max(cy, Math.floor(a.y - range)), y1 = Math.min(cy + VIEW_H - 1, Math.ceil(a.y + range));
+      // A6: at night the cone reaches its full range only inside a pool of light (the pools near this cone)
+      const darkR = night ? range * darkK : range;
+      const pools = night ? (W.lights || []).filter((s) => Math.hypot(s.x - a.x, s.y - a.y) < range + s.r) : [];
       for (let py = y0; py <= y1; py++) {
         for (let px = x0; px <= x1; px++) {
           const dx = px + 0.5 - a.x, dy = py + 0.5 - a.y;
@@ -355,7 +362,8 @@ export class Play {
           if (dist > range) continue;
           const rel = angDiff(Math.atan2(dy, dx) - va);
           if (rel < -fov || rel > fov) continue;
-          const ray = a.rays[Math.round(((rel + fov) / (2 * fov)) * N)];
+          let ray = a.rays[Math.round(((rel + fov) / (2 * fov)) * N)];
+          if (dist > darkR && !inLight(pools, px + 0.5, py + 0.5)) { if (dist > ray) continue; ray = Math.min(ray, darkR); if (dist > ray) continue; }
           if (dist > ray) continue;
           const edge = Math.min(ray - dist, (fov - Math.abs(rel)) * dist); // px to the nearest boundary
           let al;
@@ -407,8 +415,9 @@ export class Play {
     }
   }
 
-  // Night: a dark layer with pools of light cut out (kid's eyes adjusting, TV glow, moonlight, the open exit).
-  // Brownout: darker, smaller pools, no moonlight through the windows.
+  // Night: a dark layer with pools of light cut out (the world's list: moonlight, lamps, a TV that's on, flashlights,
+  // brownout candles, the open exit). The pools are the rule too (A6): inside one you're seen at full range. Jun
+  // carries no light; the screen edges are just darker, like eyes adjusting.
   drawNight(g) {
     if (!this.nightCv) {
       this.nightCv = document.createElement('canvas');
@@ -419,7 +428,13 @@ export class Play {
     const brown = !!this.level.brownout;
     n.globalCompositeOperation = 'source-over';
     n.clearRect(0, 0, VIEW_W, VIEW_H);
-    n.globalAlpha = brown ? 0.82 : 0.68; n.fillStyle = '#0c1230'; n.fillRect(0, 0, VIEW_W, VIEW_H);
+    n.globalAlpha = brown ? 0.78 : 0.62; n.fillStyle = '#0c1230'; n.fillRect(0, 0, VIEW_W, VIEW_H);
+    if (!this.vignette) {
+      const vg = n.createRadialGradient(VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.35, VIEW_W / 2, VIEW_H / 2, VIEW_W * 0.62);
+      vg.addColorStop(0, 'rgba(12,18,48,0)'); vg.addColorStop(1, 'rgba(12,18,48,1)');
+      this.vignette = vg;
+    }
+    n.globalAlpha = 0.25; n.fillStyle = this.vignette; n.fillRect(0, 0, VIEW_W, VIEW_H);
     n.globalCompositeOperation = 'destination-out';
     const pools = [];
     const light = (x, y, rad, tint) => {
@@ -428,13 +443,10 @@ export class Play {
       for (const [k, a] of [[1, 0.3], [0.72, 0.55], [0.45, 0.85]]) { n.globalAlpha = a; disc(n, sx, sy, Math.max(1, Math.round(rad * k)), '#000'); }
       if (tint) pools.push([x, y, Math.round(rad * 0.72), tint]);
     };
-    const p = w.player;
-    light(p.x, p.y, brown ? 18 : 24);
-    if (!brown) for (const wi of this.bg.windows || []) light(wi.x, wi.y + 4, 15, this.level.pasko ? C.gold : '#9fc0ff');
-    for (const d of w.devices) if (d.on) light(d.x, d.y, 34 + (Math.floor(now * 9) % 3), '#7fd7ff');
-    for (const t of w.targets) if (!t.done && t.kind === 'kuting') light(t.x, t.y, 9 + (Math.floor(now * 2) % 2), C.yellow); // a kitten's eyes catch the light
-    for (const a of w.adults) if (a.cfg.scan && a.awake) light(a.x + Math.cos(a.va) * 30, a.y + Math.sin(a.va) * 30, 22, C.yellow); // flashlight
-    if (w.open) light(w.exit.x, w.exit.y, 20, C.green);
+    const TINT = { window: this.level.pasko ? C.gold : '#9fc0ff', lamp: C.gold, device: '#7fd7ff', flashlight: C.yellow, candle: C.gold, exit: C.green };
+    const flick = { device: Math.floor(now * 9) % 3, candle: Math.floor(now * 7 + 1) % 2 };
+    for (const s of w.lights || []) light(s.x, s.y, s.r + (flick[s.kind] || 0), TINT[s.kind]);
+    for (const t of w.targets) if (!t.done && t.kind === 'kuting') light(t.x, t.y, 9 + (Math.floor(now * 2) % 2), C.yellow); // a kitten's eyes catch the light (just a picture)
     n.globalCompositeOperation = 'source-over'; n.globalAlpha = 1;
     g.drawImage(this.nightCv, cx, cy);
     for (const [x, y, rad, tint] of pools) { g.globalAlpha = 0.09; disc(g, Math.round(x), Math.round(y), rad, tint); }

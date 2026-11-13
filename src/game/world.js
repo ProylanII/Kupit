@@ -8,6 +8,7 @@ import { computeMods } from './progression.js';
 import { soundField, heardDistance } from '../world/sound.js';
 import { mulberry32, hashStr } from '../core/rng.js';
 import { MISSIONS, missionIds } from './missions.js';
+import { windowLights, lightSources, sightMul } from '../world/light.js';
 
 export const REACH = 18;          // interact distance (px)
 export const THROW_SPEED = 140, THROW_MAX = 72;
@@ -99,6 +100,11 @@ export class World {
     }
     this.bonus = 0;     // alkansya coins (go straight to the bank)
     this.exit = at(level.exit);
+    // A6: night is real. Pools of light (windows, lamps, a TV that's on, a flashlight, brownout candles) show you at full
+    // range; anywhere else an adult only sees you from closer. A lightning flash lights everything for a moment.
+    this.windowPools = level.night ? windowLights(this.map) : [];
+    this.lights = [];
+    this.flashT = 0;
     this.items = (level.items || []).filter((i) => !this.noThrow || i.kind === 'key').map((i) => ({ ...at(i.at), kind: i.kind, color: i.color, noPickT: 0 }));
     this.hides = (level.hide || []).map((h) => ({ ...at(h.at), kind: h.kind || 'box' }));
     this.devices = (level.devices || []).filter((d) => d.kind !== 'videoke').map((d) => ({ ...at(d.at), kind: d.kind || 'tv', dur: d.dur ?? 8, r: d.r ?? 110, on: false, t: 0, pulse: 0 }));
@@ -496,7 +502,7 @@ export class World {
     const st = this.level.storm;
     if (st) {
       const ph = this.time % st.every, was = this.thunder;
-      if (ph < dt) this.emit({ type: 'lightning' });
+      if (ph < dt) { this.emit({ type: 'lightning' }); this.flashT = 0.3; }
       this.thunder = ph >= 0.5 && ph < 0.5 + st.dur;
       if (this.thunder && !was) this.emit({ type: 'thunder' });
     }
@@ -665,6 +671,13 @@ export class World {
     }
     for (const s of this.switches) if (s.timer > 0 && (s.timer -= dt) <= 0) this.toggleSwitch(s, false);
     for (const [key, [tx, ty]] of this.pendingGates) if (!this.occupied(tx, ty)) { this.map.set(tx, ty, 'G'); this.pendingGates.delete(key); }
+
+    // --- light (night levels): how far each kid can be seen from this frame
+    if (this.flashT > 0) this.flashT -= dt;
+    if (this.level.night) {
+      this.lights = lightSources(this);
+      for (const k of this.kids || [p]) k.darkMul = sightMul(this, this.lights, k);
+    }
 
     // --- adults
     let catcher = null;

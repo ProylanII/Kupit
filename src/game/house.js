@@ -245,7 +245,7 @@ function build(seed, diff, opts = {}) {
     targets, items, devices, hide, traps, adults,
   };
   if (mut.size) L.mutators = MUTATOR_ORDER.filter((k) => mut.has(k));
-  if (mut.has('brownout')) { L.night = true; L.brownout = true; L.hint = 'BROWNOUT! STAY CLOSE TO THE LIGHT'; }
+  if (mut.has('brownout')) { L.night = true; L.brownout = true; L.hint = 'BROWNOUT! THE DARK HIDES YOU'; }
   if (mut.has('tsinelas')) { L.noThrow = true; L.hint = 'WALANG TSINELAS: NO THROWING TODAY'; }
   if (mut.has('bisita')) L.hint = 'BISITA! THE RELATIVES ARE VISITING';
   if (opts.pasko) { L.pasko = true; L.night = true; L.name = 'NOCHE BUENA'; L.hint = 'NOCHE BUENA! EVERYONE IS UP LATE'; }
