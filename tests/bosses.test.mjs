@@ -66,3 +66,50 @@ test('LOLA finale: wait 25 s and she gets up and shuffles to the door', () => {
   step(w, 60 * 6);
   assert.ok(Math.hypot(lola.x - home[0], lola.y - home[1]) > 8, 'then she gets up');
 });
+
+// ---- 8.2 MAMA SA KUSINA
+test('MAMA: from 5 coins the pot boils over every 12 s (the stove glows a second first) and she is blind at it', () => {
+  const L = load('boss2-mama');
+  const w = new World(L), mama = w.adults[0];
+  w.player.hidden = { kind: 'box', x: 0, y: 0 };
+  w.coins = 5; step(w);
+  const ev = [];
+  let blind = 0;
+  for (let i = 0; i < 60 * 24; i++) { step(w); ev.push(...w.events.map((e) => [e.type, +w.time.toFixed(1)])); w.events.length = 0; if (mama.state === 'boil') { blind++; assert.equal(mama.seen, false); } }
+  const warn = ev.find((e) => e[0] === 'boilWarn'), boil = ev.find((e) => e[0] === 'boil');
+  assert.ok(warn && boil && Math.abs(boil[1] - warn[1] - 1) < 0.1, JSON.stringify([warn, boil]));
+  assert.ok(blind > 60 * 3, 'a long window');
+});
+
+test('MAMA finale: seat, no exit; sit unseen and she says "ABA, NAUNA KA PA?"', () => {
+  const L = load('boss2-mama');
+  const w = atFinale(L), mama = w.adults[0], f = w.finale;
+  assert.equal(f.type, 'seat');
+  assert.equal(w.escapeT, 0);
+  w.player.x = w.exit.x; w.player.y = w.exit.y; step(w);
+  assert.equal(w.status, 'play', 'the exit is not the way out');
+  mama.cfg.range = 0; // looking away
+  w.player.x = f.seatPt.x; w.player.y = f.seatPt.y - 4;
+  assert.equal(w.context().kind, 'seat');
+  w.update(1 / 60, { ...idle, action: true, actionPressed: true });
+  step(w, 40);
+  assert.equal(w.status, 'clear');
+  assert.equal(mama.say?.text, 'ABA, NAUNA KA PA?');
+});
+
+test('MAMA finale: seen in the last second before you sit is a close call; so is the sixth plate', () => {
+  const L = load('boss2-mama');
+  const w = atFinale(L), mama = w.adults[0], f = w.finale;
+  w.player.x = f.seatPt.x; w.player.y = f.seatPt.y - 4;
+  w.update(1 / 60, { ...idle, action: true, actionPressed: true });
+  f.lastSeen = w.time; // she just saw you
+  step(w, 40);
+  assert.notEqual(w.status, 'clear');
+  assert.ok(w.catches === 1 || w.scold, 'a close call');
+  const w2 = atFinale(L);
+  w2.player.hidden = { kind: 'box', x: 0, y: 0 };
+  let plates = 0;
+  for (let i = 0; i < 60 * 40 && !w2.scold && !w2.catches; i++) { step(w2); plates += w2.events.filter((e) => e.type === 'plate').length; w2.events.length = 0; }
+  assert.equal(plates, 6);
+  assert.ok(w2.scold || w2.catches === 1, '"JUN! KAIN NA!"');
+});

@@ -36,7 +36,8 @@ export function playBot(L, { run = false, maxT = 900, lives = 3, god = true } = 
     if (p !== w.player) { p = w.player; path = null; goal = null; lastPos = [p.x, p.y]; } // the other kid now
     // ---- what to go for
     let kind, obj;
-    if (w.open) { kind = 'exit'; obj = w.exit; }
+    if (w.open && w.finale?.type === 'seat') { kind = 'seat'; obj = w.finale.seatPt; }
+    else if (w.open) { kind = 'exit'; obj = w.exit; }
     else {
       let best = null, bl = Infinity;
       for (const x of w.targets) if (!x.done && !x.bonus) { const r = route(tileOf(x)); if (r && r.length < bl) { bl = r.length; best = x; } }
@@ -59,6 +60,9 @@ export function playBot(L, { run = false, maxT = 900, lives = 3, god = true } = 
     else if (kind === 'steal' && near(obj) && ctx?.kind === 'steal' && ctx.obj === obj) inp.action = true;
     else if (kind === 'switch' && near(obj) && ctx?.kind === 'switch' && ctx.obj === obj) {
       if (pressT <= 0) { inp.action = true; inp.actionPressed = true; pressT = 0.5; goal = null; }
+    } else if (kind === 'seat' && ctx?.kind === 'seat') {
+      if (pressT <= 0) { inp.action = true; inp.actionPressed = true; pressT = 0.8; }
+    } else if (w.sitting) { /* sitting down */
     } else if (kind === 'exit' && near(obj)) inp.mv = dirTo(obj);
     else {
       if (!path || !path.length || map.version !== path.v) {

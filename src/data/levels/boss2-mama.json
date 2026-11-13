@@ -1,7 +1,7 @@
 {
  "id": "boss2-mama",
  "name": "MAMA SA KUSINA",
- "hint": "MAMA ONLY TURNS AWAY TO STIR THE POT. DODGE THE SANDOK!",
+ "hint": "SHE LOOKS AWAY TO STIR. AT KAIN NA, GET TO YOUR SEAT!",
  "missions": [
   "noCatch",
   "noHide"
@@ -25,51 +25,79 @@
    },
    {
     "at": 5,
-    "banner": "JOMAR IS HELPING MAMA!",
-    "spawn": [
-     {
-      "type": "kuya",
-      "route": [
-       [
-        5,
-        12,
-        1
-       ],
-       [
-        10,
-        12,
-        1
-       ],
-       [
-        10,
-        15,
-        1
-       ],
-       [
-        5,
-        15,
-        1
-       ]
+    "banner": "THE POT IS BOILING OVER!",
+    "adult": {
+     "index": 0,
+     "boilOver": {
+      "every": 12,
+      "dur": 4,
+      "stove": [
+       2,
+       2
       ]
      }
-    ]
+    }
    },
    {
     "at": 7,
-    "banner": "KAIN NA! MAMA IS COMING!",
-    "escape": 22,
+    "banner": "KAIN NA! UPO NA!",
     "adult": {
      "index": 0,
      "cycle": null,
-     "cook": false,
-     "hunt": {
-      "every": 4,
-      "spread": 24
-     },
-     "speed": 40
+     "cook": null,
+     "boilOver": null,
+     "ranged": null,
+     "speed": 28,
+     "route": [
+      [
+       3,
+       13,
+       3,
+       0.8
+      ],
+      [
+       6,
+       13,
+       3,
+       1.5708
+      ],
+      [
+       9,
+       15,
+       3,
+       3.14159
+      ],
+      [
+       8,
+       16,
+       3,
+       -1.5708
+      ],
+      [
+       3,
+       16,
+       3,
+       -1.5708
+      ],
+      [
+       2,
+       15,
+       3,
+       0
+      ]
+     ]
+    },
+    "finale": {
+     "type": "seat",
+     "seat": [
+      5,
+      16
+     ],
+     "plates": 6
     }
    }
-  ]
+  ],
+  "finale": "seat"
  },
  "tiles": [
   "###############",
@@ -86,10 +114,10 @@
   "####..###..####",
   "#.............#",
   "#.............#",
-  "#...HTTH...A..#",
+  "#..HTTTTH..A..#",
+  "#...TTTT......#",
   "#.............#",
   "#.PP.......PP.#",
-  "#......K......#",
   "#.............#",
   "#.............#",
   "#.............#",
@@ -258,5 +286,7 @@
     "checksHides": true
    }
   }
- ]
+ ],
+ "clearText": "ABA, NAUNA KA PA?",
+ "notes": "Seat finale: at KAIN NA Mama sets six plates around the dining table (about 3 s each); sit at your place (ACT, 0.5 s) before the sixth. Seen in the last second before you sit = a close call; not seated by the sixth = \"JUN! KAIN NA!\". The pot boils over every 12 s from 5 coins (the stove glows first). The exit is not used."
 }

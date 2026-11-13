@@ -525,6 +525,30 @@ export class Adult {
 
     if (this.alarm) { this.alarm = false; world.emit({ type: 'spotted', who: this }); }
 
+    // MAMA's pot boils over (cfg.boilOver: { every, dur, stove }): the stove glows a second ahead, then she rushes
+    // there and tends it, blind to everything else. A big, predictable window.
+    if (c.boilOver && this.state !== 'chase' && this.state !== 'boil') {
+      const b = c.boilOver;
+      this.boilT = (this.boilT || 0) + dt;
+      if (!this.boilWarned && this.boilT >= b.every - 1) { this.boilWarned = true; world.emit({ type: 'boilWarn', x: b.stove[0] * TILE + 8, y: b.stove[1] * TILE + 8 }); }
+      if (this.boilT >= b.every) {
+        this.boilT = 0; this.boilWarned = false;
+        this.state = 'boil'; this.boiling = { t: b.dur, at: false }; this.busy = null;
+        this.goTo(b.stove[0] * TILE + TILE / 2, b.stove[1] * TILE + TILE / 2);
+        this.talk('AY! NAG-UUMAPAW!', 1.6);
+        world.emit({ type: 'boil', who: this });
+      }
+    }
+    if (this.state === 'boil') {
+      this.seen = false; this.alert = Math.max(0, this.alert - dt);
+      if (!this.boiling.at) { if (this.follow(dt, c.speed * 1.6, world)) this.boiling.at = true; }
+      else {
+        this.awake = false; this.a = -Math.PI / 2;
+        if ((this.boiling.t -= dt) <= 0) { this.boiling = null; this.awake = true; this.state = 'return'; this.goTo(this.pts[this.i].x, this.pts[this.i].y); }
+      }
+      return;
+    }
+
     // eating: busy, blind
     if (this.state === 'eat') {
       this.awake = false;

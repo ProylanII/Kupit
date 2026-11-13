@@ -45,6 +45,7 @@ function laundryRuns(map) {
 export const ACT_PRIORITY = ['unhide', 'steal', 'hide', 'door', 'switch', 'device'];
 
 const ESCORT_GAP = 22, ESCORT_MEOW = 10, ESCORT_MEOW_R = 30, ESCORT_HERE = 34;
+const SIT_TIME = 0.5, SNEAK_IN = 1; // MAMA's finale: sitting down takes this long; seen this recently = she saw you
 const CREAKY_HOLD = 1.5, CREAKY_R = 96; // a creaky door: hold this long to open it quietly; its creak carries this far
 const JINGLE_R = 36; // IBALIK: what jingling pockets add to the sound of running
 const FAMILY = new Set(['mama', 'tatay', 'lola', 'tita']);
@@ -273,6 +274,20 @@ export class World {
     if (!f || this.status !== 'play') return;
     f.t += dt;
     const boss = this.adults[this.level.boss?.index ?? 0];
+    if (f.type === 'seat' && boss) {
+      if (boss.seen) f.lastSeen = this.time;
+      if (boss.i !== f.lastI) { f.lastI = boss.i; f.plateN++; this.emit({ type: 'plate', n: f.plateN, x: boss.x, y: boss.y }); } // a plate set: clink
+      if (this.sitting && (this.sitting.t -= dt) <= 0) {
+        this.sitting = null;
+        if (this.time - f.lastSeen < SNEAK_IN) { boss.talk('HOY! SAAN KA GALING?', 2); boss.caught = true; } // she saw you sneak in
+        else { boss.talk('ABA, NAUNA KA PA?', 3); this.finish(); }
+        return;
+      }
+      if (!this.sitting && f.plateN >= (f.plates ?? 6)) { // the table is set and you are not at it
+        f.plateN = 0;
+        boss.talk('JUN! KAIN NA!', 2); boss.caught = true;
+      }
+    }
     if (f.type === 'silentExit' && f.getUp && !f.up && f.t >= f.getUp && boss) { // waiting it out is not free
       f.up = true;
       boss.cfg.speed = f.getUpSpeed ?? 14;
@@ -396,6 +411,8 @@ export class World {
   context() {
     const p = this.player;
     if (p.hidden) return { kind: 'unhide', label: 'LABAS' };
+    const f = this.finale; // MAMA's finale: your place at the table
+    if (f?.type === 'seat' && this.open && !this.sitting && Math.hypot(f.seatPt.x - p.x, f.seatPt.y - p.y) <= REACH) return { kind: 'seat', obj: f.seatPt, label: 'UPO' };
     const near = (list, f = () => true) => {
       let best = null, bd = REACH;
       for (const o of list) { const d = dist(o, p); if (d <= bd && f(o)) { best = o; bd = d; } }
@@ -449,6 +466,7 @@ export class World {
   interact(c) {
     const p = this.player;
     switch (c.kind) {
+      case 'seat': this.sitting = { t: SIT_TIME }; this.emit({ type: 'sit' }); break;
       case 'unhide':
         p.hidden = null;
         p.hideT = 0;
@@ -539,7 +557,11 @@ export class World {
     for (const [x, y] of ph.open || []) { this.pendingGates.delete(x + ',' + y); if (this.map.ch(x, y) === 'G') this.map.set(x, y, 'g'); }
     for (const [x, y] of ph.close || []) this.closeGate(x, y);
     if (ph.escape) this.escapeT = ph.escape;
-    if (ph.finale) this.finale = { ...ph.finale, t: 0 };
+    if (ph.finale) {
+      this.finale = { ...ph.finale, t: 0 };
+      const f = this.finale, boss = this.adults[this.level.boss?.index ?? 0];
+      if (f.type === 'seat') { f.seatPt = { x: f.seat[0] * TILE + TILE / 2, y: f.seat[1] * TILE + TILE / 2 }; f.noExit = true; f.plateN = 0; f.lastI = boss?.i; f.lastSeen = -9; }
+    }
     this.emit({ type: 'phase', text: ph.banner || '', n: this.phase });
   }
 
@@ -689,6 +711,7 @@ export class World {
     if (p.hidden && p.hideT > 0 && (p.hideT -= dt) <= 0) this.interact({ kind: 'unhide' });
     this.noises.length = 0;
 
+    if (this.sitting) input = { ...input, mv: { x: 0, y: 0, mag: 0, run: false }, actionPressed: false };
     // --- actions
     let ctx = this.context();
     if (p.hidden && input.mv.mag > 0.6) { this.interact({ kind: 'unhide' }); ctx = this.context(); }
@@ -898,7 +921,7 @@ export class World {
     }
 
     if (this.open && !p.hidden && dist(p, this.exit) < 10 && !this.escortHere && !this.waitedCat) { this.waitedCat = true; this.talk('MINGMING, DITO!', 1.4); }
-    if (this.open && !p.hidden && dist(p, this.exit) < 10 && this.escortHere) {
+    if (this.open && !p.hidden && dist(p, this.exit) < 10 && this.escortHere && !this.finale?.noExit) {
       if (this.kids && this.kids.some((k) => k !== p && !k.out)) { // one is out: now bring the other
         p.out = true;
         this.emit({ type: 'teamOut', who: this.mods.charId });
@@ -1092,6 +1115,7 @@ export class World {
       p.x = e.x + dx * TILE; p.y = e.y + dy * TILE;
     }
     if (this.escort) { this.escort.x = this.player.x; this.escort.y = this.player.y; this.escort.trail = []; } // (Mingming comes too)
+    if (this.finale?.type === 'seat') { const s = this.finale.seatPt; this.player.x = s.x; this.player.y = s.y; this.finale.lastSeen = -9; this.sitting = { t: SIT_TIME }; } // (the seat finale: sit down)
   }
   devNextPhase() { const ph = this.bossPhases[this.phase]; if (ph) this.coins = Math.max(this.coins, ph.at); return !!ph; }
   devClear() { if (this.status === 'play') this.finish(); }

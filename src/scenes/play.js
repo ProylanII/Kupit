@@ -312,6 +312,10 @@ export class Play {
       case 'door': case 'switch': sfx.click(); break;
       case 'tune': if (this.onScreen(e.who.x, e.who.y, 60)) sfx.tune(); break;
       case 'jingle': sfx.jingle(); break;
+      case 'boilWarn': this.boilGlow = { x: e.x, y: e.y, t: 1.2 }; break;
+      case 'boil': sfx.whoosh(); this.kick(1); break;
+      case 'plate': sfx.clasp(); break;
+      case 'sit': sfx.hide(); break;
       case 'getUp': sfx.creak(); this.toast = { text: 'LOLA IS GETTING UP!', col: C.orange, t: 2 }; break;
       case 'sleepTalk': if (this.onScreen(e.who.x, e.who.y, 30)) sfx.hide(); break;
       case 'meow': if (this.onScreen(e.x, e.y, 40)) sfx.meow(); break;
@@ -488,6 +492,7 @@ export class Play {
   }
 
   drawExit(g) {
+    if (['seat', 'photo'].includes(this.level.boss?.finale)) return; // these finales do not end at a door
     const w = this.world, x = w.exit.x - 8, y = w.exit.y - 8;
     const pulse = w.open && Math.floor(performance.now() / 250) % 2;
     g.fillStyle = C.table; g.fillRect(x + 1, y, 14, 16);
@@ -578,6 +583,11 @@ export class Play {
     for (const c of this.cats) actors.push(c);
     if (!p.hidden) { actors.push(p); for (const k of this.kittens) actors.push(k); }
     if (w.escort && !w.escort.hidden) actors.push(w.escort); // Mingming, a step behind
+    if (this.boilGlow && (this.boilGlow.t -= 1 / 60) > 0) { // the stove glows a second before the pot boils over
+      g.globalAlpha = 0.35 + 0.25 * Math.sin(now / 60); disc(g, Math.round(this.boilGlow.x), Math.round(this.boilGlow.y), 12, C.orange); g.globalAlpha = 1;
+    }
+    const sf = w.finale?.type === 'seat' && w.open ? w.finale.seatPt : null;
+    if (sf && Math.floor(now / 300) % 2) { g.fillStyle = C.green; g.fillRect(Math.round(sf.x) - 5, Math.round(sf.y) + 5, 10, 2); } // your place at the table
     this.holdRing = w.doorHold ? Math.min(1, w.doorHold.t / 1.5) : 0;
     if (this.holdRing > 0) { // opening a creaky door slowly: a ring of dots fills around your feet
       const n = 16, k = Math.floor(this.holdRing * n);
@@ -803,6 +813,9 @@ export class Play {
       const b = Math.floor(performance.now() / 500) % 2;
       if (a.snoring) drawText(g, 'ZZZ', cx + 3, top - 12 - b, C.white, { scale: 2, shadow: C.ink }); // a loud snore: move now
       else drawText(g, a.cfg.depth && a.depth < 0.35 ? 'Z' : 'ZZ', cx + 4, top - 6 - b, a.cfg.depth && a.depth < 0.35 ? C.orange : C.white, { shadow: C.ink });
+    } else if (a.state === 'boil') { // the pot boiled over: steam
+      const b = Math.floor(performance.now() / 200) % 3;
+      drawText(g, '~', cx - 6 + b, top - 8, C.white, { shadow: C.ink }); drawText(g, '~', cx + 4 - b, top - 12, C.white, { shadow: C.ink });
     } else if (!a.awake && a.cfg.cook) { // stirring the pot
       drawObj(g, 'pot', cx + (dir === 1 ? -9 : 9), Math.round(a.y) - 1);
       if (Math.floor(performance.now() / 400) % 2) drawText(g, '~', cx + (dir === 1 ? -10 : 8), Math.round(a.y) - 11, C.white);
@@ -962,7 +975,7 @@ export class Play {
     g.fillStyle = C.wallD; g.fillRect(0, MAP_H, VIEW_W, 1);
     const pr = w.prompt;
     const left = this.level.quota - w.coins, need = left > 0 ? `${this.level.giveBack ? 'PUT BACK' : this.level.hingi ? 'ASK FOR' : 'NEED'} ${left} MORE` : w.escort ? 'BRING MINGMING TO THE DESK' : w.missing?.kind === 'bilin' ? `ERRAND: ${w.targets.filter((t) => t.must && !t.done).length} LEFT` : 'GET THE MILK';
-    drawText(g, pr ? pr.label : w.open ? (w.escort && !w.escortHere ? 'WAIT FOR MINGMING' : w.escort ? 'TO THE VET DESK!' : 'GO TO THE EXIT!') : need, tx, MAP_H + 8, pr ? C.gold : w.open ? C.green : C.gray, al);
+    drawText(g, pr ? pr.label : w.open ? (w.escort && !w.escortHere ? 'WAIT FOR MINGMING' : w.escort ? 'TO THE VET DESK!' : w.finale?.type === 'seat' ? 'UPO NA! TO YOUR SEAT' : 'GO TO THE EXIT!') : need, tx, MAP_H + 8, pr ? C.gold : w.open ? C.green : C.gray, al);
     if (w.player.blend) drawText(g, 'BLENDING IN', tx, MAP_H + 17, C.green, al);
     let kx = L ? VIEW_W - 9 : 9;
     for (const k of w.player.keys) { drawObj(g, 'key', kx, MAP_H + 24, k); kx += L ? -10 : 10; }
