@@ -81,7 +81,7 @@ export function validateLevel(L) {
     else for (const id of L.missions) if (!MISSIONS[id] || id === 'clear') bad(`unknown mission ${id}`);
     const has = (id) => (L.missions || []).includes(id);
     if (has('alkansya') && !L.alkansya) bad('mission alkansya needs an alkansya');
-    if (has('noSpill') && !L.targets.some((t) => t.carry)) bad('mission noSpill needs something to carry');
+    if ((has('noSpill') || has('noPuddle')) && !L.targets.some((t) => t.carry)) bad('missions noSpill / noPuddle need something to carry');
     if (has('thunder') && !L.storm) bad('mission thunder needs a storm');
     if (has('noBark') && !L.adults.some((a) => a.type === 'aso')) bad('mission noBark needs a dog');
     if (has('noWake') && !L.adults.some((a) => a.type === 'lola' || a.sleepy || a.cfg?.sleepy)) bad('mission noWake needs a sleeper');

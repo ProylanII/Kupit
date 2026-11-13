@@ -314,7 +314,7 @@ export class Play {
       case 'ringtone': if (this.onScreen(e.x, e.y, 40)) sfx.ringtone(); break;
       case 'honk': if (this.onScreen(e.who.x, e.who.y, 40)) sfx.horn(); break;
       case 'callout': this.kick(1); break;
-      case 'evidence': this.toast = { text: e.what === 'door' ? 'MAMA FOUND A DOOR LEFT OPEN' : 'THEY FOUND YOUR TSINELAS', col: C.orange, t: 2.2 }; break;
+      case 'evidence': this.toast = { text: { door: 'MAMA FOUND A DOOR LEFT OPEN', puddle: 'SOMEONE FOUND THE PUDDLE', tsinelas: 'THEY FOUND YOUR TSINELAS' }[e.what], col: C.orange, t: 2.2 }; break;
       case 'creak': case 'locked': sfx.creak(); break;
       case 'ouch': sfx.ouch(); this.buzz(60); this.kick(3); if (w.adults.some((a) => a.cfg.vehicle && a.say)) sfx.horn(); break;
       case 'pickup': case 'unlock':
@@ -523,6 +523,11 @@ export class Play {
       else { g.fillStyle = C.woodLine; g.fillRect(t.x - 6, t.y - 1, 12, 1); g.fillRect(t.x - 3, t.y + 3, 8, 1); }
     }
     this.drawDynamicTiles(g);
+    for (const pd of this.world.puddles) { // spilled milk (it fades as it dries)
+      g.globalAlpha = 0.75 * Math.max(0.2, 1 - pd.t / 45); g.fillStyle = '#f4f8ff';
+      g.fillRect(Math.round(pd.x) - 5, Math.round(pd.y) + 2, 10, 3); g.fillRect(Math.round(pd.x) - 3, Math.round(pd.y) + 1, 6, 5);
+      g.globalAlpha = 1;
+    }
     this.drawExit(g);
     for (const s of w.switches) {
       drawObj(g, s.on ? 'leverOn' : 'leverOff', s.x, s.y + 2);

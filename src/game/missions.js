@@ -20,6 +20,7 @@ export const MISSIONS = {
   noBark:   { label: () => 'THE DOG NEVER BARKS', strict: true, ok: (w) => w.stats.barks === 0 },
   noDevice: { label: () => 'LEAVE THE TV AND RADIO OFF', strict: true, ok: (w) => w.stats.devices === 0 },
   noSpill:  { label: () => 'NEVER SPILL THE MILK', strict: true, ok: (w) => w.stats.spills === 0 },
+  noPuddle: { label: () => 'NOBODY FINDS A PUDDLE', strict: true, ok: (w) => !(w.stats.puddles | 0) },
   thunder:  { label: () => 'ONLY RUN UNDER THUNDER', strict: true, ok: (w) => w.stats.loudRunT < 0.4 },
   // SWELDO: every coin from Tatay's payday wallet taken while he is in the shower
   ligo:     { label: () => 'SWELDO WHILE TATAY SHOWERS', ok: (w) => { const t = w.targets.find((x) => x.owner === 'tatay'); return !!t && (t.whileAway | 0) > 0 && !(t.notAway | 0); } },

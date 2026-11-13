@@ -67,6 +67,7 @@ export class World {
     this.panyo = this.mods.panyo; // PANYO: stash openings it can still muffle this level
     this.palusot = this.mods.palusot; // PALUSOT: close calls Kuya Ramil can still talk away this level
     this.rollers = [];            // HOLEN: marbles rolling across the floor
+    this.puddles = [];            // GATAS: spilled milk left on the floor ({ x, y, t, found })
     this.playerOpened = new Set(); // A5: doors Jun opened and left open ("x,y"): someone passing may notice
     // KASABWAT (tag-team levels: "team": ["bing", "ramil"], "spawn2"): two kids, one controlled at a time. The other
     // stays where you left them (safe only if hidden), a catch of either uses the shared chances, coins are pooled,
@@ -197,6 +198,26 @@ export class World {
     this.map.set(tx, ty, 'D');
     this.emit({ type: 'door', x: tx * TILE + 8, y: ty * TILE + 8 });
   }
+  // GATAS: a puddle dries in 45 s. An adult who sees one first comes to look ("Why is it wet here?"): evidence.
+  checkPuddles(dt) {
+    for (const pd of this.puddles) {
+      pd.t += dt;
+      if (pd.found) continue;
+      for (const a of this.adults) {
+        if (a.cfg.dog || a.cfg.harmless || !a.awake || a.state === 'chase' || !a.seesPoint(pd.x, pd.y, 4 * TILE)) continue;
+        pd.found = true;
+        a.investigate(pd.x, pd.y);
+        a.talk('BAKIT BASA DITO?', 1.8);
+        a.wary = 15;
+        this.stats.evidence++;
+        this.stats.puddles = (this.stats.puddles | 0) + 1;
+        this.emit({ type: 'evidence', x: pd.x, y: pd.y, what: 'puddle' });
+        break;
+      }
+    }
+    if (this.puddles.length && this.puddles[0].t > 45) this.puddles.shift();
+  }
+
   // A staged beat (level "staged": { afterCoins, adult, to, delay, say }): once you have that many coins, that adult
   // hears something and goes to look at a fixed spot, then shrugs and goes back. The tutorial uses it to teach TAGO.
   stagedBeat(dt) {
@@ -738,6 +759,7 @@ export class World {
     }
     this.chatter(dt);
     this.stagedBeat(dt);
+    this.checkPuddles(dt);
     this.hearNoises(dt);
     if (catcher) { this.caught(catcher); if (this.status !== 'play' || this.scold) return; }
 
@@ -792,6 +814,7 @@ export class World {
     if (!t) return;
     p.carry = null;
     this.stats.spills++;
+    this.puddles.push({ x: p.x, y: p.y, t: 0, found: false }); // it leaves a puddle someone may find
     t.done = false; t.progress = 0; t.started = false;
     this.noise({ x: p.x, y: p.y, r: 70, lure: true });
     this.talk('NATAPON!', 1.4);
@@ -938,7 +961,7 @@ export class World {
     const emptied = this.targets.filter((t) => t.perCoin && t.done).length;
     this.result = { coins: this.coins, time: this.time, stars: missions.filter(Boolean).length, missions, fast, stealth, catches: this.catches, spotted: this.spotted, bonus: this.bonus,
       sobra: this.sobra, emptied, takenBy: this.takenBy(), spills: this.stats.spills, tattles: this.stats.tattles, palusot: this.stats.palusot,
-      evidence: this.stats.spills + this.stats.evidence }; // things left behind that someone found
+      evidence: this.stats.evidence }; // things left behind that someone found (a slipper, an open door, a puddle)
     this.emit({ type: 'clear' });
   }
 

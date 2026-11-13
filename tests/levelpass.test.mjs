@@ -94,8 +94,26 @@ test('L6 SWELDO: payday wallet by the shower; the ligo mission counts coins take
   assert.equal(run(false), false);
 });
 
+test('L7 GATAS: the milk is the goal (quota 0); a spill leaves a puddle, and only a puddle someone sees is evidence', () => {
+  const L = load('gatas');
+  assert.equal(L.quota, 0);
+  const w = new World(L), mama = w.adults[0];
+  w.player.hidden = { kind: 'box', x: 0, y: 0 };
+  w.player.carry = w.targets[0];
+  w.player.x = mama.x + 200; w.player.y = mama.y + 200; // far away, out of sight
+  w.spill();
+  assert.equal(w.puddles.length, 1);
+  w.update(1 / 60, idle);
+  assert.equal(w.stats.evidence, 0, 'nobody has seen it yet');
+  w.puddles[0].x = mama.x + Math.cos(mama.va) * 30; w.puddles[0].y = mama.y + Math.sin(mama.va) * 30; // now right in front of her
+  w.update(1 / 60, idle);
+  assert.equal(w.stats.evidence, 1);
+  assert.equal(mama.say?.text, 'BAKIT BASA DITO?');
+  assert.equal(MISSIONS.noPuddle.ok(w), false);
+});
+
 test('level pass: the rules hold for every level the pass has reached', () => {
-  for (const id of ['01-sala', '02-kusina', '03-buong-bahay', '04-bakuran', 'kwarto']) {
+  for (const id of ['01-sala', '02-kusina', '03-buong-bahay', '04-bakuran', 'kwarto', 'gatas']) {
     const r = rules(load(id));
     for (const k of ['R1', 'R2', 'R6', 'R7']) assert.ok(r[k].ok, `${id} ${k} ${JSON.stringify(r[k])}`);
   }

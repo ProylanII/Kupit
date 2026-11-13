@@ -2,10 +2,10 @@
  "id": "gatas",
  "name": "GATAS",
  "clearText": "MILK DELIVERED!",
- "hint": "MILK IS BY THE REF. CARRY IT OUT. RUNNING SPILLS IT!",
+ "hint": "MILK BY THE REF. WALK IT OUT: RUNNING SPILLS IT!",
  "missions": [
   "noSpill",
-  "silent"
+  "noPuddle"
  ],
  "tiles": [
   "###############",
@@ -39,7 +39,7 @@
   12,
   20
  ],
- "quota": 3,
+ "quota": 0,
  "par": 140,
  "targets": [
   {
@@ -217,5 +217,40 @@
     ]
    ]
   }
- ]
+ ],
+ "suggest": "jun",
+ "suggestWhy": "STEADY HANDS: JUN CARRIES IT OUT",
+ "hinala": {
+  "2": {
+   "news": "MAMA STAYS IN THE KITCHEN LONGER",
+   "do": [
+    {
+     "stop": 0,
+     "at": [
+      4,
+      2,
+      4,
+      -1.5708,
+      "hugas"
+     ]
+    }
+   ]
+  },
+  "3": {
+   "news": "TITA MOPS BY THE REF NOW",
+   "do": [
+    {
+     "stop": 2,
+     "at": [
+      3,
+      2,
+      3,
+      3.14159,
+      "walis"
+     ]
+    }
+   ]
+  }
+ },
+ "notes": "Near-miss: Lola stirs as you pass with the bowl. A spill leaves a puddle; an adult who sees it comes to look (evidence). Coins here are optional: all of them are sobra."
 }
