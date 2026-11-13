@@ -12,7 +12,8 @@ import { dev } from '../core/dev.js';
 import { vibrate, canVibrate, hapticsOn } from '../core/haptics.js';
 import { settings } from '../core/settings.js';
 import { GHOST_EVERY, ghostAt } from '../game/ghost.js';
-import { VIEW_W, VIEW_H, MAP_H, BUTTON, BUTTON2, PAUSE_BTN, ABILITY_BTN, ITEM_BTN, layout } from '../core/input.js';
+import { VIEW_W, VIEW_H, MAP_H, BUTTON, BUTTON2, PAUSE_BTN, ABILITY_BTN, ITEM_BTN, SWAP_BTN, layout } from '../core/input.js';
+import { CHARACTERS } from '../game/progression.js';
 
 const YELLOW = hexToRgb(C.yellow), RED = hexToRgb(C.red);
 const SUSPICIOUS = new Set(['investigate', 'inspect', 'search']);
@@ -91,6 +92,7 @@ const TIPS = {
   medyas: 'MEDYAS: IN SOCKS THE CREAKY BOARD STAYS QUIET',
   maliit: 'MALIIT: UNDER HERE ONLY SOMEONE RIGHT NEXT TO YOU SEES',
   palusot: 'ONE EXCUSE A LEVEL. THEY STILL WONDER (HINALA +3)',
+  team: 'TWO OF YOU: Z (OR THE PURPLE BUTTON) SWITCHES KIDS',
 };
 
 export class Play {
@@ -198,6 +200,7 @@ export class Play {
     const w = this.world;
     this.input.button2Enabled = w.player.items.length > 0 && !w.noThrow;
     this.input.abilityEnabled = true;
+    this.input.swapEnabled = !!w.kids && w.kids.every((k) => !k.out); // KASABWAT
     this.input.itemEnabled = new Set(w.player.items).size > 1;
     w.update(dt, this.input.poll());
     this.steps++;
@@ -206,6 +209,7 @@ export class Play {
     if (w.cover === 'videoke') this.showTip('videoke');
     if (w.player.blend) this.showTip('blend');
     if (w.player.under) this.showTip('maliit');
+    if (w.kids && w.time > 1) this.showTip('team');
     if (w.map.ch(w.player.tx, w.player.ty) === 'L') this.showTip('laundry');
     if (w.time > 1 && w.adults.some((a) => a.busy && this.onScreen(a.x, a.y))) this.showTip('routine');
     for (const v of w.videokes) if (v.singing && this.onScreen(v.x, v.y, 20) && Math.random() < dt * 4) this.notes.push({ x: v.x + Math.random() * 16 - 8, y: v.y - 10, l: 1.2, k: Math.random() < 0.5 });
@@ -293,6 +297,12 @@ export class Play {
       case 'emptied': sfx.klak(); this.showTip('emptied'); break;
       case 'roll': sfx.tick(); this.showTip('holen'); break;
       case 'panyo': sfx.hide(); this.showTip('panyo'); break;
+      case 'swap': sfx.click(); this.showTip('team'); break;
+      case 'teamOut': {
+        const out = CHARACTERS[e.who]?.name || 'ONE', next = CHARACTERS[w.mods.charId]?.name || 'THE OTHER';
+        sfx.pickup(); this.toast = { text: `${out} IS OUT! NOW ${next}`, col: C.green, t: 2.6 }; break;
+      }
+      case 'laundry': sfx.whoosh(); this.toast = { text: e.left ? 'TITA TAKES IN A LINE OF WASHING' : 'THE LAST OF THE WASHING IS IN', col: C.orange, t: 2.2 }; break;
       case 'palusot': sfx.skill(); this.toast = { text: 'PALUSOT! KUYA RAMIL TALKED YOU OUT', col: C.green, t: 2.4 }; this.showTip('palusot'); break;
       case 'medyas': this.showTip('medyas'); break;
       case 'clear': if (!this.opts.quietClear) sfx.clear(); this.buzz([30, 30, 30], C.green); break;
@@ -536,6 +546,8 @@ export class Play {
     for (const a of w.adults) actors.push(a);
     for (const c of this.cats) actors.push(c);
     if (!p.hidden) { actors.push(p); for (const k of this.kittens) actors.push(k); }
+    // KASABWAT: the kid you left behind, crouched where you left them
+    for (const k of w.kids || []) if (k !== p && !k.out && !k.hidden) actors.push({ look: k.look, x: k.x, y: k.y, dir: k.dir, pose: 'reach', partner: true });
     actors.sort((u, v) => u.y - v.y);
     const blink = p.graceT > 0 && Math.floor(now / 100) % 2;
     for (const e of actors) {
@@ -545,10 +557,13 @@ export class Play {
         if (!blink) drawActor(g, this.look, p.x, p.y, p.dir, w.status === 'caught' || w.scold ? 'caught' : this.castT > 0 ? 'cast' : p.stealing ? 'reach' : p.moving ? Math.floor(p.stepT * 8) % 4 : 0);
       } else this.drawAdult(g, e);
     }
-    if (p.under && !p.hidden) { // MALIIT: the table or bed drawn back over Bing, her eyes peeking out
-      const tx = p.tx * TILE, ty = p.ty * TILE;
-      g.globalAlpha = 0.82; g.drawImage(this.bg, tx, ty - 4, TILE, TILE + 4, tx, ty - 4, TILE, TILE + 4); g.globalAlpha = 1;
-      g.fillStyle = C.white; g.fillRect(Math.round(p.x) - 2, Math.round(p.y) - 1, 1, 1); g.fillRect(Math.round(p.x) + 1, Math.round(p.y) - 1, 1, 1);
+    for (const k of w.kids || [p]) {
+      if (k.under && !k.hidden && !k.out) { // MALIIT: the table or bed drawn back over Bing, her eyes peeking out
+        const tx = k.tx * TILE, ty = k.ty * TILE;
+        g.globalAlpha = 0.82; g.drawImage(this.bg, tx, ty - 4, TILE, TILE + 4, tx, ty - 4, TILE, TILE + 4); g.globalAlpha = 1;
+        g.fillStyle = C.white; g.fillRect(Math.round(k.x) - 2, Math.round(k.y) - 1, 1, 1); g.fillRect(Math.round(k.x) + 1, Math.round(k.y) - 1, 1, 1);
+      }
+      if (k !== p && !k.out) drawText(g, 'Z', Math.round(k.x), Math.round(k.y) - 26, C.gray, { align: 'center', shadow: C.ink }); // switch to them
     }
     for (const h of w.hides) if (h.kind === 'curtain') drawObj(g, 'curtain', h.x, h.y - 1);
     this.drawOverlayTiles(g);
@@ -913,6 +928,13 @@ export class Play {
     else if (!L) drawText(g, this.input.touchUsed ? 'DRAG: MOVE   DRAG FAR: RUN' : 'SHIFT RUN  E ACT  Q THROW  F SKILL', 6, MAP_H + 32, C.dgray);
     else drawText(g, this.input.touchUsed ? 'DRAG: MOVE' : 'E ACT Q THROW', tx, MAP_H + 32, C.dgray, al);
 
+    // KASABWAT: switch to the other kid (their initial; grey while it cools down or once they are out)
+    if (w.kids) {
+      const other = w.kids.find((k) => k !== w.player), ok = other && !other.out && !(w.swapT > 0);
+      disc(g, SWAP_BTN.x, SWAP_BTN.y, SWAP_BTN.r, C.ink);
+      disc(g, SWAP_BTN.x, SWAP_BTN.y, SWAP_BTN.r - 2, ok ? C.purple : C.dgray);
+      drawText(g, other && !other.out ? CHARACTERS[other.look]?.name.split(' ').pop() || 'SWAP' : 'OUT', SWAP_BTN.x, SWAP_BTN.y - 2, ok ? C.white : C.gray, { align: 'center' });
+    }
     // character skill button
     const sk = w.mods.skill, cd = w.abilityCd, rdy = cd <= 0;
     disc(g, ABILITY_BTN.x, ABILITY_BTN.y, ABILITY_BTN.r, C.ink);

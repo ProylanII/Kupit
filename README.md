@@ -81,6 +81,11 @@ Collect the coin quota, then reach the exit.
   Only then do they see what every coin was for, and nobody scolds him. The epilogue level swaps KUPIT for
   **HINGI**: nobody to hide from, you walk up and ask. Three kittens trot after you there, and Tigre follows you
   on every level afterwards.
+- **Who's going?** Before every story level a card shows its stars, what changed in the house, and the crew: pick who
+  goes (a level can suggest someone; every level can be finished as Jun). **Bing** also crawls under tables and beds
+  (only someone right next to it sees her). **Kuya Ramil** talks the family out of one close call a level ("Ma,
+  tinutulungan ko lang siya!"). **KASABWAT** (the old SAMPAYAN) sends Bing and Ramil in together: Z switches kids,
+  only Bing reaches the gate lever, the washing comes in line by line, and both must get out.
 - **The crew**: Jun leads; Bing, Kuya Ramil and Nene join in story scenes (never bought). Each has a skill
   (cooldown). Jun: silent dash. Bing: hide anywhere 3s (smaller, slower). Kuya Ramil: yell to lure ahead (throws
   far, loud run). Nene: freeze watchers 3s (kupit faster).

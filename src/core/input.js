@@ -9,13 +9,14 @@ export const BUTTON2 = { x: 176, y: 372, r: 14 }; // throw item (hold to aim, re
 export const ABILITY_BTN = { x: 100, y: 372, r: 11 }; // character skill
 export const PAUSE_BTN = { x: 138, y: 372, r: 10 }; // pause
 export const ITEM_BTN = { x: 156, y: 357, r: 8 };  // cycle which item you throw next
-const RIGHT = { BUTTON: 214, BUTTON2: 176, ABILITY_BTN: 100, PAUSE_BTN: 138, ITEM_BTN: 156 };
+export const SWAP_BTN = { x: 70, y: 374, r: 10 };   // KASABWAT: switch kids (tag-team levels only)
+const RIGHT = { BUTTON: 214, BUTTON2: 176, ABILITY_BTN: 100, PAUSE_BTN: 138, ITEM_BTN: 156, SWAP_BTN: 70 };
 export const layout = { left: false };
 export function setLeftHanded(on) {
   layout.left = !!on;
   const m = (x) => (on ? VIEW_W - x : x);
   BUTTON.x = m(RIGHT.BUTTON); BUTTON2.x = m(RIGHT.BUTTON2); ABILITY_BTN.x = m(RIGHT.ABILITY_BTN);
-  PAUSE_BTN.x = m(RIGHT.PAUSE_BTN); ITEM_BTN.x = m(RIGHT.ITEM_BTN);
+  PAUSE_BTN.x = m(RIGHT.PAUSE_BTN); ITEM_BTN.x = m(RIGHT.ITEM_BTN); SWAP_BTN.x = m(RIGHT.SWAP_BTN);
 }
 const STICK_R = 22;
 
@@ -58,6 +59,7 @@ export class Input {
       const near = (b, pad) => Math.hypot(p.x - b.x, p.y - b.y) <= b.r + pad;
       if (this.buttonEnabled && near(PAUSE_BTN, 6)) { this.pauseTap = true; return; }
       if (this.buttonEnabled && this.itemEnabled && near(ITEM_BTN, 5)) { this.cycleTap = true; return; }
+      if (this.buttonEnabled && this.swapEnabled && near(SWAP_BTN, 5)) { this.swapTap = true; return; }
       const onBtn = this.buttonEnabled && near(BUTTON, 6);
       const onBtn2 = !onBtn && this.button2Enabled && near(BUTTON2, 5);
       const onBtn3 = !onBtn && !onBtn2 && this.abilityEnabled && near(ABILITY_BTN, 5);
@@ -134,8 +136,9 @@ export class Input {
       throwAim: t, throwPressed: !t && this.prevT,
       cyclePressed: this.cycleTap || hits.has('r') || hits.has('Tab'),
       abilityPressed: (b && !this.prevAb) || this.abilityTap || hits.has('f') || hits.has('x'),
+      swapPressed: this.swapTap || hits.has('z'), // KASABWAT: switch kids
     };
-    this.abilityTap = false; this.cycleTap = false;
+    this.abilityTap = false; this.cycleTap = false; this.swapTap = false;
     this.hitsUsed = true;
     this.prevA = a; this.prevT = t; this.prevAb = b;
     return r;
@@ -143,7 +146,7 @@ export class Input {
 
   pressed(k) { return this.hits.has(k); }
   // Drop held pointers/keys so a menu tap doesn't turn into a stick drag when play starts.
-  reset() { this.pointers.clear(); this.keys.clear(); this.prevA = this.prevT = this.prevAb = false; this.cycleTap = this.abilityTap = false; }
+  reset() { this.pointers.clear(); this.keys.clear(); this.prevA = this.prevT = this.prevAb = false; this.cycleTap = this.abilityTap = this.swapTap = false; }
   consumeTap() { const t = this.tapped; this.tapped = false; return t; }
   endFrame() { this.tapped = false; this.hits.clear(); this.hitsUsed = false; this.tapPos = null; this.pauseTap = false; }
 }

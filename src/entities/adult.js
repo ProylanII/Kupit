@@ -338,7 +338,7 @@ export class Adult {
   }
 
   update(dt, world) {
-    const c = this.cfg, player = world.player;
+    const c = this.cfg, player = world.focusFor ? world.focusFor(this) : world.player; // (two kids in KASABWAT)
     this.moving = false;
     if (this.say && (this.say.t -= dt) <= 0) this.say = null;
     this.barkT = Math.max(0, this.barkT - dt);

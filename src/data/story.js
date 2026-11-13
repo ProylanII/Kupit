@@ -85,6 +85,10 @@ export const BEFORE = {
 
 // Shown once, right after the first clear of the level with that id (before the results).
 export const AFTER = {
+  '07-sampayan': [ // KASABWAT: the two of them, together for once
+    { who: 'ramil', lines: ['The washing is out, Bing. You go', 'under the tables, I keep watch.'] },
+    { who: 'bing', mood: 'happy', lines: ['Then we both get out.', 'Together, Kuya.'] },
+  ],
   ibalik: [ // the arc beat: he took too much, put it back, and decides what kind of kupit is allowed
     { who: 'mama', mood: 'happy', lines: ['Ay, nandito pala! The money was', 'in my purse all along. Hay...'] },
     { who: 'jun', mood: 'sad', lines: ['Only what Mingming needs', 'from now on. Not one coin more.'] },

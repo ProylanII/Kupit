@@ -26,6 +26,18 @@ export const BLEND_R = 20;          // walk (don't run) this close to a party gu
 
 const at = (p) => ({ x: p[0] * TILE + TILE / 2, y: p[1] * TILE + TILE / 2, tx: p[0], ty: p[1] });
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+// Horizontal runs of hanging laundry ('L'), top of the map first: the order the washing is taken in.
+function laundryRuns(map) {
+  const runs = [];
+  for (let y = 0; y < map.h; y++) {
+    let run = null;
+    for (let x = 0; x <= map.w; x++) {
+      if (map.ch(x, y) === 'L') (run ||= []).push([x, y]);
+      else if (run) { runs.push(run); run = null; }
+    }
+  }
+  return runs;
+}
 
 // Action-button priority when several things are in reach (first match wins):
 //   come out of hiding > kupit > hide > door > switch > device. Within a kind, the nearest one wins.
@@ -46,6 +58,27 @@ export class World {
     this.panyo = this.mods.panyo; // PANYO: stash openings it can still muffle this level
     this.palusot = this.mods.palusot; // PALUSOT: close calls Kuya Ramil can still talk away this level
     this.rollers = [];            // HOLEN: marbles rolling across the floor
+    // KASABWAT (tag-team levels: "team": ["bing", "ramil"], "spawn2"): two kids, one controlled at a time. The other
+    // stays where you left them (safe only if hidden), a catch of either uses the shared chances, coins are pooled,
+    // and the exit needs both: the first one through waits outside while you bring the other.
+    this.kids = null;
+    if (level.team) {
+      const sp = [level.spawn, level.spawn2 || level.spawn];
+      this.kidMods = level.team.map((id) => computeMods(id, loadout.upgrades));
+      this.kids = this.kidMods.map((m, i) => {
+        const k = new Player(sp[i][0], sp[i][1], m);
+        k.items = this.noThrow ? [] : m.startItems.slice();
+        k.look = m.look;
+        return k;
+      });
+      this.player = this.kids[0]; this.mods = this.kidMods[0];
+      this.palusot = this.kidMods.reduce((n, m) => n + m.palusot, 0); // Kuya Ramil's excuse covers the team
+      this.panyo = this.kidMods.reduce((n, m) => Math.max(n, m.panyo), 0);
+      this.swapT = 0;
+    }
+    // Laundry taken in over time ("laundryDown": { "every": 25 }): one line of washing at a time, top first.
+    this.laundryRuns = level.laundryDown ? laundryRuns(this.map) : [];
+    this.laundryT = level.laundryDown?.every || 0;
     this.abilityCd = 0;
     this.god = false; // dev mode: nobody can catch you
     this.lives = Math.max(1, loadout.lives ?? 1);
@@ -408,6 +441,10 @@ export class World {
   // input: {mv, action, actionPressed, throwPressed, throwAim, cyclePressed, abilityPressed}
   update(dt, input) {
     if (this.status !== 'play') return;
+    if (this.kids) { // KASABWAT: switch who you control (before anything else reads this.player this frame)
+      if (this.swapT > 0) this.swapT -= dt;
+      if (input.swapPressed) this.swap();
+    }
     const p = this.player, map = this.map;
     this.time += dt; // par time keeps running through the "caught" beat
     // Storm: lightning flashes, and for a moment the thunder drowns out every sound you make.
@@ -446,7 +483,14 @@ export class World {
     const stealing = !p.hidden && input.action && ctx?.kind === 'steal';
     p.stealing = stealing; // drawn with the 'reach' pose
     if (input.cyclePressed) this.cycleItem();
-    p.under = !!p.crawl && p.crawl.has(map.ch(p.tx, p.ty)); // MALIIT: Bing under a table or bed
+    for (const k of this.kids || [p]) k.under = !!k.crawl && k.crawl.has(map.ch(k.tx, k.ty)); // MALIIT: Bing under a table or bed
+    if (this.laundryRuns.length && (this.laundryT -= dt) <= 0) { // the washing comes in, line by line
+      this.laundryT = this.level.laundryDown.every;
+      const run = this.laundryRuns.shift();
+      for (const [x, y] of run) map.set(x, y, this.level.laundryDown.floor || ';');
+      const [mx, my] = run[run.length >> 1];
+      this.emit({ type: 'laundry', x: mx * TILE + 8, y: my * TILE + 8, left: this.laundryRuns.length });
+    }
     const canThrow = p.items.length && !p.hidden && !p.under && !stealing && p.stunT <= 0 && !this.noThrow;
     this.aim = input.throwAim && canThrow ? this.aimPreview() : null;
     if (input.throwPressed && canThrow) this.throwItem();
@@ -612,7 +656,13 @@ export class World {
       if (m.strict && !this.missionLost[i] && !m.ok(this)) { this.missionLost[i] = true; this.emit({ type: 'missionLost', id: this.missionIds[i], i }); }
     }
 
-    if (this.open && !p.hidden && dist(p, this.exit) < 10) this.finish();
+    if (this.open && !p.hidden && dist(p, this.exit) < 10) {
+      if (this.kids && this.kids.some((k) => k !== p && !k.out)) { // one is out: now bring the other
+        p.out = true;
+        this.emit({ type: 'teamOut', who: this.mods.charId });
+        this.swap(true);
+      } else this.finish();
+    }
   }
 
   // A tricycle doesn't catch you, but it does knock you over (and honks).
@@ -650,6 +700,8 @@ export class World {
   // Caught by an adult: a scolding, some coins go back, and you try again from the last safe spot.
   // The last catch (lives used up) ends the level.
   caught(a) {
+    // KASABWAT: if it was the kid you left behind, you are now that kid (the catch and the respawn are theirs)
+    if (this.kids && a.focusKid && a.focusKid !== this.player && !a.focusKid.out) this.swap(true);
     // PALUSOT: Kuya Ramil talks his way out of the first close call (not in a boss's final phase)
     if (this.palusot > 0 && !this.finalPhase) {
       this.palusot--;
@@ -730,6 +782,28 @@ export class World {
     }
   }
 
+  // KASABWAT: switch to the other kid (force: a catch or an exit does it, ignoring the 1 s cooldown)
+  swap(force = false) {
+    if (!this.kids || this.status !== 'play' || (this.scold && !force)) return false;
+    if (!force && this.swapT > 0) return false;
+    const i = this.kids.indexOf(this.player), other = this.kids[1 - i];
+    if (!other || other.out) return false;
+    this.player.graceT = 0; // the one left behind can be seen
+    this.player.stealing = false;
+    this.player = other; this.mods = this.kidMods[1 - i];
+    this.swapT = 1;
+    this.lastTile = other.tx + ',' + other.ty;
+    this.emit({ type: 'swap', who: this.mods.charId });
+    return true;
+  }
+  // Which kid this adult is dealing with: the one it is already after, else one it can see (yours first), else yours.
+  focusFor(a) {
+    if (!this.kids) return this.player;
+    if (a.focusKid && !a.focusKid.out && (a.state === 'chase' || a.state === 'inspect')) return a.focusKid;
+    for (const k of [this.player, ...this.kids.filter((k) => k !== this.player && !k.out)]) if (a.canSee(k)) return (a.focusKid = k);
+    return (a.focusKid = this.player);
+  }
+
   // PANYO: the handkerchief wrapped round a clasp or zipper, once a level (the first coin stash you open)
   muffle(t) {
     if (!t.perCoin || this.panyo <= 0) return false;
@@ -761,11 +835,13 @@ export class World {
   devFillQuota() { this.coins = Math.max(this.coins, this.level.quota); for (const t of this.targets) if (t.must) t.done = true; }
   // Drop the player on a free tile next to the exit (walk in to finish).
   devGoToExit() {
-    const p = this.player, e = this.exit;
-    p.hidden = null; p.hideT = 0;
+    const e = this.exit;
     const side = [[-1, 0], [1, 0], [0, -1], [0, 1]].find(([dx, dy]) => !this.map.tileSolid(e.tx + dx, e.ty + dy));
     const [dx, dy] = side || [0, 0];
-    p.x = e.x + dx * TILE; p.y = e.y + dy * TILE;
+    for (const p of this.kids || [this.player]) { // (tag-team: both kids)
+      p.hidden = null; p.hideT = 0;
+      p.x = e.x + dx * TILE; p.y = e.y + dy * TILE;
+    }
   }
   devNextPhase() { const ph = this.bossPhases[this.phase]; if (ph) this.coins = Math.max(this.coins, ph.at); return !!ph; }
   devClear() { if (this.status === 'play') this.finish(); }

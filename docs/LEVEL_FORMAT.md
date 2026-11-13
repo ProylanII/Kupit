@@ -40,6 +40,9 @@ and that standing still at the spawn for 4 s is safe. The same validator checks 
   "par": 120,                  // seconds for the "fast" mission
   "patience": 160,             // optional: "KAIN NA!" timer, caught when it runs out
   "storm": { "every": 7, "dur": 2.4 }, // optional: lightning every N s, then thunder that masks all your noise for dur s
+  "suggest": "bing", "suggestWhy": "SMALL IS GOOD HERE", // optional: the kid the pre-level card recommends
+  "team": ["bing", "ramil"], "spawn2": [x, y], // optional: tag-team (KASABWAT): two kids, Z switches, both must exit
+  "laundryDown": { "every": 25, "floor": ";" },  // optional: the washing is taken in one line at a time, top first
   "hinala": { "1": { "news": "MAMA COUNTS HER PURSE NOW", "do": [op, op] }, "2": {...}, "3": {...} },
                                // optional: how the house changes at each HINALA tier (cumulative, max 2 ops per tier,
                                // news max 40 chars). op: { "move": targetIndex, "to": [x,y] } | { "stop": adultIndex,

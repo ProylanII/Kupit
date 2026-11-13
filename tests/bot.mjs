@@ -12,12 +12,14 @@ const IDLE = { mv: { x: 0, y: 0, mag: 0, run: false }, action: false, actionPres
 export function playBot(L, { run = false, maxT = 900, lives = 3, god = true } = {}) {
   const w = new World(L, { lives });
   w.god = god;
-  const p = w.player, map = w.map, locks = w.locks;
+  // (tag-team levels: p is whichever kid is active, and Bing crawls under tables; the game switches kids at the exit)
+  let p = w.player;
+  const map = w.map, locks = w.locks;
   const pass = (x, y) => {
     const c = map.ch(x, y);
     if (c === 'D') { const k = locks.get(x + ',' + y); return !k || p.keys.has(k); }
     if (c === 'G') return false;
-    return !map.tileSolid(x, y);
+    return !map.tileSolid(x, y, p.crawl);
   };
   const tileOf = (o) => [Math.floor(o.x / TILE), Math.floor(o.y / TILE)];
   const route = (to) => findPath(map, p.tx, p.ty, to[0], to[1], pass, 20000);
@@ -31,6 +33,7 @@ export function playBot(L, { run = false, maxT = 900, lives = 3, god = true } = 
   const log = [];
   for (let step = 0; step < maxT * 60 && w.status === 'play'; step++) {
     const t = step / 60;
+    if (p !== w.player) { p = w.player; path = null; goal = null; lastPos = [p.x, p.y]; } // the other kid now
     // ---- what to go for
     let kind, obj;
     if (w.open) { kind = 'exit'; obj = w.exit; }
@@ -80,7 +83,7 @@ export function playBot(L, { run = false, maxT = 900, lives = 3, god = true } = 
     w.update(1 / 60, inp);
     // caught without god mode: after the respawn, plan again from where you are (the old path is from elsewhere)
     if (Math.hypot(p.x - lastPos[0], p.y - lastPos[1]) > 24) { path = null; goal = null; stuckT = 0; }
-    else if (Math.hypot(p.x - lastPos[0], p.y - lastPos[1]) < 0.5 && !inp.action && !w.scold) stuckT += 1 / 60; else stuckT = 0;
+    else if (Math.hypot(p.x - lastPos[0], p.y - lastPos[1]) < 0.2 && !inp.action && !w.scold) stuckT += 1 / 60; else stuckT = 0; // (Bing sneaks at 0.44 px a frame)
     lastPos = [p.x, p.y];
     if (stuckT > 12) return fail(`stuck at ${p.tx},${p.ty} going to ${kind} ${tileOf(obj)}`, t);
   }

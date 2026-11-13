@@ -1,6 +1,6 @@
 // Level validation shared by the tests and the random-house generator. DOM-free.
 // validateLevel(L) -> array of error strings (empty = valid and solvable).
-import { TileMap } from '../world/tilemap.js';
+import { TileMap, CRAWL } from '../world/tilemap.js';
 import { findPath } from '../world/pathfind.js';
 import { ADULT_TYPES, ACTIVITIES } from '../entities/adult.js';
 import { MISSIONS } from './missions.js';
@@ -13,20 +13,23 @@ export const KINDS = {
 };
 
 // Player reachability with keys and switch-operated gates, iterated to a fixpoint.
-export function solve(L, map, blockedDoors = new Set()) {
+// opts (tag-team levels): crawl = Bing can go under tables and beds; from = where this kid starts; gates / keys =
+// what the other kid already opened. The result carries the gates and keys it found (reach.gates, reach.keys).
+export function solve(L, map, blockedDoors = new Set(), { crawl = false, from = L.spawn, gates: open = null, keys: had = null } = {}) {
   const locks = new Map((L.locks || []).map((l) => [l.at.join(), l.key]));
-  const keys = new Set();
-  const gates = new Set();
+  const keys = new Set(had || []);
+  const gates = new Set(open || []);
   const pass = (x, y) => {
     const c = map.ch(x, y);
     if (c === 'D') { if (blockedDoors.has(`${x},${y}`)) return false; const k = locks.get(`${x},${y}`); return !k || keys.has(k); }
     if (c === 'G') return gates.has(`${x},${y}`);
-    return !map.tileSolid(x, y);
+    return !map.tileSolid(x, y, crawl ? CRAWL : null);
   };
   let reach, before = -1;
   while (true) {
-    reach = new Set([L.spawn.join()]);
-    const q = [L.spawn];
+    reach = new Set([from.join()]);
+    reach.gates = gates; reach.keys = keys;
+    const q = [from];
     while (q.length) {
       const [x, y] = q.shift();
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
@@ -127,8 +130,17 @@ export function validateLevel(L) {
   if (L.alkansya) behind(L.alkansya.at, 'alkansya');
   for (const c of L.cats || []) { if (map.tileSolid(c.at[0], c.at[1])) bad(`cat ${c.at} must be on floor`); behind(c.at, 'cat'); }
 
-  const reach = solve(L, map);
+  // tag-team: the kid who can crawl does the reaching; the other one must still get out through what was opened
+  const reach = solve(L, map, undefined, { crawl: !!L.team?.includes('bing') });
   if (!reach.has(L.exit.join())) bad('exit unreachable');
+  if (L.team) {
+    if (!Array.isArray(L.team) || L.team.length !== 2 || L.team.some((k) => !['jun', 'bing', 'ramil', 'nene'].includes(k)) || L.team[0] === L.team[1]) bad('team must be two different kids');
+    const s2 = L.spawn2 || L.spawn;
+    if (map.tileSolid(s2[0], s2[1])) bad(`spawn2 ${s2} is not floor`);
+    const other = L.team.find((k) => k !== 'bing') || L.team[1];
+    const r2 = solve(L, map, undefined, { crawl: other === 'bing', from: s2, gates: reach.gates, keys: reach.keys });
+    if (!r2.has(L.exit.join())) bad(`${other} cannot reach the exit, even with everything the other kid opened`);
+  }
   if (L.alkansya && !reach.has(L.alkansya.at.join())) bad(`alkansya ${L.alkansya.at} unreachable`);
   let total = 0;
   for (const t of L.targets) { if (!reach.has(t.at.join())) bad(`target ${t.at} unreachable`); total += t.coins; }

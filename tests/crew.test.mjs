@@ -78,3 +78,60 @@ test('levels suggest a kid on the card (a valid one, with a short reason), and t
   assert.ok(validateLevel({ ...room(), suggest: 'tatay' }).some((m) => /suggest/.test(m)));
   assert.deepEqual(fresh().pick, {});
 });
+
+// ---------------------------------------------------------------- KASABWAT (tag-team)
+const team = (o = {}) => room({ team: ['bing', 'ramil'], spawn: [2, 3], spawn2: [2, 5], ...o });
+
+test('KASABWAT: Z switches kids (1 s cooldown), each with their own skill; coins are pooled', () => {
+  const w = new World(team());
+  assert.equal(w.mods.charId, 'bing');
+  w.update(1 / 60, { ...IDLE, swapPressed: true });
+  assert.equal(w.mods.charId, 'ramil'); assert.equal(w.player, w.kids[1]);
+  w.update(1 / 60, { ...IDLE, swapPressed: true });
+  assert.equal(w.mods.charId, 'ramil', 'cooldown');
+  for (let i = 0; i < 70; i++) w.update(1 / 60, IDLE);
+  w.update(1 / 60, { ...IDLE, swapPressed: true });
+  assert.equal(w.mods.charId, 'bing');
+  assert.equal(w.palusot, 1, "Kuya Ramil's excuse covers the team");
+});
+
+test('KASABWAT: the kid you left behind can be seen and caught; then you are them', () => {
+  const w = new World(team({ spawn: [2, 1], adults: [{ type: 'mama', at: [6, 5], face: Math.PI }] }), { lives: 3 }); // Bing out of her range
+  w.palusot = 0; // (no excuses in this test)
+  const left = w.kids[1];
+  assert.equal(w.focusFor(w.adults[0]), left, 'Mama is looking at Ramil, not at the kid you control');
+  w.adults[0].focusKid = left;
+  w.caught(w.adults[0]);
+  assert.equal(w.player, left, 'the catch is his: you now play him');
+  assert.equal(w.catches, 1, 'shared chances');
+});
+
+test('KASABWAT: the exit needs both — the first one through waits outside', () => {
+  const w = new World(team({ quota: 0, targets: [] }));
+  w.devGoToExit();
+  for (let i = 0; i < 240 && w.status === 'play'; i++) {
+    const dx = w.exit.x - w.player.x, dy = w.exit.y - w.player.y, m = Math.hypot(dx, dy) || 1;
+    w.update(1 / 60, { ...IDLE, mv: { x: dx / m, y: dy / m, mag: 1, run: false } });
+    if (i === 0) assert.equal(w.status, 'play');
+  }
+  assert.ok(w.kids[0].out, 'Bing is out');
+  assert.equal(w.status, 'clear', 'and then Ramil');
+});
+
+test('KASABWAT: the washing comes in line by line, top first', () => {
+  const tiles = ['############', '#..LLL.....#', '#..........#', '#......LL..#', '#..........#', '#..........#', '#..........#', '############'];
+  const w = new World(room({ tiles, laundryDown: { every: 1, floor: '.' } }));
+  for (let i = 0; i < 65; i++) w.update(1 / 60, IDLE);
+  assert.equal(w.map.ch(3, 1), '.', 'the top line came in first');
+  assert.equal(w.map.ch(7, 3), 'L');
+  for (let i = 0; i < 65; i++) w.update(1 / 60, IDLE);
+  assert.equal(w.map.ch(7, 3), '.');
+});
+
+test('KASABWAT: the validator needs both kids to get out, and only Bing may need to crawl', () => {
+  const L = levels.find((x) => x.team);
+  assert.ok(L, 'the campaign has a tag-team level');
+  assert.deepEqual(validateLevel(L), []);
+  assert.ok(validateLevel({ ...L, team: undefined, spawn2: undefined }).length > 0, 'without Bing the lever cannot be reached');
+  assert.ok(validateLevel({ ...team(), team: ['bing', 'bing'] }).some((m) => /team/.test(m)));
+});
