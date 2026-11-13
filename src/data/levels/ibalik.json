@@ -4,18 +4,18 @@
  "night": true,
  "giveBack": true,
  "clearText": "ALL PUT BACK!",
- "hint": "PUT IT ALL BACK: MAMA'S PURSE, LOLA'S BAYONG, TITA'S BAG",
+ "hint": "PUT IT ALL BACK. QUIETLY: FULL POCKETS JINGLE",
  "missions": [
   "silent",
-  "fast"
+  "underNose"
  ],
  "tiles": [
   "###############",
   "#......#......#",
-  "#.BB...#...BB.#",
+  "#.BB..A#...BB.#",
   "#.BB...#...BB.#",
   "#......#......#",
-  "#......#......#",
+  "#......#T.....#",
   "###D#######D###",
   "#.............#",
   "#.............#",
@@ -38,8 +38,8 @@
   20
  ],
  "exit": [
-  12,
-  19
+  13,
+  7
  ],
  "quota": 7,
  "par": 150,
@@ -51,7 +51,8 @@
     3
    ],
    "coins": 3,
-   "time": 1.6
+   "time": 1.6,
+   "owner": "mama"
   },
   {
    "kind": "ibalik",
@@ -60,7 +61,8 @@
     4
    ],
    "coins": 2,
-   "time": 1.8
+   "time": 1.8,
+   "owner": "lola"
   },
   {
    "kind": "ibalik",
@@ -69,7 +71,8 @@
     13
    ],
    "coins": 2,
-   "time": 1.4
+   "time": 1.4,
+   "owner": "tita"
   }
  ],
  "items": [
@@ -225,5 +228,6 @@
     ]
    ]
   }
- ]
+ ],
+ "notes": "The amount and split come from the ledger (game/ibalik.js); the file holds a default 7. Near-miss: an owner mumbles SALAMAT as the clasp clicks shut beside her. Running with coins still in your pockets jingles."
 }

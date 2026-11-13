@@ -24,6 +24,7 @@ import { loadGhost, storeGhost } from './game/ghost.js';
 import { INTRO, BEFORE, AFTER, ENDING, EPILOGUE, NAMES, CHAPTERS } from './data/story.js';
 import { missionIds, missionLabel, maskOf, starsOf } from './game/missions.js';
 import { applyHinala, tierOf, effective, delta as hinalaDelta, next as hinalaNext, TIERS } from './game/hinala.js';
+import { returnPlan, applyReturn } from './game/ibalik.js';
 import { drawMenu, drawButton, buttonRect, menuHit, hit } from './ui/menu.js';
 
 const canvas = document.getElementById('game');
@@ -93,7 +94,7 @@ const tips = { get seen() { return save.seen; }, mark(id) { save.seen[id] = true
 function launch() {
   const campaign = !run;
   const ghost = campaign && settings.ghost ? loadGhost(cur.id) : null;
-  const L = campaign ? applyHinala(cur, hinalaTierFor(cur, idx)) : cur;
+  const L = campaign ? prepare(applyHinala(cur, hinalaTierFor(cur, idx))) : cur;
   play = new Play(L, input, { char: save.char, upgrades: save.upgrades, lives: 3, alkansyaFound: !!save.alkansya[cur.id] },
     { tips, ghost, outfit: save.outfit, record: campaign, log: playtest ? ptEvent : null,
       earned: campaign ? save.missions[cur.id] | 0 : 0, noCard: campaign, // campaign: the card came before the level
@@ -106,6 +107,14 @@ function launch() {
 }
 
 function start(i) { idx = i; run = null; cur = levels[i]; launch(); }
+
+// IBALIK (game/ibalik.js): how much goes back, and from where, comes from the ledger of earlier first clears.
+const ibalikPlan = () => {
+  const at = levels.findIndex((l) => l.giveBack);
+  return returnPlan(save.ledger, levels.slice(0, Math.max(0, at)).map((l) => l.id), save.bank);
+};
+const prepare = (L) => (L.giveBack ? applyReturn(L, ibalikPlan()) : L);
+const storyFlags = () => ({ brokeAlkansya: ibalikPlan().fromAlkansya > 0 });
 
 // HINALA (game/hinala.js): the household's suspicion, never below the chapter's floor. A replay uses the tier the
 // level was first cleared at; a first visit uses the house as it is now.
@@ -179,7 +188,8 @@ function drawMsg(y = 318) {
 let story = null; // { panels, i, then, flash }
 function startStory(panels, then, at = idx) {
   const tier = tierOf(hinalaNow(at)), low = tierOf(save.hinalaPlay | 0) <= 1;
-  panels = panels.filter((p) => p.minTier === undefined || tier >= p.minTier).map((p) => (p.low && low ? { ...p, lines: p.low } : p));
+  const flags = storyFlags();
+  panels = panels.filter((p) => (p.minTier === undefined || tier >= p.minTier) && (!p.when || flags[p.when])).map((p) => (p.low && low ? { ...p, lines: p.low } : p));
   story = { panels, i: 0, then, flash: 0 }; setMode('story'); enterPanel();
 }
 // A "caught" panel opens exactly like the game's own caught screen: the sting, a buzz and a red flash.
@@ -925,6 +935,7 @@ function afterPlay() {
       save.hinalaPlay = Math.max(0, Math.min(100, (save.hinalaPlay | 0) + d.total)); // Jun's own share, no floors
       save.ledger[id] = { by: r.takenBy || {}, sobra: r.sobra | 0, emptied: r.emptied | 0, catches: r.catches | 0, spills: r.spills | 0, coins: r.coins | 0 };
       hinalaShown = { d, from: tierOf(before), to: tierOf(save.hinala) };
+      if (cur.giveBack && play.level.returnPlan) save.bank = Math.max(0, save.bank - play.level.returnPlan.fromBank); // IBALIK: the coins put back come out of the bank
     }
   }
   save.bank += earned;

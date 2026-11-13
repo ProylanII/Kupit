@@ -33,7 +33,7 @@ export function rules(L) {
   const near = (t) => Math.min(99, ...L.adults.filter((a) => !['bisita', 'trike'].includes(a.type)).flatMap((a) => (a.route || [a.at]).map((p) => Math.hypot(p[0] - t.at[0], p[1] - t.at[1]))));
   const richest = coinT.slice().sort((a, b) => b.coins - a.coins)[0];
   const riskiest = coinT.slice().sort((a, b) => near(a) - near(b))[0];
-  out.R1 = { ratio: +ratio.toFixed(2), ok: !L.quota || (ratio >= RATIO[0] && ratio <= RATIO[1] && (!richest || richest.coins === riskiest.coins)), note: richest && richest !== riskiest && richest.coins !== riskiest.coins ? `richest ${richest.at} is not the riskiest ${riskiest.at}` : '' };
+  out.R1 = { ratio: +ratio.toFixed(2), ok: !L.quota || L.giveBack || L.hingi || (ratio >= RATIO[0] && ratio <= RATIO[1] && (!richest || richest.coins === riskiest.coins)), note: richest && richest !== riskiest && richest.coins !== riskiest.coins ? `richest ${richest.at} is not the riskiest ${riskiest.at}` : '' };
   // R2: the way in = spawn -> richest stash; the way out = richest stash -> exit
   const goal = (richest || L.targets[0]).at;
   const pin = findPath(map, L.spawn[0], L.spawn[1], goal[0], goal[1], pass) || [];

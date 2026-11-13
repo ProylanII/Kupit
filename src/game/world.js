@@ -44,6 +44,7 @@ function laundryRuns(map) {
 //   come out of hiding > kupit > hide > door > switch > device. Within a kind, the nearest one wins.
 export const ACT_PRIORITY = ['unhide', 'steal', 'hide', 'door', 'switch', 'device'];
 
+const JINGLE_R = 36; // IBALIK: what jingling pockets add to the sound of running
 const FAMILY = new Set(['mama', 'tatay', 'lola', 'tita']);
 const CHAT = [ // by HINALA tier: [first line, the reply]
   [['KUMAIN KA NA?', 'MAMAYA NA.'], ['ANG INIT NGAYON!', 'OO NGA...'], ['NAKITA MO ANG REMOTE?', 'WALA DITO.']],
@@ -630,6 +631,11 @@ export class World {
     p.blend = !p.hidden && !p.running && !(p.dashT > 0) && this.adults.some((a) => a.cfg.cover && !a.cfg.vehicle && dist(a, p) < BLEND_R);
     this.cover = this.masked(p.x, p.y);
     if (p.running) { this.stats.runT += dt; if (!this.cover) this.stats.loudRunT += dt; }
+    // IBALIK: pockets full of coins still to put back jingle when you run
+    if (n && this.level.giveBack && this.level.quota - this.coins > 0) {
+      n.r += JINGLE_R;
+      if ((this.jingleT = (this.jingleT ?? 0) - dt) <= 0) { this.jingleT = 0.4; this.emit({ type: 'jingle' }); }
+    }
     if (n) {
       n.cont = true; // running: a sound every frame, so its effect is per second
       this.noises.push(n);
@@ -669,6 +675,11 @@ export class World {
           t.done = true; t.progress = 1;
           if (pf.end) { this.noise({ x: t.x, y: t.y, r: pf.end.r }); if (pf.end.say) this.talk(pf.end.say, 0.8); }
           if (t.carry) p.carry = t;
+          if (t.kind === 'ibalik') { // put back: was its owner right there? (mission underNose)
+            const o = this.adults.find((a) => a.type === t.owner);
+            t.ownerNear = !!o && dist(o, t) < 6 * TILE;
+            if (o && t.ownerNear && o.awake && !o.say) o.talk('SALAMAT...', 1.6); // she mumbles, half asleep (the near-miss)
+          }
           if (t.say) (this.adults[t.from] || this).talk(t.say, 2.6);
           if (t.label) { this.talk(`"${t.label}"... PARA SA AKIN 'TO?`, 3); this.emit({ type: 'label', text: t.label }); }
           if (t.bonus) { this.bonus += t.coins; this.emit({ type: 'alkansya', x: t.x, y: t.y, n: t.coins }); }

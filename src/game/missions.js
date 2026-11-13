@@ -20,6 +20,7 @@ export const MISSIONS = {
   noBark:   { label: () => 'THE DOG NEVER BARKS', strict: true, ok: (w) => w.stats.barks === 0 },
   noDevice: { label: () => 'LEAVE THE TV AND RADIO OFF', strict: true, ok: (w) => w.stats.devices === 0 },
   noSpill:  { label: () => 'NEVER SPILL THE MILK', strict: true, ok: (w) => w.stats.spills === 0 },
+  underNose: { label: () => 'PUT IT BACK UNDER THEIR NOSE', ok: (w) => w.targets.filter((t) => t.kind === 'ibalik').every((t) => t.done && t.ownerNear) }, // IBALIK: each stash refilled with its owner close by
   noPuddle: { label: () => 'NOBODY FINDS A PUDDLE', strict: true, ok: (w) => !(w.stats.puddles | 0) },
   thunder:  { label: () => 'ONLY RUN UNDER THUNDER', strict: true, ok: (w) => w.stats.loudRunT < 0.4 },
   // SWELDO: every coin from Tatay's payday wallet taken while he is in the shower

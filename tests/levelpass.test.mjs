@@ -125,7 +125,7 @@ test('L9 GABI: Jomar walks the long hall; 30 s before dinner Mama calls HUGAS KA
 });
 
 test('level pass: the rules hold for every level the pass has reached', () => {
-  for (const id of ['01-sala', '02-kusina', '03-buong-bahay', '04-bakuran', 'kwarto', 'gatas', '05-gabi', 'sampayan']) {
+  for (const id of ['01-sala', '02-kusina', '03-buong-bahay', '04-bakuran', 'kwarto', 'gatas', '05-gabi', 'sampayan', 'ibalik']) {
     const r = rules(load(id));
     for (const k of ['R1', 'R2', 'R6', 'R7']) assert.ok(r[k].ok, `${id} ${k} ${JSON.stringify(r[k])}`);
   }
@@ -138,4 +138,34 @@ test('L10 KASABWAT: HINALA 2 brings the washing in sooner (a level setting), 3 l
   assert.equal(applyHinala(L, 2).laundryDown.floor, ';', 'the rest of the setting is kept');
   assert.equal(L.laundryDown.every, 25, 'the level file is untouched');
   assert.equal(new World(applyHinala(L, 3)).adults[3].cfg.cycle, null);
+});
+
+test('L11 IBALIK: put back J = sobra clamped 5..12, from the bank first, split by the ledger, one coin each at least', async () => {
+  const { returnPlan, applyReturn } = await import('../src/game/ibalik.js');
+  const ledger = { a: { sobra: 4, by: { mama: 6, tatay: 2 } }, b: { sobra: 5, by: { lola: 3, bahay: 1 } }, later: { sobra: 50, by: { tita: 9 } } };
+  const p = returnPlan(ledger, ['a', 'b'], 6);
+  assert.equal(p.J, 9, 'only the levels before IBALIK count');
+  assert.deepEqual([p.fromBank, p.fromAlkansya], [6, 3], 'the bank never goes negative: Jun breaks his alkansya for the rest');
+  assert.equal(p.split.mama + p.split.lola + p.split.tita, 9);
+  assert.ok(p.split.mama > p.split.lola && p.split.tita >= 1, JSON.stringify(p.split));
+  assert.equal(returnPlan({}, [], 99).J, 5);
+  assert.equal(returnPlan({ a: { sobra: 40 } }, ['a'], 99).J, 12);
+  const L = applyReturn(load('ibalik'), p);
+  assert.equal(L.quota, 9);
+  assert.equal(L.targets.filter((t) => t.kind === 'ibalik').reduce((n, t) => n + t.coins, 0), 9);
+  assert.ok(L.hint.includes('ALKANSYA'));
+});
+
+test('L11 IBALIK: running with coins still to put back jingles (louder running); underNose needs the owner close by', () => {
+  const L = load('ibalik');
+  const w = new World(L), p = w.player;
+  w.player.hidden = null;
+  const run = { mv: { x: 1, y: 0, mag: 1, run: true }, action: false, actionPressed: false, throwPressed: false };
+  w.update(1 / 60, run);
+  const loud = Math.max(...w.noises.map((n) => n.r), 0);
+  assert.ok(loud >= p.runNoise + 36, `running noise ${loud}`);
+  for (const t of w.targets) { t.done = true; t.ownerNear = true; }
+  assert.equal(MISSIONS.underNose.ok(w), true);
+  w.targets[0].ownerNear = false;
+  assert.equal(MISSIONS.underNose.ok(w), false);
 });

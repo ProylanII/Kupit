@@ -311,6 +311,7 @@ export class Play {
       case 'clear': if (!this.opts.quietClear) sfx.clear(); this.buzz([30, 30, 30], C.green); break;
       case 'door': case 'switch': sfx.click(); break;
       case 'tune': if (this.onScreen(e.who.x, e.who.y, 60)) sfx.tune(); break;
+      case 'jingle': sfx.jingle(); break;
       case 'ringtone': if (this.onScreen(e.x, e.y, 40)) sfx.ringtone(); break;
       case 'honk': if (this.onScreen(e.who.x, e.who.y, 40)) sfx.horn(); break;
       case 'callout': this.kick(1); break;

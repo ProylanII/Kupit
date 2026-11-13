@@ -58,6 +58,7 @@ export const BEFORE = {
     { who: 'mama', mood: 'sad', minTier: 2, lines: ['Jomar? Was it you?', '...He swears it was not him.'] },
     { who: 'jun', mood: 'sad', lines: ['Mama skipped her merienda today.', 'Because of me.'] },
     { who: 'jun', lines: ['I took too much. Tonight I put', 'it back. Every coin.'] },
+    { who: 'jun', mood: 'sad', when: 'brokeAlkansya', lines: ['My savings are not enough.', 'I will break my own alkansya.'] },
   ],
   'boss3-tatay': [
     { who: 'tatay', mood: 'angry', lines: ['Who keeps taking my fried fish?', 'And the coins from my wallet?'] },
