@@ -28,38 +28,42 @@ const room = (extra = {}) => ({
   ...extra,
 });
 
-test('default mods are Jun with no upgrades', () => {
+test('default mods are Jun with no gear', () => {
   const m = computeMods();
   assert.equal(m.charId, 'jun');
   assert.equal(m.runNoise, 48);
   assert.equal(m.itemCap, 3);
-  assert.equal(m.startItems, 0);
+  assert.deepEqual(m.startItems, []);
   assert.equal(m.stealTime, 1);
+  assert.equal(m.medyas, false); assert.equal(m.panyo, 0);
   assert.equal(computeMods('nope').charId, 'jun');
 });
 
-test('upgrades stack with characters', () => {
-  const m = computeMods('ramil', { quiet: 2, hands: 3, pockets: 2, shadow: 1, pasensya: 3, stash: 2 });
-  assert.ok(Math.abs(m.runNoise - 48 * 1.25 * 0.6) < 1e-9);
-  assert.ok(Math.abs(m.stealTime - 0.55) < 1e-9);
-  assert.equal(m.itemCap, 5);
-  assert.equal(m.startItems, 2);
-  assert.equal(m.patienceBonus, 30);
+test('kid traits set the numbers; gear adds tricks, never percentages (old upgrade ids do nothing)', () => {
+  const m = computeMods('ramil', { bulsa: 1, baon: 1, holen: 1, medyas: 1, panyo: 1 });
+  assert.ok(Math.abs(m.runNoise - 48 * 1.25) < 1e-9);
+  assert.equal(m.stealTime, 1);
+  assert.equal(m.itemCap, 4);
+  assert.deepEqual(m.startItems, ['tsinelas', 'pandesal', 'holen', 'holen']);
+  assert.ok(m.medyas && m.panyo === 1);
+  assert.equal(m.patienceBonus, 0);
   assert.equal(m.throwRange, 1.6);
+  assert.deepEqual(computeMods('jun', { quiet: 3, hands: 3, shadow: 3, pockets: 3, stash: 3, pasensya: 3 }), computeMods('jun'));
   assert.ok(computeMods('bing').alertRate < 1 && computeMods('bing').speed < 1);
   assert.ok(computeMods('nene').stealTime < 1);
 });
 
-test('buying upgrades spends coins, caps at max and refuses when poor', () => {
+test('buying gear: once each, spends coins, refuses when poor', () => {
   const s = fresh();
-  assert.equal(buyUpgrade(s, 'quiet'), false); // 0 coins
+  assert.equal(buyUpgrade(s, 'medyas'), false); // 0 coins
   s.bank = 100;
-  for (const cost of UPGRADES.quiet.costs) { assert.equal(upgradeCost(s, 'quiet'), cost); assert.ok(buyUpgrade(s, 'quiet')); }
-  assert.equal(s.bank, 100 - UPGRADES.quiet.costs.reduce((a, b) => a + b));
-  assert.equal(s.upgrades.quiet, 3);
-  assert.equal(upgradeCost(s, 'quiet'), null);
-  assert.equal(buyUpgrade(s, 'quiet'), false);
-  for (const id of UPGRADE_ORDER) assert.ok(UPGRADES[id].costs.length >= 1);
+  assert.equal(upgradeCost(s, 'medyas'), UPGRADES.medyas.costs[0]);
+  assert.ok(buyUpgrade(s, 'medyas'));
+  assert.equal(s.bank, 100 - UPGRADES.medyas.costs[0]);
+  assert.equal(upgradeCost(s, 'medyas'), null);
+  assert.equal(buyUpgrade(s, 'medyas'), false);
+  assert.deepEqual(UPGRADE_ORDER, ['medyas', 'panyo', 'holen', 'baon', 'bulsa']);
+  for (const id of UPGRADE_ORDER) assert.equal(UPGRADES[id].costs.length, 1, `${id} is bought once`);
 });
 
 test('characters: siblings join through the story, never for coins', () => {
@@ -78,29 +82,10 @@ test('characters: siblings join through the story, never for coins', () => {
   for (const id of CHAR_ORDER) assert.ok(CHARACTERS[id].skill.cd > 0);
 });
 
-test('quick hands shortens the steal; pockets/stash change items', () => {
-  const run = (ups) => {
-    const w = new World(room({ spawn: [8, 1] }), { upgrades: ups });
-    w.update(1 / 60, idle);
-    let n = 0;
-    while (!w.targets[0].done && n < 600) { w.update(1 / 60, { ...idle, action: true }); n++; }
-    return n;
-  };
-  assert.ok(run({ hands: 3 }) < run({}) * 0.65);
-  const w = new World(room(), { upgrades: { stash: 2, pockets: 1 } });
-  assert.deepEqual(w.player.items, ['tsinelas', 'tsinelas']);
+test('BAON and BULSA: start holding a tsinelas and a pandesal, and carry one more', () => {
+  const w = new World(room(), { upgrades: { baon: 1, bulsa: 1 } });
+  assert.deepEqual(w.player.items, ['tsinelas', 'pandesal']);
   assert.equal(w.mods.itemCap, 4);
-});
-
-test('pasensya extends the dinner timer', () => {
-  const lvl = room({ patience: 1, adults: [{ type: 'mama', at: [1, 1], face: -1.57 }] });
-  const w = new World(lvl, { upgrades: { pasensya: 1 } });
-  assert.equal(w.patience, 11);
-  step(w, 60 * 2);
-  assert.equal(w.status, 'play');
-  const w0 = new World(lvl);
-  step(w0, 60 * 2);
-  assert.equal(w0.status, 'caught');
 });
 
 test('Jun dash goes the way you face, is silent, then cools down', () => {

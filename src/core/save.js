@@ -1,11 +1,12 @@
 // The save lives in localStorage (there is no server). It carries a schema version; older saves are migrated
 // forward on load, unknown or broken fields fall back to defaults, and every access is wrapped in try/catch
 // (private mode, full storage, blocked site data). Save codes let players move a save to another device.
+import { oldUpgradeSpend } from '../game/progression.js';
 import { hashStr } from './rng.js';
 import { maskFromStars, starsOf } from '../game/missions.js';
 
 const KEY = 'kupit.save.v1'; // the storage key never changes; the schema version is inside the save
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 export const DEFAULT_OPTS = { music: 0.75, sfx: 1, shake: 1, flash: true, pulse: true, left: false, ghost: true };
 
@@ -47,6 +48,13 @@ const MIGRATIONS = {
     for (const k of ['stars', 'best', 'alkansya']) if (s[k] && typeof s[k] === 'object') delete s[k]['boss5-sarisari'];
     if (s.story && typeof s.story === 'object') s.story.ending = false;
     s.v = 3;
+    return s;
+  },
+  3: (s) => { // v4 (design overhaul): the six percentage upgrades became five gear items. Every coin spent on the
+    // old ones comes back to the bank, to spend on the new gear. (The Chapter 4 order change comes in a later version.)
+    s.bank = Math.max(0, Math.floor(Number(s.bank) || 0)) + oldUpgradeSpend(s.upgrades && typeof s.upgrades === 'object' ? s.upgrades : {});
+    s.upgrades = {};
+    s.v = 4;
     return s;
   },
 };

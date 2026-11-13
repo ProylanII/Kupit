@@ -84,10 +84,14 @@ Collect the coin quota, then reach the exit.
 - **The crew**: Jun leads; Bing, Kuya Ramil and Nene join in story scenes (never bought). Each has a skill
   (cooldown). Jun: silent dash. Bing: hide anywhere 3s (smaller, slower). Kuya Ramil: yell to lure ahead (throws
   far, loud run). Nene: freeze watchers 3s (kupit faster).
-- **Aling Nena's store**: coins buy what the cats need (milk, sardines, a blanket, a bigger box, the vet). Each
-  one changes the hideout and the kittens grow. Once Aling Nena learns who the sardines are for she gives a
-  discount. Sneaking gear (upgrades with visible stats and floors) and looks-only outfits and decor are one tap
-  further in. Star milestones at 10/20/30/48 unlock more.
+- **Aling Nena's store**: coins buy what the cats need (milk, sardines, a blanket, a bigger box, medicine). Each
+  one opens when the story gets there and changes the hideout as the kittens grow. Once Aling Nena learns who the
+  sardines are for she gives a discount. **Sneaking gear** is one tap further in: five things bought once, each a
+  new trick rather than a bigger number. MEDYAS (socks: creaky boards stay quiet), PANYO (a handkerchief muffles one
+  clasp or zipper a level), HOLEN (two marbles a level that roll on and lure, and dogs ignore), BAON (start with a
+  tsinelas and a pandesal), BULSA (carry one more). Saves from before the change get back every coin they spent on
+  the old upgrades. Looks-only outfits and decor are there too; star milestones at 10/20/30/48 unlock more.
+  `node tools/economy.mjs` checks the prices against a careful and a greedy player.
 - **New rules in the story levels**: GATAS: a full bowl of milk must be carried out, and running spills it.
   IBALIK: Jun took too much, so you sneak the coins *back*. BAGYO: lightning, then thunder, and while it rolls
   nobody can hear you.

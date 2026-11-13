@@ -86,6 +86,9 @@ const TIPS = {
   seenHide: 'THEY SAW YOU HIDE! THE EYE MEANS: NOT SAFE HERE',
   sapat: 'COINS PAST THE QUOTA ARE SOBRA. SOMEONE MAY NOTICE',
   emptied: 'AN EMPTY STASH IS EASY TO NOTICE. LEAVE A LITTLE?',
+  holen: 'HOLEN! IT ROLLS ON, TICKING. DOGS IGNORE IT',
+  panyo: 'PANYO: THE HANDKERCHIEF MUFFLED IT. ONCE A LEVEL',
+  medyas: 'MEDYAS: IN SOCKS THE CREAKY BOARD STAYS QUIET',
 };
 
 export class Play {
@@ -285,6 +288,9 @@ export class Play {
       case 'sapat': // the quota is met: that's enough
         sfx.sapat(); this.toast = { text: 'SAPAT NA! THAT IS ENOUGH', col: C.green, t: 2.2 }; this.showTip('sapat'); break;
       case 'emptied': sfx.klak(); this.showTip('emptied'); break;
+      case 'roll': sfx.tick(); this.showTip('holen'); break;
+      case 'panyo': sfx.hide(); this.showTip('panyo'); break;
+      case 'medyas': this.showTip('medyas'); break;
       case 'clear': if (!this.opts.quietClear) sfx.clear(); this.buzz([30, 30, 30], C.green); break;
       case 'door': case 'switch': sfx.click(); break;
       case 'creak': case 'locked': sfx.creak(); break;
@@ -551,6 +557,7 @@ export class Play {
       }
     }
     for (const pr of w.projectiles) drawObj(g, pr.kind, pr.x, pr.y);
+    for (const r of w.rollers) drawObj(g, 'holen', r.x, r.y); // HOLEN: still rolling
     for (const h of w.hostiles) drawObj(g, h.kind, h.x, h.y);
 
     for (const r of this.rings) {

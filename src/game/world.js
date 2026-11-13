@@ -16,6 +16,7 @@ const SMELL = 140;                // dogs smell food from this far
 const PROGRESS_DECAY = 0.12;      // an interrupted kupit keeps most of its progress for a while
 export const EMPTY_NOISE = 44;    // taking a stash's last coin: the hollow "klak" of an empty purse
 export const clinkR = (k) => 20 + 8 * k; // the k-th extra coin in one visit (k >= 1): louder each time
+export const MARBLE_ROLL = 200, MARBLE_TICK = 16, MARBLE_R = 46; // HOLEN: how far it rolls, how often it ticks, how loud
 export const SCOLD_TIME = 1.8;    // the "caught!" beat before you respawn
 export const GRACE_TIME = 2;      // after respawning, nobody can see you for this long
 export const CATCH_PENALTY = 1 / 3; // share of your coins Mama takes back each time you're caught
@@ -41,7 +42,9 @@ export class World {
     this.rng = mulberry32(level.seed ?? hashStr(level.id || 'level')); // gameplay randomness, separate from generation
     this.noThrow = !!level.noThrow;
     this.player = new Player(level.spawn[0], level.spawn[1], this.mods);
-    this.player.items = this.noThrow ? [] : Array(this.mods.startItems).fill('tsinelas');
+    this.player.items = this.noThrow ? [] : this.mods.startItems.slice(); // gear: BAON, HOLEN
+    this.panyo = this.mods.panyo; // PANYO: stash openings it can still muffle this level
+    this.rollers = [];            // HOLEN: marbles rolling across the floor
     this.abilityCd = 0;
     this.god = false; // dev mode: nobody can catch you
     this.lives = Math.max(1, loadout.lives ?? 1);
@@ -357,6 +360,10 @@ export class World {
   }
 
   land(pr) {
+    if (pr.kind === 'holen') { // it keeps rolling the way it was thrown
+      this.rollers.push({ x: pr.x, y: pr.y, vx: pr.vx * 0.6, vy: pr.vy * 0.6, d: 0, next: 0 });
+      return;
+    }
     if (pr.kind === 'pandesal') {
       const food = { x: pr.x, y: pr.y };
       this.foods.push(food);
@@ -476,7 +483,7 @@ export class World {
         const pf = t.profile;
         if (!t.started) {
           t.started = true; t.tickT = pf.tick ? pf.tick.every * 0.5 : 0;
-          if (pf.start) { this.noise({ x: t.x, y: t.y, r: pf.start.r }); if (pf.start.say) this.talk(pf.start.say, 0.8); this.emit({ type: 'stealNoise', kind: t.kind }); }
+          if (pf.start && !this.muffle(t)) { this.noise({ x: t.x, y: t.y, r: pf.start.r }); if (pf.start.say) this.talk(pf.start.say, 0.8); this.emit({ type: 'stealNoise', kind: t.kind }); }
         }
         if (pf.tick && (t.tickT -= dt) <= 0) { this.noise({ x: t.x, y: t.y, r: pf.tick.r }); t.tickT = pf.tick.every; this.emit({ type: 'stealNoise', kind: t.kind }); }
         if (t.perCoin) { this.stealCoin(t, dt); continue; }
@@ -517,7 +524,12 @@ export class World {
       this.lastTile = tk;
       const tr = this.traps.find((t) => t.tx === p.tx && t.ty === p.ty);
       if (tr) this.stats.traps++;
-      if (tr?.kind === 'creak') { this.noise({ x: p.x, y: p.y, r: 64, lure: true }); this.talk('KREEK...'); this.emit({ type: 'creak' }); }
+      if (tr?.kind === 'creak') {
+        // MEDYAS: in socks a creaky board stays quiet (by a sleeping boss it only halves it: that room is her puzzle)
+        const r = this.mods.medyas ? (this.adults.some((a) => a.cfg.depth) ? 32 : 0) : 64;
+        if (r) { this.noise({ x: p.x, y: p.y, r, lure: true }); this.talk('KREEK...'); this.emit({ type: 'creak' }); }
+        else this.emit({ type: 'medyas' });
+      }
       if (tr?.kind === 'lego') { this.noise({ x: p.x, y: p.y, r: 80, lure: true }); p.stunT = 0.8; this.talk('ARAY!'); this.emit({ type: 'ouch' }); }
       if (map.ch(p.tx, p.ty) === 'd' && this.calm) this.addCheckpoint(p.tx * TILE + 8, p.ty * TILE + 8);
     }
@@ -541,6 +553,15 @@ export class World {
       if (map.isSolidAt(nx, ny) || pr.d >= this.throwMax) { pr.done = true; this.land(pr); } else { pr.x = nx; pr.y = ny; }
     }
     compact(this.projectiles);
+    // HOLEN: a marble keeps rolling, ticking little lures along its line until it hits something (then it is gone)
+    for (const r of this.rollers) {
+      const nx = r.x + r.vx * dt, ny = r.y + r.vy * dt, step = Math.hypot(r.vx, r.vy) * dt;
+      r.d += step; r.next -= step;
+      if (map.isSolidAt(nx, ny) || r.d > MARBLE_ROLL) { r.done = true; continue; }
+      r.x = nx; r.y = ny;
+      if (r.next <= 0) { r.next = MARBLE_TICK; this.noise({ x: r.x, y: r.y, r: MARBLE_R, lure: true, marble: true }); this.emit({ type: 'roll', x: r.x, y: r.y }); }
+    }
+    compact(this.rollers);
 
     // --- devices + timed switches
     for (const d of this.devices) {
@@ -677,7 +698,7 @@ export class World {
     const last = this.stolen[this.stolen.length - 1];
     if (last && last.t === t) last.n++; else this.stolen.push({ t, n: 1 });
     if (k === 0) { // it opens: the purse clasp clicks, and Jun reads anything written on it
-      if (pf.end) { this.noise({ x: t.x, y: t.y, r: pf.end.r }); if (pf.end.say) this.talk(pf.end.say, 0.8); }
+      if (pf.end && !this.muffle(t)) { this.noise({ x: t.x, y: t.y, r: pf.end.r }); if (pf.end.say) this.talk(pf.end.say, 0.8); }
       if (t.label) { this.talk(`"${t.label}"... PARA SA AKIN 'TO?`, 3); this.emit({ type: 'label', text: t.label }); }
     }
     if (t.coins === 0) { // emptied: a hollow klak, and someone is going to notice
@@ -691,6 +712,15 @@ export class World {
       this.sapat = true; // "that's enough": everything past the quota is sobra
       this.emit({ type: 'sapat' });
     }
+  }
+
+  // PANYO: the handkerchief wrapped round a clasp or zipper, once a level (the first coin stash you open)
+  muffle(t) {
+    if (!t.perCoin || this.panyo <= 0) return false;
+    this.panyo--;
+    this.talk('SHH... (PANYO)', 1);
+    this.emit({ type: 'panyo' });
+    return true;
   }
 
   // What was taken, for the clear screen, the ledger (IBALIK, the case file) and HINALA.

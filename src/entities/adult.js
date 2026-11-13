@@ -230,6 +230,7 @@ export class Adult {
   hear(n, d = Math.hypot(n.x - this.x, n.y - this.y), delay = 0) {
     const c = this.cfg;
     if (c.harmless || this.state === 'chase' || this.state === 'eat') return;
+    if (n.marble && c.dog) return; // a rolling holen means nothing to a dog
     if (this.busy && this.busy.deaf && !n.tattle) return; // on the phone, or belting out a song
     const goal = n.goal || n;
     if (!this.awake) {

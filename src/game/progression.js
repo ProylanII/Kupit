@@ -30,20 +30,30 @@ export const CHARACTERS = {
 // ---- what the coins are for: Mingming and her kittens ---------------------------------
 // Each need is bought once at Aling Nena's store. The hideout under the house changes with every one, and the
 // kittens grow (catStage). Once Aling Nena learns who the sardines are for (story flag 'nena'), she gives a discount.
+// Each need opens at Aling Nena's when the story reaches it (open), so the hideout and the story move together. Needs
+// gate nothing in play. (The vet visit becomes free at the barangay vaccination drive in the Chapter 4 rework; until
+// then the fifth need is the medicine, GAMOT. Its id stays 'vet' so saves keep it.)
 export const NEED_ORDER = ['gatas', 'sardinas', 'kumot', 'kahon', 'vet'];
 export const NEEDS = {
-  gatas:    { name: 'GATAS',        desc: 'A BOWL OF MILK FOR MINGMING',     cost: 6,  got: 'MINGMING DRINKS AND DRINKS.' },
-  sardinas: { name: 'SARDINAS',     desc: 'REAL FOOD. SHE IS SO THIN',       cost: 10, got: 'THE KITTENS OPEN THEIR EYES!' },
-  kumot:    { name: 'KUMOT',        desc: 'A WARM BLANKET FOR COLD NIGHTS',  cost: 12, got: 'THREE KITTENS IN A WARM PILE.' },
-  kahon:    { name: 'BAGONG KAHON', desc: 'A BIGGER BOX. THEY ARE GROWING',  cost: 16, got: 'ROOM TO TUMBLE AND PLAY!' },
-  vet:      { name: 'BAKUNA',       desc: 'A VISIT TO THE VET FOR ALL FOUR', cost: 26, got: 'HEALTHY, LOUD AND HUNGRY.' },
+  gatas:    { name: 'GATAS',        desc: 'A BOWL OF MILK FOR MINGMING',     cost: 6,  got: 'MINGMING DRINKS AND DRINKS.',
+              open: (s) => !!s.story?.intro, when: 'AFTER THE FIRST NIGHT' },
+  sardinas: { name: 'SARDINAS',     desc: 'REAL FOOD. SHE IS SO THIN',       cost: 10, got: 'THE KITTENS OPEN THEIR EYES!',
+              open: (s) => !!s.story?.seen?.['boss1-lola'], when: "WHEN LOLA'S MILK RUNS OUT" },
+  kumot:    { name: 'KUMOT',        desc: 'A WARM BLANKET FOR COLD NIGHTS',  cost: 12, got: 'THREE KITTENS IN A WARM PILE.',
+              open: (s) => !!s.story?.seen?.['05-gabi'], when: 'WHEN THE NIGHTS GET COLD' },
+  kahon:    { name: 'BAGONG KAHON', desc: 'A BIGGER BOX. THEY ARE GROWING',  cost: 16, got: 'ROOM TO TUMBLE AND PLAY!',
+              open: (s) => !!s.story?.after?.ibalik, when: 'WHEN THEY OUTGROW THE BOX' },
+  vet:      { name: 'GAMOT',        desc: 'MEDICINE AND VITAMINS FOR ALL FOUR', cost: 14, got: 'HEALTHY, LOUD AND HUNGRY.',
+              open: (s) => !!s.story?.nena, when: "WHEN ALING NENA KNOWS" },
 };
 export const NENA_DISCOUNT = 0.75;
 export const hasNeed = (save, id) => !!(save.needs && save.needs[id]);
+export const needOpen = (save, id) => !!NEEDS[id] && (hasNeed(save, id) || NEEDS[id].open(save));
 export const needCost = (save, id) => Math.ceil(NEEDS[id].cost * (save.story?.nena ? NENA_DISCOUNT : 1));
 export const catStage = (save) => NEED_ORDER.filter((id) => hasNeed(save, id)).length; // 0 newborn ... 5 thriving
 export function buyNeed(save, id) {
   if (!NEEDS[id] || hasNeed(save, id)) return 'owned';
+  if (!needOpen(save, id)) return 'later';
   const cost = needCost(save, id);
   if (save.bank < cost) return 'poor';
   save.bank -= cost;
@@ -64,17 +74,19 @@ export function grantSiblings(save, levelIds = []) {
   return got;
 }
 
-export const UPGRADE_ORDER = ['quiet', 'hands', 'pockets', 'shadow', 'pasensya', 'stash'];
-
-// costs[i] = price of level i+1
+// ---- sneaking gear: things that each give Jun a new trick (design overhaul 5.4), bought once --------------------
+// They replaced six three-level percentage upgrades (OLD_UPGRADES: their coins are refunded by the v4 migration).
+export const UPGRADE_ORDER = ['medyas', 'panyo', 'holen', 'baon', 'bulsa'];
 export const UPGRADES = {
-  quiet:    { name: 'QUIET TSINELAS', desc: 'RUNNING MAKES LESS NOISE', costs: [6, 12, 20] },
-  hands:    { name: 'QUICK HANDS',    desc: 'KUPIT FASTER',             costs: [6, 12, 20] },
-  pockets:  { name: 'POCKETS',        desc: 'CARRY MORE ITEMS',         costs: [5, 10, 18] },
-  shadow:   { name: 'LONG SHADOW',    desc: 'ADULTS NOTICE YOU SLOWER', costs: [8, 14, 24] },
-  pasensya: { name: 'PASENSYA',       desc: '+10S BEFORE KAIN NA!',     costs: [5, 10, 16] },
-  stash:    { name: 'STARTER STASH',  desc: 'START WITH TSINELAS',      costs: [6, 12, 20] },
+  medyas: { name: 'MEDYAS', desc: 'SOCKS: CREAKY BOARDS MAKE NO SOUND',      costs: [50] },
+  panyo:  { name: 'PANYO',  desc: 'ONCE A LEVEL: MUFFLES A CLASP OR ZIPPER', costs: [40] },
+  holen:  { name: 'HOLEN',  desc: '2 MARBLES A LEVEL: THEY ROLL AND LURE',   costs: [55] },
+  baon:   { name: 'BAON',   desc: 'START WITH A TSINELAS AND A PANDESAL',    costs: [45] },
+  bulsa:  { name: 'BULSA',  desc: 'A BIGGER POCKET: CARRY ONE MORE THING',   costs: [35] },
 };
+export const OLD_UPGRADES = { quiet: [6, 12, 20], hands: [6, 12, 20], pockets: [5, 10, 18], shadow: [8, 14, 24], pasensya: [5, 10, 16], stash: [6, 12, 20] };
+// Coins spent on the old upgrades (for the refund).
+export const oldUpgradeSpend = (ups = {}) => Object.entries(OLD_UPGRADES).reduce((s, [id, c]) => s + c.slice(0, Math.max(0, Math.min(c.length, ups[id] | 0))).reduce((a, b) => a + b, 0), 0);
 
 export const BASE_RUN_NOISE = 48;
 export const BASE_ITEM_CAP = 3;
@@ -91,12 +103,16 @@ export function computeMods(charId = 'jun', ups = {}) {
     skill: c.skill,
     speed: c.speed ?? 1,
     radius: c.radius ?? 4,
-    runNoise: Math.max(FLOORS.runNoise, BASE_RUN_NOISE * (c.runNoise ?? 1) * (1 - 0.2 * lvl(ups, 'quiet'))),
-    stealTime: Math.max(FLOORS.stealTime, (c.stealTime ?? 1) * (1 - 0.15 * lvl(ups, 'hands'))),
-    alertRate: Math.max(FLOORS.alertRate, (c.alertRate ?? 1) * (1 - 0.1 * lvl(ups, 'shadow'))),
-    itemCap: BASE_ITEM_CAP + lvl(ups, 'pockets'),
-    startItems: lvl(ups, 'stash'),
-    patienceBonus: 10 * lvl(ups, 'pasensya'),
+    // kid traits only (gear no longer scales numbers; the floors still hold for every kid)
+    runNoise: Math.max(FLOORS.runNoise, BASE_RUN_NOISE * (c.runNoise ?? 1)),
+    stealTime: Math.max(FLOORS.stealTime, c.stealTime ?? 1),
+    alertRate: Math.max(FLOORS.alertRate, c.alertRate ?? 1),
+    itemCap: BASE_ITEM_CAP + lvl(ups, 'bulsa'),
+    // what you start a level holding: BAON (a tsinelas and a pandesal), HOLEN (two marbles)
+    startItems: [...(lvl(ups, 'baon') ? ['tsinelas', 'pandesal'] : []), ...(lvl(ups, 'holen') ? ['holen', 'holen'] : [])],
+    patienceBonus: 0,
+    medyas: !!lvl(ups, 'medyas'), // creaky boards stay quiet
+    panyo: lvl(ups, 'panyo') ? 1 : 0, // stash openings it can muffle per level
     throwRange: c.throwRange ?? 1,
   };
 }
@@ -115,24 +131,6 @@ export function buyUpgrade(save, id) {
   save.bank -= cost;
   save.upgrades = { ...save.upgrades, [id]: lvl(save.upgrades, id) + 1 };
   return true;
-}
-
-// What an upgrade does for the kid you're playing, now and after the next level (store stat bars).
-// frac: 0..1 how far along the stat is from "no upgrade" to its best (floors included).
-const STAT = {
-  quiet:    { key: 'runNoise', label: 'NOISE', lowGood: true, fmt: (v) => Math.round(v) },
-  hands:    { key: 'stealTime', label: 'KUPIT TIME', lowGood: true, fmt: (v) => `${Math.round(v * 100)}%` },
-  pockets:  { key: 'itemCap', label: 'POCKETS', fmt: (v) => v },
-  shadow:   { key: 'alertRate', label: 'NOTICED', lowGood: true, fmt: (v) => `${Math.round(v * 100)}%` },
-  pasensya: { key: 'patienceBonus', label: 'DINNER', fmt: (v) => `+${v}S` },
-  stash:    { key: 'startItems', label: 'START WITH', fmt: (v) => v },
-};
-export function upgradeStat(save, id) {
-  const s = STAT[id], max = UPGRADES[id].costs.length, have = lvl(save.upgrades, id);
-  const at = (n) => computeMods(save.char, { ...save.upgrades, [id]: n })[s.key];
-  const v0 = at(0), vMax = at(max), now = at(have);
-  const frac = v0 === vMax ? 1 : (now - v0) / (vMax - v0);
-  return { label: s.label, now: s.fmt(now), next: have < max ? s.fmt(at(have + 1)) : null, frac: Math.max(0, Math.min(1, frac)) };
 }
 
 export const owns = (save, id) => save.chars.includes(id);

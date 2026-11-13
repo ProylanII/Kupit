@@ -6,9 +6,9 @@ import { C } from '../render/palette.js';
 import { VIEW_W } from '../core/input.js';
 import { sfx } from '../core/audio.js';
 import {
-  NEEDS, NEED_ORDER, hasNeed, needCost, buyNeed,
+  NEEDS, NEED_ORDER, hasNeed, needCost, buyNeed, needOpen,
   UPGRADES, UPGRADE_ORDER, CHARACTERS, CHAR_ORDER, OUTFITS, OUTFIT_ORDER, DECOR, DECOR_ORDER,
-  upgradeCost, buyUpgrade, pickChar, owns, upgradeStat, buyCosmetic, totalStars,
+  upgradeCost, buyUpgrade, pickChar, owns, buyCosmetic, totalStars,
 } from '../game/progression.js';
 import { MUTATORS } from '../game/house.js';
 
@@ -59,9 +59,6 @@ function makeList({ title, items, rowH, drawRow, pick }) {
   return s;
 }
 
-function pips(g, x, y, have, max) {
-  for (let i = 0; i < max; i++) { g.fillStyle = C.ink; g.fillRect(x + i * 11, y, 9, 7); g.fillStyle = i < have ? C.gold : C.dgray; g.fillRect(x + i * 11 + 1, y + 1, 7, 5); }
-}
 
 function price(g, cost, x, y, afford) {
   drawText(g, String(cost), x, y, afford ? C.gold : C.gray, { align: 'right' });
@@ -76,16 +73,22 @@ export const shopScreen = makeList({
   drawRow(g, id, r, { save }) {
     if (id === 'gear' || id === 'more') {
       drawText(g, id === 'gear' ? 'SNEAKING GEAR  >' : 'OUTFITS + DECOR  >', r.x + r.w / 2, r.y + 8, C.white, { align: 'center' });
-      drawText(g, id === 'gear' ? 'QUIET TSINELAS, QUICK HANDS, POCKETS...' : 'LOOKS ONLY: THEY NEVER CHANGE THE GAME', r.x + r.w / 2, r.y + 20, C.gray, { align: 'center' });
+      drawText(g, id === 'gear' ? 'MEDYAS, PANYO, HOLEN, BAON, BULSA' : 'LOOKS ONLY: THEY NEVER CHANGE THE GAME', r.x + r.w / 2, r.y + 20, C.gray, { align: 'center' });
       return;
     }
     const n = NEEDS[id], own = hasNeed(save, id), cost = needCost(save, id);
+    if (!needOpen(save, id)) { // the story has not got there yet
+      drawText(g, n.name, r.x + 6, r.y + 4, C.dgray);
+      drawText(g, n.desc, r.x + 6, r.y + 14, C.dgray);
+      drawText(g, `LATER: ${n.when}`, r.x + 6, r.y + 24, C.dgray);
+      return;
+    }
     drawText(g, n.name, r.x + 6, r.y + 4, own ? C.pink : C.white);
     drawText(g, own ? n.got : n.desc, r.x + 6, r.y + 14, own ? C.green : C.gray);
     if (own) drawText(g, 'GIVEN', r.x + r.w - 5, r.y + 4, C.green, { align: 'right' });
     else {
       price(g, cost, r.x + r.w - 5, r.y + 4, save.bank >= cost);
-      drawText(g, save.story.nena ? `SUKI PRICE (WAS ${n.cost})` : 'FOR MINGMING AND THE KITTENS', r.x + 6, r.y + 24, save.story.nena ? C.yellow : C.dgray);
+      if (save.story.nena) drawText(g, `SUKI PRICE (WAS ${n.cost})`, r.x + 6, r.y + 24, C.yellow);
     }
   },
   pick(id, ctx, s) {
@@ -94,6 +97,7 @@ export const shopScreen = makeList({
     const res = buyNeed(ctx.save, id);
     if (res === 'bought') { ctx.persist(); sfx.buy(); s.say(NEEDS[id].got, C.green); }
     else if (res === 'owned') { sfx.click(); s.say('THEY ALREADY HAVE IT', C.green); }
+    else if (res === 'later') { sfx.click(); s.say('NOT YET: THEY DO NOT NEED IT YET', C.gray); }
     else { sfx.creak(); s.say('NOT ENOUGH COINS', C.orange); }
   },
 });
@@ -108,21 +112,16 @@ export const upgradesScreen = makeList({
       drawText(g, 'LOOKS ONLY: THEY NEVER CHANGE THE GAME', r.x + r.w / 2, r.y + 22, C.gray, { align: 'center' });
       return;
     }
-    const u = UPGRADES[id], have = save.upgrades[id] | 0, cost = upgradeCost(save, id);
-    drawText(g, u.name, r.x + 6, r.y + 4, C.white);
-    drawText(g, u.desc, r.x + 6, r.y + 13, C.gray);
-    pips(g, r.x + r.w - 38, r.y + 3, have, u.costs.length);
-    // stat bar: what it does for the kid you're playing now, and after the next level
-    const st = upgradeStat(save, id);
-    drawText(g, `${st.label} ${st.now}${st.next !== null ? ` > ${st.next}` : ''}`, r.x + 6, r.y + 25, st.next !== null ? C.yellow : C.green);
-    g.fillStyle = C.ink; g.fillRect(r.x + 112, r.y + 25, 52, 5);
-    g.fillStyle = C.teal; g.fillRect(r.x + 113, r.y + 26, Math.round(50 * st.frac), 3);
-    if (cost === null) drawText(g, 'MAX', r.x + r.w - 5, r.y + 24, C.green, { align: 'right' });
-    else price(g, cost, r.x + r.w - 5, r.y + 24, save.bank >= cost);
+    // gear: each one is a new trick, bought once (no levels, no stat bars)
+    const u = UPGRADES[id], have = (save.upgrades[id] | 0) > 0, cost = upgradeCost(save, id);
+    drawText(g, u.name, r.x + 6, r.y + 6, have ? C.green : C.white);
+    drawText(g, u.desc, r.x + 6, r.y + 20, C.gray);
+    if (have) drawText(g, 'OWNED', r.x + r.w - 5, r.y + 6, C.green, { align: 'right' });
+    else price(g, cost, r.x + r.w - 5, r.y + 6, save.bank >= cost);
   },
   pick(id, ctx, s) {
     if (id === 'more') { ctx.go('cosmetics'); return; }
-    if (upgradeCost(ctx.save, id) === null) { s.say('ALREADY MAX!', C.green); sfx.click(); }
+    if (upgradeCost(ctx.save, id) === null) { s.say('YOU HAVE IT ALREADY', C.green); sfx.click(); }
     else if (buyUpgrade(ctx.save, id)) { ctx.persist(); sfx.buy(); s.say(`BOUGHT ${UPGRADES[id].name}!`, C.green); }
     else { sfx.creak(); s.say('NOT ENOUGH COINS', C.orange); }
   },

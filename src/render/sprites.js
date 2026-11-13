@@ -316,6 +316,7 @@ export const OBJ = {
   ],
   tsinelas: ['.ggg..ggg.', 'gGGGggGGGg', '.ggg..ggg.'],
   pandesal: ['.pppp.', 'pPPPPp', 'pPPPPp', '.pppp.'],
+  holen: ['.kkk.', 'kwbBk', 'kbBbk', 'kBbbk', '.kkk.'], // a glass marble (HOLEN gear)
   key: ['kk.....', 'k.kkkkk', 'kk...k.'],
   tv: [ // CRT with rabbit ears in a wooden cabinet
     '..a....a....', '...a..a.....', '....mm......', 'WWWWWWWWWWWW', 'WmmmmmmmmWkW', 'WmssssssmWWW',
@@ -355,6 +356,7 @@ const OBJ_PAL = {
   basket: { R: '#e0b070', W: '#d9b27c', s: '#a67a42', p: C.pink, b: '#4f8fff', y: C.yellow },
   tsinelas: { g: C.blue, G: '#5f8fe0' },
   pandesal: { p: '#a8642c', P: '#e0a35a' },
+  holen: { k: C.ink, w: C.white, b: '#7fd7ff', B: '#2f5fbf' },
   tv: { m: C.ink, s: '#3a4a6a', a: C.gray, W: C.table2, w: C.table, k: C.gold },
   radio: { m: C.dgray, g: C.gray, s: C.gold, a: C.gray },
   videoke: { m: C.dgray, g: C.gray, k: '#3a3550', s: '#4f8fff', p: C.pink, y: C.yellow, W: C.gray },

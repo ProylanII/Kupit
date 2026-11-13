@@ -7,7 +7,7 @@ import { drawActor, drawStar, drawTarget, drawCoin, drawPortrait, drawObj } from
 import { parol } from './render/tiles.js';
 import {
   CHARACTERS, CHAR_ORDER, STAR_MILESTONES, MAX_STARS, totalStars, grantUnlocks, campaignPayout, housePayout,
-  grantSiblings, NEED_ORDER, hasNeed, needCost,
+  grantSiblings, NEED_ORDER, hasNeed, needCost, needOpen,
 } from './game/progression.js';
 import {
   generateHouse, dailySeed, dailyId, dailyDiff, isPasko, prevDailyId, MUTATORS, MUTATOR_ORDER, mutatorMult,
@@ -262,7 +262,7 @@ function titleItems() {
   const play = !save.story.intro && save.unlocked === 0 ? 'START THE STORY' : `${save.story.epilogue ? 'VISIT' : 'NEXT'}: ${L ? L.name : ''}`;
   return [play, 'MAP', 'RANDOM HOUSE', "ALING NENA'S", 'THE CREW', 'HOW TO PLAY', 'OPTIONS'];
 }
-const canAffordNeed = () => NEED_ORDER.some((id) => !hasNeed(save, id) && save.bank >= needCost(save, id));
+const canAffordNeed = () => NEED_ORDER.some((id) => !hasNeed(save, id) && needOpen(save, id) && save.bank >= needCost(save, id));
 const chapterOf = (i) => { let c = 0; levels.slice(0, i + 1).forEach((L) => { const k = CHAPTERS.findIndex((x) => x.from === L.id); if (k >= 0) c = k; }); return c; };
 
 // Title backdrop: night sky, moon and a row of houses with lit capiz windows. Drawn once, stars twinkle on top.

@@ -44,6 +44,10 @@ test('story: scenes and chapters point at real levels, and every sibling joins i
 test('kittens: needs are bought once, grow the litter, and Aling Nena gives a discount once she knows', () => {
   const s = fresh();
   assert.equal(catStage(s), 0);
+  s.bank = 100;
+  assert.equal(buyNeed(s, 'gatas'), 'later', 'needs open when the story reaches them (milk: after the intro)');
+  s.bank = 0;
+  s.story.intro = true; s.story.seen = { 'boss1-lola': true, '05-gabi': true }; s.story.after = { ibalik: true };
   assert.equal(buyNeed(s, 'gatas'), 'poor');
   s.bank = 100;
   assert.equal(buyNeed(s, 'gatas'), 'bought');
@@ -51,6 +55,7 @@ test('kittens: needs are bought once, grow the litter, and Aling Nena gives a di
   assert.equal(s.bank, 100 - NEEDS.gatas.cost);
   assert.equal(catStage(s), 1);
   const full = needCost(s, 'vet');
+  assert.equal(buyNeed(s, 'vet'), 'later', 'the medicine opens once Aling Nena knows');
   s.story.nena = true;
   assert.ok(needCost(s, 'vet') < full, 'suki price');
   for (const id of NEED_ORDER) buyNeed(s, id);

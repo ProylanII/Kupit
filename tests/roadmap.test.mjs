@@ -9,7 +9,7 @@ import { findPath } from '../src/world/pathfind.js';
 import { generateHouse, dailyId, dailySeed, dailyDiff, prevDailyId, isPasko, mutatorMult } from '../src/game/house.js';
 import { validateLevel, idleSafe } from '../src/game/validate.js';
 import { migrate, saveCode, readSaveCode, fresh, SAVE_VERSION } from '../src/core/save.js';
-import { computeMods, FLOORS, campaignPayout, housePayout, grantUnlocks, totalStars, upgradeStat, buyCosmetic } from '../src/game/progression.js';
+import { computeMods, FLOORS, campaignPayout, housePayout, grantUnlocks, totalStars, buyCosmetic } from '../src/game/progression.js';
 import { encodeGhost, decodeGhost, ghostAt } from '../src/game/ghost.js';
 
 const c = (t) => t * TILE + TILE / 2;
@@ -174,11 +174,11 @@ test('the alkansya is optional bonus money and is skipped once found', () => {
 
 // ---------------------------------------------------------------- R4 actions
 test('aim preview stops at walls and reaches farther for Ramil; item selector cycles kinds', () => {
-  const w = new World(room({ spawn: [5, 3] }), { upgrades: { stash: 1 } });
+  const w = new World(room({ spawn: [5, 3] }), { upgrades: { baon: 1 } });
   w.player.dir = 2;
   const a = w.aimPreview();
   assert.ok(a && Math.abs(a.x - w.player.x - a.max) < 3, 'lands at max range in the open');
-  const r = new World(room({ spawn: [5, 3] }), { char: 'ramil', upgrades: { stash: 1 } });
+  const r = new World(room({ spawn: [5, 3] }), { char: 'ramil', upgrades: { baon: 1 } });
   assert.ok(r.aimPreview().max > a.max);
   w.player.dir = 1; w.player.x = c(2);
   assert.ok(w.aimPreview().hitWall, 'stops at the wall');
@@ -323,14 +323,11 @@ test('save: old saves migrate, junk is repaired, save codes round-trip and rejec
 });
 
 // ---------------------------------------------------------------- R6 economy
-test('upgrades and kid traits can never remove the tension (floors)', () => {
+test('kid traits and gear can never remove the tension (floors)', () => {
   for (const ch of ['jun', 'bing', 'ramil', 'nene']) {
-    const m = computeMods(ch, { quiet: 3, hands: 3, shadow: 3 });
+    const m = computeMods(ch, { medyas: 1, panyo: 1, holen: 1, baon: 1, bulsa: 1 });
     assert.ok(m.runNoise >= FLOORS.runNoise && m.stealTime >= FLOORS.stealTime && m.alertRate >= FLOORS.alertRate, ch);
   }
-  const st = upgradeStat({ char: 'jun', upgrades: { quiet: 1 } }, 'quiet');
-  assert.equal(st.label, 'NOISE');
-  assert.ok(st.next !== null && st.frac > 0 && st.frac < 1);
 });
 
 test('payouts: replays pay less, houses pay less each time today, the daily pays once', () => {
