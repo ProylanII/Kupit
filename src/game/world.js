@@ -14,6 +14,8 @@ export const THROW_SPEED = 140, THROW_MAX = 72;
 const DEVICE_PULSE = 1.5;
 const SMELL = 140;                // dogs smell food from this far
 const PROGRESS_DECAY = 0.12;      // an interrupted kupit keeps most of its progress for a while
+export const EMPTY_NOISE = 44;    // taking a stash's last coin: the hollow "klak" of an empty purse
+export const clinkR = (k) => 20 + 8 * k; // the k-th extra coin in one visit (k >= 1): louder each time
 export const SCOLD_TIME = 1.8;    // the "caught!" beat before you respawn
 export const GRACE_TIME = 2;      // after respawning, nobody can see you for this long
 export const CATCH_PENALTY = 1 / 3; // share of your coins Mama takes back each time you're caught
@@ -477,6 +479,7 @@ export class World {
           if (pf.start) { this.noise({ x: t.x, y: t.y, r: pf.start.r }); if (pf.start.say) this.talk(pf.start.say, 0.8); this.emit({ type: 'stealNoise', kind: t.kind }); }
         }
         if (pf.tick && (t.tickT -= dt) <= 0) { this.noise({ x: t.x, y: t.y, r: pf.tick.r }); t.tickT = pf.tick.every; this.emit({ type: 'stealNoise', kind: t.kind }); }
+        if (t.perCoin) { this.stealCoin(t, dt); continue; }
         t.progress += dt / (t.time * this.mods.stealTime);
         this.emit({ type: 'stealTick' });
         if (t.progress >= 1) {
@@ -491,8 +494,8 @@ export class World {
         }
       } else if (!t.done && t.progress > 0) {
         t.progress = Math.max(0, t.progress - dt * PROGRESS_DECAY);
-        if (t.progress === 0) t.started = false;
-      }
+        if (t.progress === 0) { t.started = false; t.visit = 0; }
+      } else if (t.started && t.progress === 0) { t.started = false; t.visit = 0; } // let go right after a coin
     }
 
     // --- pickups
@@ -632,7 +635,7 @@ export class World {
     while (lost > 0 && this.stolen.length) { // coins go back where they came from, newest first
       const s = this.stolen[this.stolen.length - 1], n = Math.min(lost, s.n);
       if (s.t.done) { s.t.done = false; s.t.coins = 0; }
-      s.t.coins += n; s.t.progress = 0; s.t.started = false;
+      s.t.coins += n; s.t.progress = 0; s.t.started = false; s.t.visit = 0;
       s.n -= n; lost -= n;
       if (s.n === 0) this.stolen.pop();
     }
@@ -662,11 +665,49 @@ export class World {
     this.emit({ type: 'respawn', x: p.x, y: p.y });
   }
 
+  // SOBRA: one coin out of a stash (progress is toward the next coin; the first one, opening it, takes longest).
+  stealCoin(t, dt) {
+    const k = t.taken, pf = t.profile;
+    t.progress += dt / (t.coinTime(k) * this.mods.stealTime);
+    this.emit({ type: 'stealTick' });
+    if (t.progress < 1) return;
+    t.progress = 0;
+    t.coins--;
+    this.coins++;
+    const last = this.stolen[this.stolen.length - 1];
+    if (last && last.t === t) last.n++; else this.stolen.push({ t, n: 1 });
+    if (k === 0) { // it opens: the purse clasp clicks, and Jun reads anything written on it
+      if (pf.end) { this.noise({ x: t.x, y: t.y, r: pf.end.r }); if (pf.end.say) this.talk(pf.end.say, 0.8); }
+      if (t.label) { this.talk(`"${t.label}"... PARA SA AKIN 'TO?`, 3); this.emit({ type: 'label', text: t.label }); }
+    }
+    if (t.coins === 0) { // emptied: a hollow klak, and someone is going to notice
+      t.done = true;
+      this.noise({ x: t.x, y: t.y, r: EMPTY_NOISE });
+      this.emit({ type: 'emptied', x: t.x, y: t.y, kind: t.kind });
+    } else if (t.visit > 0) this.noise({ x: t.x, y: t.y, r: clinkR(t.visit) }); // greed is loud
+    t.visit++;
+    this.emit({ type: 'coin', x: t.x, y: t.y, n: 1, kind: t.kind, first: k === 0, k: t.visit });
+    if (!this.sapat && this.level.quota > 0 && this.coins >= this.level.quota && !this.level.giveBack && !this.level.hingi) {
+      this.sapat = true; // "that's enough": everything past the quota is sobra
+      this.emit({ type: 'sapat' });
+    }
+  }
+
+  // What was taken, for the clear screen, the ledger (IBALIK, the case file) and HINALA.
+  get sobra() { return this.level.giveBack || this.level.hingi ? 0 : Math.max(0, this.coins - this.level.quota); }
+  takenBy() {
+    const by = {};
+    for (const t of this.targets) if (!t.bonus && t.owner && t.taken > 0 && !t.profile.verb) by[t.owner] = (by[t.owner] || 0) + t.taken;
+    return by;
+  }
+
   finish() {
     this.status = 'clear';
     const fast = this.time <= this.level.par, stealth = this.stealthOk;
     const missions = this.missionIds.map((id, i) => !this.missionLost[i] && !!MISSIONS[id].ok(this)); // [clear, mission 2, mission 3]
-    this.result = { coins: this.coins, time: this.time, stars: missions.filter(Boolean).length, missions, fast, stealth, catches: this.catches, spotted: this.spotted, bonus: this.bonus };
+    const emptied = this.targets.filter((t) => t.perCoin && t.done).length;
+    this.result = { coins: this.coins, time: this.time, stars: missions.filter(Boolean).length, missions, fast, stealth, catches: this.catches, spotted: this.spotted, bonus: this.bonus,
+      sobra: this.sobra, emptied, takenBy: this.takenBy() };
     this.emit({ type: 'clear' });
   }
 

@@ -50,6 +50,10 @@ Collect the coin quota, then reach the exit.
 - **Noise** travels through the rooms: walls stop it and closed doors muffle it. Running, creaky floors, lego (ARAY!)
   and every stash make noise. Purses click, bayongs rustle, wallets zip, and riskier stashes hold more coins. Letting
   go of a half-done kupit keeps most of the progress.
+- **Sapat na / sobra**: coins come out of a stash one at a time (the dots over it show what is left). When you reach
+  the quota the game says SAPAT NA ("that's enough"); anything past it is SOBRA. It still pays, but every extra coin
+  in one go clinks louder and emptying a stash makes a hollow klak. The "take only what you need" star asks for
+  exactly the quota.
 - **Hide** in boxes, curtains and laundry baskets. An eye over you means someone watched you hide, so they'll find you.
 - **Secret alkansya**: every level hides one bonus stash off the main route.
 - **Bosses** each have a signature rule and finale. Lola's Siesta: a sleep meter that noise drains, then a finale

@@ -446,6 +446,7 @@ const HELP = [[
   ['BUSY', 'ADULTS HAVE CHORES. COOKING, WASHING UP, DOZING OR ON THE PHONE THEY SEE NOTHING: LOOK FOR THE GREEN MARK. SWEEPING OR WATCHING TV THEY SEE LESS. ANY NOISE MAKES THEM LOOK UP.'],
   ['CROWD', 'AT A PARTY, WALK BESIDE A GUEST AND YOU BLEND IN: NOBODY NOTICES YOU UNLESS THEY ARE VERY CLOSE. RUNNING BREAKS IT.'],
   ['VIDEOKE', 'WHILE SOMEONE IS SINGING, NOTHING YOU DO NEAR THE MACHINE CAN BE HEARD. THUNDER DOES THE SAME FOR THE WHOLE YARD.'],
+  ['SAPAT NA', 'COINS COME OUT ONE AT A TIME (THE DOTS OVER A STASH). LET GO AT THE QUOTA: ANYTHING MORE IS SOBRA, EVERY EXTRA COIN CLINKS LOUDER, AND AN EMPTY PURSE IS EASY TO NOTICE.'],
   ['KUTING', 'FINISH THE STORY AND TIGRE FOLLOWS YOU ON EVERY KUPIT. HE IS ONLY HERE TO WATCH.'],
 ], [
   ['KITTENS', "YOUR COINS BUY WHAT MINGMING AND HER KITTENS NEED AT ALING NENA'S. THE HIDEOUT CHANGES WITH EVERY ONE."],
@@ -740,7 +741,7 @@ function drawClear() {
     drawText(g, missionLabel(cur, ids[i]), x + 10, y + 1, on ? (now && !had ? C.gold : C.white) : C.dgray);
     if (age > at) drawText(g, now && !had ? 'NEW!' : had ? 'DONE' : 'NOT YET', x + 160, y + 1, now && !had ? C.green : had ? C.gray : C.dgray, { align: 'right' });
   }
-  drawText(g, `${cur.giveBack ? 'PUT BACK' : cur.hingi ? 'GIVEN' : 'COINS'} ${r.coins}   TIME ${Math.floor(r.time)}S${r.catches ? `   CLOSE CALLS ${r.catches}` : ''}`, VIEW_W / 2, 138, C.white, { align: 'center' });
+  drawText(g, `${cur.giveBack ? 'PUT BACK' : cur.hingi ? 'GIVEN' : 'COINS'} ${r.coins}${r.sobra ? ` (+${r.sobra} SOBRA)` : ''}   TIME ${Math.floor(r.time)}S${r.catches ? `   CLOSE CALLS ${r.catches}` : ''}`, VIEW_W / 2, 138, C.white, { align: 'center' });
   if (run) drawText(g, `HOUSE ${cur.seed}   LEVEL ${run.diff}${run.daily ? '   DAILY' : ''}${run.mutators.length ? `   X${mutatorMult(run.mutators)}` : ''}`, VIEW_W / 2, 150, C.gray, { align: 'center' });
   else drawText(g, newBest ? 'NEW BEST TIME! (GHOST SAVED)' : `BEST ${Math.floor(save.best[cur.id] || r.time)}S`, VIEW_W / 2, 150, newBest ? C.green : C.gray, { align: 'center' });
   if (cur.epilogue) drawText(g, 'YOU ONLY HAD TO ASK.', VIEW_W / 2, 162, C.pink, { align: 'center' });

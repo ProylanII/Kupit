@@ -2,7 +2,8 @@
 // measures what a bot can: route length, whether stealth is needed at all, whether running beats sneaking, and how
 // much slack the timers leave. Re-run after every design phase:  node tools/playtest-proxy.mjs
 //   expert  bot that cannot be caught, sneaking: the shortest possible clear (humans are slower)
-//   blind   bot that ignores every adult, sneaking, catchable (3 chances): CLEAR = the level never demands stealth
+//   blind   bot that ignores every adult, sneaking, catchable (3 chances): CLEAR with 0 close calls = the level
+//           never demands stealth; CLEAR with some = it can be brute-forced by spending chances
 //   run     the blind bot running everywhere: CLEAR while blind fails = noise is not worth avoiding
 //   escape  boss final phase: seconds the expert needed / seconds the timer gives
 import { readFileSync } from 'node:fs';
@@ -31,7 +32,8 @@ for (const L of levels) {
     dinner: L.patience ? +(L.patience / expert.time).toFixed(1) : '',
     escape: expert.esc ? `${expert.esc.used.toFixed(1)}/${Math.round(expert.esc.len)}s` : '',
     blind: out(blind), 'blind seen': blind.spotted, run: out(run),
-    flag: blind.ok ? 'NO STEALTH NEEDED' : run.ok ? 'RUNNING BEATS SNEAKING' : '',
+    // 0 close calls: the level never forced stealth. Some: it can be brute-forced by spending chances.
+    flag: blind.ok ? (blind.catches ? `SURVIVABLE BLIND (${blind.catches} close)` : 'NO STEALTH NEEDED') : run.ok ? 'RUNNING BEATS SNEAKING' : '',
   });
 }
 console.table(rows);

@@ -136,8 +136,9 @@ test("Kuya's tattle winds up for half a second, then everyone in earshot heads t
 });
 
 // ---------------------------------------------------------------- R7 kupit profiles
-test('stashes: wallet zips at the start, purse clicks at the end, progress decays slowly', () => {
-  const w = new World(room({ targets: [{ kind: 'wallet', at: [2, 3], coins: 2, time: 1 }], spawn: [2, 3], adults: [{ type: 'mama', at: [5, 3], face: 0 }] }));
+test('stashes: wallet zips at the start, purse clicks when it opens, progress decays slowly', () => {
+  // (SOBRA: coins come out one at a time; time 2 keeps the half second below inside the first coin)
+  const w = new World(room({ targets: [{ kind: 'wallet', at: [2, 3], coins: 2, time: 2 }], spawn: [2, 3], adults: [{ type: 'mama', at: [5, 3], face: 0 }] }));
   w.update(1 / 60, { ...idle, action: true });
   assert.ok(w.noises.some((n) => n.r === 60), 'zipper');
   assert.ok(w.adults[0].hearT > 0, 'she turns to look');
@@ -147,9 +148,13 @@ test('stashes: wallet zips at the start, purse clicks at the end, progress decay
   assert.ok(w.targets[0].progress > p - 0.2 && w.targets[0].progress > 0, 'kept most of it');
 
   const w2 = new World(room({ spawn: [5, 3], targets: [{ kind: 'purse', at: [5, 3], coins: 3, time: 1 }] }));
-  let click = false;
-  for (let i = 0; i < 120 && !w2.targets[0].done; i++) { w2.update(1 / 60, { ...idle, action: true }); click ||= w2.noises.some((n) => n.r === 44); }
-  assert.ok(w2.targets[0].done && click, 'purse clasp at the end');
+  let click = false, clickAt = -1;
+  for (let i = 0; i < 120 && !w2.targets[0].done; i++) {
+    w2.update(1 / 60, { ...idle, action: true });
+    if (!click && w2.noises.some((n) => n.r === 44)) { click = true; clickAt = w2.targets[0].taken; }
+  }
+  assert.ok(w2.targets[0].done && click, 'purse clasp');
+  assert.equal(clickAt, 1, 'the clasp clicks as the first coin comes out (it opens)');
   assert.ok(w2.targets[0].time < 1, 'purse is quick');
 });
 

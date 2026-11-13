@@ -8,7 +8,8 @@ export const MISSIONS = {
   silent:   { label: () => 'NEVER RAISE AN ALARM', strict: true, ok: (w) => w.stealthOk },
   ghost:    { label: () => 'NOBODY EVEN GLANCES AT YOU', strict: true, ok: (w) => w.maxAlert < 0.12 && w.catches === 0 },
   noCatch:  { label: () => 'NO CLOSE CALLS', strict: true, ok: (w) => w.catches === 0 }, // a catch in play is a "muntik na"
-  allCoins: { label: () => 'EMPTY EVERY STASH', ok: (w) => w.targets.every((t) => t.bonus || t.done) },
+  allCoins: { label: () => 'EMPTY EVERY STASH', ok: (w) => w.targets.every((t) => t.bonus || t.done) }, // Random House's SOBRA challenge only
+  sakto:    { label: () => 'TAKE ONLY WHAT YOU NEED', ok: (w) => w.coins === w.level.quota }, // SOBRA: not one coin more
   alkansya: { label: () => 'FIND THE SECRET ALKANSYA', ok: (w) => w.bonus > 0 || w.alkansyaWasFound },
   noThrow:  { label: () => 'THROW NOTHING', strict: true, ok: (w) => w.stats.throws === 0 },
   noHide:   { label: () => 'NEVER HIDE', strict: true, ok: (w) => w.stats.hides === 0 },

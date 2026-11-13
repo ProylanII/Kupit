@@ -71,3 +71,16 @@ whether stealth is needed at all, whether running beats sneaking, and how much s
 - Fun, fairness, readability, confusion points, the emotional ending.
 - Real human speed, to replace the assumed 2–3× factor.
 - Run the human playtest (`docs/PLAYTEST.md`) before release, Phase 8. The proxy is re-run after every phase.
+
+## After Phase 2A (SOBRA, coins one at a time)
+
+Re-run on the same levels, with the flag now split in two: "no stealth needed" (cleared blind with 0 close calls)
+and "survivable blind" (cleared blind only by spending chances).
+
+- **No stealth needed (0 close calls):** SALA, KUSINA. Unchanged.
+- **Survivable blind:** BUONG BAHAY (2), SAMPAYAN (1), plus two new ones: **BAKURAN (2)** and **MAMA SA KUSINA (2)**.
+- **Why the new ones:** coins now bank one at a time, so a catch in the middle of a stash no longer wipes out the
+  whole stash. Clumsy play is more forgiving. That is the intended trade: SOBRA makes taking safer to start and greed
+  louder, and HINALA (Phase 2B) makes every close call cost something in the levels after it.
+- **To watch in the level pass:** if blind clears keep spreading, tighten those levels' cones or quotas rather than
+  undoing per-coin taking.

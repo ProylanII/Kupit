@@ -17,6 +17,13 @@ export const TARGET_KINDS = {
   alkansya: { name: 'ALKANSYA', hold: 1.0, tick: { every: 0.6, r: 30 }, end: { r: 50, say: 'KLING!' }, tip: 'SECRET ALKANSYA! BONUS COINS' },
 };
 
+// Whose stash it is, when the level does not say (the ledger, IBALIK and the case file read it).
+export const OWNERS = { purse: 'mama', bayong: 'lola', wallet: 'tita', piggy: 'bahay', candy: 'nena' };
+
+// SOBRA: ordinary stashes give their coins one at a time. Opening takes longest (the first 45% of the time), then
+// the rest come out evenly, so emptying a stash takes exactly as long as it used to.
+export const FIRST_COIN = 0.45;
+
 // Something to kupit from: purse, wallet, bayong, piggy bank...
 export class Target {
   constructor(def) {
@@ -33,9 +40,20 @@ export class Target {
     this.from = def.from;     // HINGI: index of the adult who gives it, and what they say
     this.say = def.say;
     this.label = def.label;   // written on it (Ninang's envelope "PARA KAY JUN"): Jun reads it when he takes it
+    this.owner = def.owner || OWNERS[this.kind] || null;
+    // coin by coin (SOBRA)? Not for the alkansya, things you carry, or story stashes (milk, kittens, IBALIK, HINGI)
+    this.perCoin = !this.bonus && !this.carry && !this.profile.verb && this.coins > 1;
+    this.visit = 0;           // coins taken in this visit: each one after the first clinks louder
     this.progress = 0;
     this.started = false; // the start noise (zipper) already played for this attempt
     this.tickT = 0;
     this.done = false;
+  }
+
+  get taken() { return this.full - this.coins; }
+  // Seconds (before skill and upgrade modifiers) for the next coin, when k coins are already out of this stash.
+  coinTime(k = this.taken) {
+    if (!this.perCoin) return this.time;
+    return this.time * (k === 0 ? FIRST_COIN : (1 - FIRST_COIN) / (this.full - 1));
   }
 }

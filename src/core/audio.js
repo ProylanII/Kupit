@@ -43,7 +43,9 @@ function beep(freq, dur, { type = 'square', vol = 0.06, at = 0, slide = 0 } = {}
 
 export const sfx = {
   steal: () => beep(660, 0.05, { vol: 0.03 }),
-  coin: () => { beep(880, 0.08); beep(1320, 0.12, { at: 0.07 }); },
+  coin: (k = 1) => { const f = 880 * 2 ** (Math.min(6, k - 1) / 12 * 2); beep(f, 0.08); beep(f * 1.5, 0.12, { at: 0.07 }); }, // k-th coin in one visit: a whole step higher each time
+  sapat: () => [659, 880].forEach((f, i) => beep(f, 0.16, { at: i * 0.12, type: 'triangle', vol: 0.06 })), // "that's enough": soft and settled
+  klak: () => beep(160, 0.14, { slide: -60, type: 'triangle', vol: 0.09 }), // a stash emptied: hollow
   alert: () => beep(300, 0.2, { slide: 300, type: 'sawtooth', vol: 0.05 }),
   caught: () => { beep(400, 0.15, { type: 'sawtooth' }); beep(250, 0.3, { at: 0.15, type: 'sawtooth' }); }, // HULI KA: the story's ending only
   muntik: () => { beep(330, 0.16, { slide: 330, type: 'triangle', vol: 0.07 }); beep(620, 0.1, { at: 0.17, type: 'square', vol: 0.04 }); }, // a close call: a startled rising "whoop"

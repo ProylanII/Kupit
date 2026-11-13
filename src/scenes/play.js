@@ -84,6 +84,8 @@ const TIPS = {
   bisita: 'GUESTS BLOCK THE VIEW. WALK WITH ONE TO BLEND IN',
   trike: 'TRICYCLE! IT KNOCKS YOU DOWN. TIME YOUR CROSSING',
   seenHide: 'THEY SAW YOU HIDE! THE EYE MEANS: NOT SAFE HERE',
+  sapat: 'COINS PAST THE QUOTA ARE SOBRA. SOMEONE MAY NOTICE',
+  emptied: 'AN EMPTY STASH IS EASY TO NOTICE. LEAVE A LITTLE?',
 };
 
 export class Play {
@@ -254,8 +256,8 @@ export class Play {
         break;
       case 'stealNoise': ({ wallet: sfx.zipper, bayong: sfx.rustle, piggy: sfx.jingle, candy: sfx.jingle, alkansya: sfx.jingle, kuting: sfx.meow }[e.kind] || sfx.clasp)(); break;
       case 'coin':
-        if (e.kind === 'purse') sfx.clasp();
-        sfx.coin(); this.buzz(15, C.gold);
+        if (e.kind === 'purse' && e.first !== false) sfx.clasp();
+        sfx.coin(e.k || 1); this.buzz(15, C.gold);
         for (let i = 0; i < e.n * 2; i++) this.parts.push({ x: e.x + (Math.random() * 14 - 7), y: e.y - 4, vy: -50 - Math.random() * 40, l: 1 });
         break;
       case 'lightning': if (settings.flash) this.bolt = 0.3; break;
@@ -280,6 +282,9 @@ export class Play {
         }
         break;
       case 'respawn': sfx.hide(); for (let i = 0; i < 10; i++) this.dust.push({ x: e.x + Math.random() * 12 - 6, y: e.y + Math.random() * 6, vx: Math.random() * 20 - 10, l: 0.6 }); break;
+      case 'sapat': // the quota is met: that's enough
+        sfx.sapat(); this.toast = { text: 'SAPAT NA! THAT IS ENOUGH', col: C.green, t: 2.2 }; this.showTip('sapat'); break;
+      case 'emptied': sfx.klak(); this.showTip('emptied'); break;
       case 'clear': if (!this.opts.quietClear) sfx.clear(); this.buzz([30, 30, 30], C.green); break;
       case 'door': case 'switch': sfx.click(); break;
       case 'creak': case 'locked': sfx.creak(); break;
@@ -558,6 +563,13 @@ export class Play {
     }
     this.drawAim(g);
 
+    // SOBRA: how many coins are left in a stash you are standing at (gold) and how many you took (dark)
+    for (const t of w.targets) {
+      if (!t.perCoin || t.done || Math.hypot(t.x - p.x, t.y - p.y) > 40) continue;
+      const n = t.full, x0 = Math.round(t.x) - n * 2, y0 = Math.round(t.y) - 12;
+      g.fillStyle = C.ink; g.fillRect(x0 - 1, y0 - 1, n * 4 + 1, 5);
+      for (let i = 0; i < n; i++) { g.fillStyle = i < t.coins ? C.gold : C.dgray; g.fillRect(x0 + i * 4, y0, 3, 3); }
+    }
     // steal bar
     const hot = w.targets.find((t) => t.progress > 0 && !t.done);
     if (hot) {
@@ -811,8 +823,10 @@ export class Play {
   drawHud(g) {
     const w = this.world, sh = { shadow: C.ink }, now = performance.now();
     drawCoin(g, 5, 5);
-    const coinTxt = `${w.coins}/${this.level.quota}`;
-    drawText(g, coinTxt, 13, 6, C.white, sh);
+    const sob = w.sobra, q = this.level.quota;
+    const base = `${sob ? q : w.coins}/${q}`, coinTxt = sob ? `${base} +${sob}` : base; // SOBRA in orange
+    drawText(g, base, 13, 6, w.coins >= q && q > 0 && !sob ? C.green : C.white, sh);
+    if (sob) drawText(g, ` +${sob}`, 13 + textWidth(base), 6, C.orange, sh);
     // chances left: little tsinelas, crossed out once used
     if (w.lives > 1 && !this.level.hingi) { // (nobody is counting chances in the epilogue)
       let x = 16 + textWidth(coinTxt);
