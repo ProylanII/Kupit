@@ -21,7 +21,7 @@ export const fresh = () => ({
   mutators: [], mutatorClears: {},
   streak: { last: null, n: 0, best: 0 },
   houseDay: { id: null, n: 0 }, // Random Houses cleared today (diminishing payouts)
-  story: { intro: false, ending: false, epilogue: false, nena: false, seen: {} }, // seen: level id -> its scene has played
+  story: { intro: false, ending: false, epilogue: false, nena: false, seen: {}, after: {} }, // seen / after: level id -> its scene (before / after the level) has played
   // v3
   needs: {},                // what has been bought for Mingming and the kittens (progression.js NEEDS)
   missions: {},             // level id -> bit mask of its missions done so far (stars[id] = how many bits are set)
@@ -67,6 +67,7 @@ export function migrate(raw) {
   out.houseDay = { ...def.houseDay, ...(isObj(s.houseDay) ? s.houseDay : {}) };
   out.story = { ...def.story, ...(isObj(s.story) ? s.story : {}) };
   if (!isObj(out.story.seen)) out.story.seen = {};
+  if (!isObj(out.story.after)) out.story.after = {};
   if (!out.chars.includes('jun')) out.chars = ['jun', ...out.chars];
   if (!out.chars.includes(out.char)) out.char = 'jun';
   if (!out.outfits.includes('basic')) out.outfits = ['basic', ...out.outfits];

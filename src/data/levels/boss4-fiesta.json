@@ -1,13 +1,13 @@
 {
  "id": "boss4-fiesta",
- "name": "NINANG'S FIESTA",
+ "name": "NINANG'S PARTY",
  "hint": "WALK WITH A GUEST TO BLEND IN. VIDEOKE HIDES NOISE",
  "missions": [
   "noHide",
   "noCatch"
  ],
  "boss": {
-  "title": "NINANG'S FIESTA",
+  "title": "NINANG'S PARTY",
   "index": 0,
   "bonus": 22,
   "phases": [
@@ -37,7 +37,7 @@
    },
    {
     "at": 4,
-    "banner": "KUYA SPOTS EVERYTHING!",
+    "banner": "JOMAR SPOTS EVERYTHING!",
     "spawn": [
      {
       "type": "kuya",
@@ -64,7 +64,7 @@
    },
    {
     "at": 6,
-    "banner": "NINANG WANTS HER PAMASKO!",
+    "banner": "NINANG COUNTED HER ENVELOPES!",
     "escape": 25,
     "adult": {
      "index": 0,
@@ -128,7 +128,8 @@
     7
    ],
    "coins": 2,
-   "time": 1.6
+   "time": 1.6,
+   "label": "PARA KAY JUN"
   },
   {
    "kind": "purse",

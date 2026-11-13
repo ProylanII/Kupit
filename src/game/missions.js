@@ -7,7 +7,7 @@ export const MISSIONS = {
   fast:     { label: (L) => `FINISH IN ${L.par}S`, strict: true, ok: (w) => w.time <= w.level.par },
   silent:   { label: () => 'NEVER RAISE AN ALARM', strict: true, ok: (w) => w.stealthOk },
   ghost:    { label: () => 'NOBODY EVEN GLANCES AT YOU', strict: true, ok: (w) => w.maxAlert < 0.12 && w.catches === 0 },
-  noCatch:  { label: () => 'NEVER GET CAUGHT', strict: true, ok: (w) => w.catches === 0 },
+  noCatch:  { label: () => 'NO CLOSE CALLS', strict: true, ok: (w) => w.catches === 0 }, // a catch in play is a "muntik na"
   allCoins: { label: () => 'EMPTY EVERY STASH', ok: (w) => w.targets.every((t) => t.bonus || t.done) },
   alkansya: { label: () => 'FIND THE SECRET ALKANSYA', ok: (w) => w.bonus > 0 || w.alkansyaWasFound },
   noThrow:  { label: () => 'THROW NOTHING', strict: true, ok: (w) => w.stats.throws === 0 },

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Kupit - a pixel stealth game about a Filipino kid sneaking coins from Mama's purse.",
+  "description": "Kupit - a pixel stealth game about a Filipino kid secretly feeding a stray cat and her kittens.",
   "scripts": {
     "start": "npx --yes serve . -l 8080",
     "test": "node --test \"tests/*.test.mjs\"",

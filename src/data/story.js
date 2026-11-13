@@ -20,6 +20,10 @@ export const INTRO = [
 
 // Shown once, before the level with that id starts.
 export const BEFORE = {
+  '03-buong-bahay': [ // the first sign that someone has noticed
+    { who: 'mama', lines: ['Parang may kulang... Hm.', 'I will keep my purse closer.'] },
+    { who: 'jun', mood: 'shock', lines: ['She noticed? Already?', 'I have to be more careful.'] },
+  ],
   'boss1-lola': [
     { who: 'jun', lines: ['The milk is gone already.', 'Kittens drink a LOT.'] },
     { who: 'jun', lines: ["Lola's bayong is by her chair.", 'She naps all afternoon...'] },
@@ -28,6 +32,10 @@ export const BEFORE = {
     { who: 'bing', lines: ['Kuya Jun? Why do you keep going', 'under the house?'] },
     { who: 'jun', lines: ['Bing! Shh! ...Okay. Come look.', "But you can't tell anyone."] },
     { who: 'bing', lines: ['KITTENS! I can help! I am small.', 'Nobody ever sees me.'], join: 'bing' },
+  ],
+  '06-kwarto': [ // the tattletale arrives (he is not Kuya Ramil)
+    { who: 'kuya', mood: 'happy', lines: ['Bakasyon ko dito! Hi, Jun.', 'I see EVERYTHING, ha. Everything.'] },
+    { who: 'jun', mood: 'sad', lines: ['Pinsan Jomar. He tells on', 'everyone. Now of all times...'] },
   ],
   gatas: [
     { who: 'jun', lines: ['Mingming will not leave her', 'babies, not even to drink.'] },
@@ -39,7 +47,7 @@ export const BEFORE = {
     { who: 'jun', mood: 'shock', lines: ['...She counts it.', 'Mama is cooking. Careful now.'] },
   ],
   '05-gabi': [
-    { who: 'ramil', mood: 'angry', lines: ["HULI KA! I saw you at Mama's", 'purse. I am telling!'] },
+    { who: 'ramil', mood: 'angry', lines: ["AHA! I saw you at Mama's", 'purse. I am telling!'] },
     { who: 'jun', mood: 'shock', lines: ['Kuya, wait! Please. Just come', 'and see why. Please.'] },
     { who: 'ramil', mood: 'happy', lines: ['...They are so small.', 'Fine. I saw nothing. Move over.'], join: 'ramil' },
   ],
@@ -58,15 +66,25 @@ export const BEFORE = {
     { who: 'nene', lines: ['It is for Mingming! She has', 'babies! ...Oops.'] },
     { who: 'nena', mood: 'happy', lines: ["Ay, a mama cat! Why didn't you", 'say so? For her, I give a discount.'], join: 'nene', flag: 'nena' },
   ],
-  'boss4-fiesta': [
+  'boss4-fiesta': [ // Ninang's Christmas party. Lola's line seeds the ending: Mama once hid a cat too.
+    { who: 'lola', lines: ['Apo, you look like your Mama', 'at your age. Always under the', 'house, that one.'] },
+    { who: 'jun', mood: 'shock', lines: ['(...Under the house?)'] },
     { who: 'nene', lines: ['I named them! Puti, Muning,', 'and Tigre. Tigre bites.'] },
-    { who: 'jun', lines: ['They need a vet soon. Ninang', 'always brings fat envelopes...'] },
+    { who: 'jun', lines: ['They need a vet soon.', "And it's Ninang's Christmas party.", 'She always brings fat envelopes...'] },
   ],
   bagyo: [
     { who: 'jun', lines: ['Signal number three. The yard', 'is already filling with water.'] },
     { who: 'jun', mood: 'shock', lines: ['The kittens are still under the', 'house. I have to get them out.'] },
     { who: 'mama', mood: 'angry', lines: ['Jun? JUN! Where is that boy?', 'In THIS weather?!'] },
     { who: 'jun', lines: ['If they catch me now, they will', 'know everything. Run when the', 'thunder rolls. Nobody hears then.'] },
+  ],
+};
+
+// Shown once, right after the first clear of the level with that id (before the results).
+export const AFTER = {
+  ibalik: [ // the arc beat: he took too much, put it back, and decides what kind of kupit is allowed
+    { who: 'mama', mood: 'happy', lines: ['Ay, nandito pala! The money was', 'in my purse all along. Hay...'] },
+    { who: 'jun', mood: 'sad', lines: ['Only what Mingming needs', 'from now on. Not one coin more.'] },
   ],
 };
 
@@ -81,10 +99,18 @@ export const ENDING = [
   { who: 'jun', mood: 'sad', lines: ['Kittens. Three. And their mama.', 'They live under our house.'] },
   { who: 'jun', mood: 'sad', lines: ['The coins were for their milk.', 'The fish was for Mingming.', 'She was so thin, Ma.'] },
   { who: 'lola', mood: 'shock', lines: ['Ay, apo. All of that kupit...', 'was for them?'] },
+  // the crew steps forward: he was never alone in it
+  { who: 'bing', mood: 'sad', lines: ['Ako rin po, Ma. I helped him.', "Please don't be mad at Kuya Jun."] },
+  { who: 'ramil', lines: ['Kami pong lahat, Ma.', 'We all kept the secret.'] },
+  { who: 'nene', mood: 'happy', lines: ['But I named them!', 'Puti, Muning and Tigre.'] },
   { who: 'tatay', lines: ['...So that is where my fish went.', 'Hm. She can have the next one too.'] },
   { who: 'mama', mood: 'sad', lines: ['I was ready to be so angry.', 'Come here. You are soaking wet.'] },
   { who: 'jun', mood: 'shock', lines: ["You're... not mad?"] },
   { who: 'mama', lines: ['I said no more animals. I never', 'said to let them go hungry.'] },
+  // why "no more animals": Mama was once a kid hiding a cat under this same house
+  { who: 'lola', mood: 'sad', lines: ['Your Mama did the same, apo.', 'Fish for a stray, at your age.'] },
+  { who: 'lola', mood: 'sad', lines: ['When it died she cried a week.', 'That is why: no more animals.'] },
+  { who: 'mama', mood: 'sad', lines: ['...Nay.'] },
   { who: 'mama', mood: 'happy', lines: ['Anak, you never have to kupit.', 'Magsabi ka lang. Just ask.'] },
   { who: 'lola', mood: 'happy', lines: ['Now bring Mingming inside.', 'She is family. Dry them off!'] },
 ];
@@ -99,7 +125,7 @@ export const EPILOGUE = [
   { who: 'jun', mood: 'happy', lines: ['Salamat sa paglalaro!'] },
 ];
 
-export const NAMES = { jun: 'Jun', bing: 'Bing', ramil: 'Kuya Ramil', nene: 'Nene', mama: 'Mama', lola: 'Lola', tatay: 'Tatay', nena: 'Aling Nena', cat: 'Mingming' };
+export const NAMES = { jun: 'Jun', bing: 'Bing', ramil: 'Kuya Ramil', nene: 'Nene', mama: 'Mama', lola: 'Lola', tatay: 'Tatay', nena: 'Aling Nena', cat: 'Mingming', kuya: 'Pinsan Jomar' };
 
 // The five chapters of the campaign, by the id of their first level (the map screen groups levels under these).
 export const CHAPTERS = [

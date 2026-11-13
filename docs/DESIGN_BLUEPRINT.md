@@ -65,6 +65,17 @@ rework.
 | Q7 | The tag-team level | **Rebuild SAMPAYAN** (no 18th level) | 6.3, L10 |
 | Q8 | Post-game framing | **Random House = "LARO NG MAGKAKAPATID"**, the siblings' make-believe game | 11 |
 | Q9 | A canonical house layout | **Deferred.** Only fixed room *looks* (furniture style per room type) are in scope | 12 |
+| Q10 | Night lighting (from the visual/UI/AI audit, A6) | **Make it real:** darkness shortens adults' sight | Phase 4 |
+| Q11 | Phone layout (U2) | **Minimum fix first** (controls at the bottom, crisp text); a taller view later | Phase 7 |
+| Q12 | Character look (V1) | **Approve a sample** of the new proportions before the full redraw | Phase 1R |
+
+**Status (2026-11-13):** all twelve accepted at their defaults.
+
+**Phase 1 notes (as built):**
+- The IBALIK aftermath line is "only what Mingming needs, not one coin more" rather than "only food from now on".
+  Boss 3 still has coin stashes, and the new line fits SOBRA.
+- The tattletale keeps the internal type id `kuya`; only his name, lines and scenes changed.
+- Aling Nena was never in the Random House enemy pool, so audit item A25 needed no change.
 
 ---
 

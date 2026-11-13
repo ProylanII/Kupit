@@ -484,6 +484,7 @@ export class World {
           if (pf.end) { this.noise({ x: t.x, y: t.y, r: pf.end.r }); if (pf.end.say) this.talk(pf.end.say, 0.8); }
           if (t.carry) p.carry = t;
           if (t.say) (this.adults[t.from] || this).talk(t.say, 2.6);
+          if (t.label) { this.talk(`"${t.label}"... PARA SA AKIN 'TO?`, 3); this.emit({ type: 'label', text: t.label }); }
           if (t.bonus) { this.bonus += t.coins; this.emit({ type: 'alkansya', x: t.x, y: t.y, n: t.coins }); }
           else { this.coins += t.coins; this.stolen.push({ t, n: t.coins }); }
           this.emit({ type: 'coin', x: t.x, y: t.y, n: t.coins, kind: t.kind });

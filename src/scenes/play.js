@@ -77,7 +77,7 @@ const TIPS = {
   laundry: 'LAUNDRY HIDES YOU. NOBODY SEES THROUGH IT',
   routine: 'BUSY ADULTS SEE LESS. WATCH WHAT THEY ARE DOING',
   kain: 'KAIN NA BAR: GET OUT BEFORE DINNER TIME!',
-  caught: (p) => `CAUGHT! SOME COINS WENT BACK. ${p.world.livesLeft} CHANCES LEFT`,
+  caught: (p) => `MUNTIK NA! COINS DROPPED. ${p.world.livesLeft} ${p.world.livesLeft === 1 ? 'CHANCE' : 'CHANCES'} LEFT`,
   dog: 'ASO BARKS WHEN HE SEES YOU. PANDESAL BRIBES HIM',
   tanod: "TANOD'S FLASHLIGHT SWEEPS. HIS WHISTLE CALLS ALL",
   tindera: 'TINDERA SHOUTS, BUT NEVER LEAVES HER STALL',
@@ -271,10 +271,11 @@ export class Play {
         if (e.type === 'bark') this.barks.set(e.who, 0.6);
         break;
       case 'caught':
-        if (e.final) { sfx.caught(); this.buzz([80, 40, 140]); this.kick(6); if (settings.flash) this.flash = 0.6; }
+        // In play a catch is a close call ("muntik na!"): an amber flash, never the red catch of the story ending.
+        if (e.final) { sfx.sentBack(); this.buzz([80, 40, 140]); this.kick(6); if (settings.flash) this.flash = 0.6; }
         else {
-          sfx.scold(); this.buzz([60, 30, 60]); this.kick(4); if (settings.flash) this.flash = 0.45;
-          this.toast = { text: e.lost ? `-${e.lost} COINS WENT BACK` : 'CAUGHT!', col: C.orange, t: 2.4 };
+          sfx.muntik(); this.buzz([60, 30, 60]); this.kick(4); if (settings.flash) this.flash = 0.45;
+          this.toast = { text: e.lost ? `MUNTIK NA! YOU DROPPED ${e.lost} ${e.lost === 1 ? 'COIN' : 'COINS'}` : 'MUNTIK NA!', col: C.orange, t: 2.4 };
           this.showTip('caught');
         }
         break;
@@ -573,7 +574,7 @@ export class Play {
     if (p.carry) drawTarget(g, 'gatas', p.x - this.cx + sx, p.y - this.cy + sy - 21, false);
     if (this.level.storm) this.drawStorm(g, fd);
     this.drawCover(g);
-    if (this.flash > 0) { g.globalAlpha = this.flash * 0.5; g.fillStyle = C.red; g.fillRect(0, 0, VIEW_W, MAP_H); g.globalAlpha = 1; }
+    if (this.flash > 0) { g.globalAlpha = this.flash * 0.5; g.fillStyle = C.orange; g.fillRect(0, 0, VIEW_W, MAP_H); g.globalAlpha = 1; }
     if (this.pulse > 0) { // visual stand-in for vibration
       g.globalAlpha = Math.min(1, this.pulse * 2.5); g.fillStyle = this.pulseCol;
       g.fillRect(0, 0, VIEW_W, 3); g.fillRect(0, MAP_H - 3, VIEW_W, 3); g.fillRect(0, 0, 3, MAP_H); g.fillRect(VIEW_W - 3, 0, 3, MAP_H);
@@ -850,12 +851,12 @@ export class Play {
       drawText(g, this.toast.text, VIEW_W / 2, 145, this.toast.col, { align: 'center' });
     }
     if (this.cardT > 0 && !this.banner && !w.scold && w.status === "play") { g.globalAlpha = Math.min(1, this.cardT * 2); this.drawMissions(g, 160, this.opts.earned | 0); g.globalAlpha = 1; }
-    if (w.scold) { // the caught beat: who caught you, and what's left
+    if (w.scold) { // the close-call beat: who found you, and what's left (amber: the red "HULI KA!" is the ending's)
       const a = w.scold.who;
       g.globalAlpha = 0.8; g.fillStyle = C.ink; g.fillRect(0, 96, VIEW_W, 38); g.globalAlpha = 1;
-      g.fillStyle = C.red; g.fillRect(5, 99, 32, 32);
+      g.fillStyle = C.orange; g.fillRect(5, 99, 32, 32);
       if (!drawPortrait(g, a.type, 7, 101)) drawActor(g, a.type, 21, 124, 0, 'alert');
-      drawText(g, 'HULI!', 44, 100, C.red, { scale: 3, shadow: C.ink });
+      drawText(g, 'MUNTIK NA!', 44, 100, C.orange, { scale: 3, shadow: C.ink });
       drawText(g, `${w.livesLeft} ${w.livesLeft === 1 ? 'CHANCE' : 'CHANCES'} LEFT`, 44, 122, C.white);
     }
 

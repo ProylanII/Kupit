@@ -32,6 +32,7 @@ export class Target {
     this.must = !!def.must;   // the exit stays shut until this one is taken, whatever the coin count
     this.from = def.from;     // HINGI: index of the adult who gives it, and what they say
     this.say = def.say;
+    this.label = def.label;   // written on it (Ninang's envelope "PARA KAY JUN"): Jun reads it when he takes it
     this.progress = 0;
     this.started = false; // the start noise (zipper) already played for this attempt
     this.tickT = 0;

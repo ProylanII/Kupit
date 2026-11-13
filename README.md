@@ -2,7 +2,8 @@
 
 A pixel-art stealth game with a story. Jun has found a stray cat and her newborn kittens under the house. Mama
 said no more animals, so he keeps them secret and sneaks coins out of Mama's purse, Lola's bayong and Tita's
-wallet to buy them milk. His family works it out long before he does: all he ever had to do was ask.
+wallet to buy them milk. Nobody finds out until the night of the typhoon, when he is finally caught with a shirt
+full of kittens, and only then do they see what every coin was for. All he ever had to do was ask.
 (*Kupit* = Filipino slang for sneaking/pocketing something that isn't yours. *Hingi* = to ask for it.)
 
 | | | |
@@ -41,9 +42,11 @@ Collect the coin quota, then reach the exit.
 - **Adults** have vision cones. Fill their meter and they **chase** you (A* pathing). Break line of sight or hide, and
   they search, then go back. `?` over an adult means suspicious, `!` means chase. On big maps, arrows on the screen
   edge show who is onto you, and pings show noises heard off screen.
-- **Caught?** You get 3 chances per level. Each catch is a short scolding, a third of your coins go back to where
-  they came from, and you start again at the last safe spot (a hiding spot or doorway you passed calmly). The third
-  catch ends the level. A catch costs any "never caught" or "no alarm" star, and par time keeps running.
+- **Muntik na! (close calls)** You get 3 chances per level. When someone reaches you, they find you somewhere you
+  shouldn't be (never with the coins: the family only finds out in the story's ending, the one real "HULI KA!").
+  Jun drops a third of his coins, which go back where they came from, and you start again at the last safe spot (a
+  hiding spot or doorway you passed calmly). The third close call sends you back to your room and ends the level.
+  A close call costs any "no close calls" or "no alarm" star, and par time keeps running.
 - **Noise** travels through the rooms: walls stop it and closed doors muffle it. Running, creaky floors, lego (ARAY!)
   and every stash make noise. Purses click, bayongs rustle, wallets zip, and riskier stashes hold more coins. Letting
   go of a half-done kupit keeps most of the progress.
@@ -51,7 +54,7 @@ Collect the coin quota, then reach the exit.
 - **Secret alkansya**: every level hides one bonus stash off the main route.
 - **Bosses** each have a signature rule and finale. Lola's Siesta: a sleep meter that noise drains, then a finale
   where any sound sets her off. Mama sa Kusina: sandok throws. Tatay + Aso: Tatay follows the dog's barks, so
-  pandesal splits them. Ninang's Fiesta: guests are moving cover. Bagyo: the storm, and rising water.
+  pandesal splits them. Ninang's Christmas party: guests are moving cover. Bagyo: the storm.
 - **Late levels** add the tanod (sweeping flashlight, whistle), tinderas (shout MAGNANAKAW!, stay by their stall)
   and a tricycle on a timed route.
 - **Random House**: a seeded generator builds a new multi-room house at difficulty 1–5. Mutators (BROWNOUT, WALANG
@@ -106,7 +109,7 @@ another device (there is no server).
 
 ## Options and accessibility
 
-Music and sound-effect volume, mute, screen shake (full/low/off), red flash on/off, vibration, a visual edge pulse
+Music and sound-effect volume, mute, screen shake (full/low/off), screen flash on/off, vibration, a visual edge pulse
 instead of vibration (for iOS and desktops), left-handed buttons, ghost on/off. Alert states use shape and colour
 (`?` / `!` and different cone dither patterns). Tips appear at the top of the screen, never under your thumbs.
 

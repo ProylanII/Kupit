@@ -45,7 +45,9 @@ export const sfx = {
   steal: () => beep(660, 0.05, { vol: 0.03 }),
   coin: () => { beep(880, 0.08); beep(1320, 0.12, { at: 0.07 }); },
   alert: () => beep(300, 0.2, { slide: 300, type: 'sawtooth', vol: 0.05 }),
-  caught: () => { beep(400, 0.15, { type: 'sawtooth' }); beep(250, 0.3, { at: 0.15, type: 'sawtooth' }); },
+  caught: () => { beep(400, 0.15, { type: 'sawtooth' }); beep(250, 0.3, { at: 0.15, type: 'sawtooth' }); }, // HULI KA: the story's ending only
+  muntik: () => { beep(330, 0.16, { slide: 330, type: 'triangle', vol: 0.07 }); beep(620, 0.1, { at: 0.17, type: 'square', vol: 0.04 }); }, // a close call: a startled rising "whoop"
+  sentBack: () => { beep(440, 0.12, { type: 'triangle', vol: 0.07 }); beep(330, 0.12, { at: 0.13, type: 'triangle', vol: 0.07 }); beep(220, 0.3, { at: 0.26, type: 'triangle', vol: 0.07 }); }, // out of chances: back to your room
   scold: () => { beep(520, 0.1, { type: 'square', vol: 0.05 }); beep(390, 0.1, { at: 0.12, vol: 0.05 }); beep(520, 0.1, { at: 0.24, vol: 0.05 }); beep(260, 0.25, { at: 0.36, type: 'sawtooth', vol: 0.05 }); },
   clear: () => [523, 659, 784, 1047].forEach((f, i) => beep(f, 0.14, { at: i * 0.1 })),
   click: () => beep(180, 0.05, { vol: 0.05 }),

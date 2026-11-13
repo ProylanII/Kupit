@@ -21,7 +21,7 @@ import { loadAtlas } from './render/atlas.js';
 import { hapticsOn, vibrate, canVibrate } from './core/haptics.js';
 import { settings, applySettings, SHAKE_LEVELS, shakeLabel, VOLUME_STEPS } from './core/settings.js';
 import { loadGhost, storeGhost } from './game/ghost.js';
-import { INTRO, BEFORE, ENDING, EPILOGUE, NAMES, CHAPTERS } from './data/story.js';
+import { INTRO, BEFORE, AFTER, ENDING, EPILOGUE, NAMES, CHAPTERS } from './data/story.js';
 import { missionIds, missionLabel, maskOf, starsOf } from './game/missions.js';
 import { drawMenu, drawButton, buttonRect, menuHit, hit } from './ui/menu.js';
 
@@ -428,7 +428,7 @@ const HELP = [[
   ['THROW', 'HOLD Q OR THE BLUE BUTTON TO AIM, LET GO TO THROW. NOISE LURES ADULTS AWAY. R SWITCHES ITEMS.'],
   ['SKILL', 'EACH KID HAS A SKILL: TAP THE GREEN BUTTON OR PRESS F.'],
 ], [
-  ['CAUGHT', 'YOU GET 3 CHANCES. EACH TIME, SOME COINS GO BACK AND YOU START AGAIN AT THE LAST SAFE SPOT.'],
+  ['MUNTIK NA', 'IF SOMEONE REACHES YOU, THAT IS A CLOSE CALL: YOU DROP SOME COINS (THEY GO BACK) AND START AGAIN AT THE LAST SAFE SPOT. 3 CLOSE CALLS AND YOU ARE SENT BACK TO YOUR ROOM.'],
   ['NOISE', 'SOUND TRAVELS THROUGH ROOMS. WALLS STOP IT, CLOSED DOORS MUFFLE IT.'],
   ['STASHES', 'PURSES ARE QUICK BUT CLICK. BAYONGS RUSTLE. WALLETS ZIP. RISKY SPOTS PAY MORE.'],
   ['DOORS', 'DOORS BLOCK SIGHT. KEYS OPEN LOCKS. LEVERS OPEN GATES.'],
@@ -493,7 +493,7 @@ const pct = (v) => `${Math.round(v * 100)}%`;
 function optionItems() {
   return [
     `MUSIC: ${pct(settings.music)}`, `SOUND FX: ${pct(settings.sfx)}`, `MUTE ALL: ${isMuted() ? 'ON' : 'OFF'}`,
-    `SCREEN SHAKE: ${shakeLabel(settings.shake)}`, `RED FLASH: ${settings.flash ? 'ON' : 'OFF'}`,
+    `SCREEN SHAKE: ${shakeLabel(settings.shake)}`, `SCREEN FLASH: ${settings.flash ? 'ON' : 'OFF'}`,
     canVibrate() ? `VIBRATE: ${hapticsOn() ? 'ON' : 'OFF'}` : 'VIBRATE: NOT ON THIS DEVICE',
     `VISUAL PULSE: ${settings.pulse ? 'ON' : 'OFF'}`, `BUTTONS: ${settings.left ? 'LEFT' : 'RIGHT'}-HANDED`,
     `GHOST OF BEST RUN: ${settings.ghost ? 'ON' : 'OFF'}`, 'COPY SAVE CODE', 'LOAD SAVE CODE', 'BACK',
@@ -501,7 +501,7 @@ function optionItems() {
   ];
 }
 const OPT_HELP = [
-  'MUSIC VOLUME', 'BEEPS AND CREAKS', 'SILENCE EVERYTHING (M KEY)', 'HOW MUCH THE SCREEN SHAKES', 'RED SCREEN WHEN CAUGHT',
+  'MUSIC VOLUME', 'BEEPS AND CREAKS', 'SILENCE EVERYTHING (M KEY)', 'HOW MUCH THE SCREEN SHAKES', 'COLOUR FLASH ON A CLOSE CALL',
   'PHONE BUZZES ON ALERTS', 'COLOURED SCREEN EDGE INSTEAD OF A BUZZ', 'MIRROR THE BUTTONS FOR YOUR LEFT THUMB',
   'SEE-THROUGH KID REPLAYS YOUR BEST TIME', 'MOVE YOUR SAVE TO ANOTHER PHONE', 'PASTE A CODE FROM ANOTHER PHONE', '', 'ALL DEATHS, PAUSES AND IDLE MOMENTS (JSON)',
 ];
@@ -686,15 +686,17 @@ function drawCaught() {
   play.draw(g);
   dim();
   const a = play.catcher;
-  if (a) { g.fillStyle = C.red; g.fillRect(VIEW_W / 2 - 30, 36, 60, 60); g.fillStyle = C.ink; g.fillRect(VIEW_W / 2 - 28, 38, 56, 56); drawPortrait(g, a.type, VIEW_W / 2 - 28, 38, 2); }
+  // Out of chances (or too slow): Jun is sent back to his room. Amber, not red, and never "HULI KA!": the family
+  // only finds out what he has been doing in the story's ending.
+  if (a) { g.fillStyle = C.orange; g.fillRect(VIEW_W / 2 - 30, 36, 60, 60); g.fillStyle = C.ink; g.fillRect(VIEW_W / 2 - 28, 38, 56, 56); drawPortrait(g, a.type, VIEW_W / 2 - 28, 38, 2); }
   if (play.reason === 'time') {
     drawText(g, 'KAIN NA!', VIEW_W / 2, 100, C.orange, { scale: 5, align: 'center', shadow: C.ink });
     drawText(g, `${a ? a.cfg.name : 'MAMA'}: "DINNER TIME! COME HERE!"`, VIEW_W / 2, 155, C.white, { align: 'center' });
   } else {
-    drawText(g, play.reason === 'escape' ? 'HULI KA!' : 'CAUGHT!', VIEW_W / 2, 100, C.red, { scale: 6, align: 'center', shadow: C.ink });
-    drawText(g, `${a.cfg.name}: "${a.cfg.shout}"`, VIEW_W / 2, 155, C.white, { align: 'center' });
+    drawText(g, 'BALIK SA KWARTO!', VIEW_W / 2, 104, C.orange, { scale: 3, align: 'center', shadow: C.ink });
+    drawText(g, `${a.cfg.name}: "${a.cfg.scold || a.cfg.shout}"`, VIEW_W / 2, 155, C.white, { align: 'center' });
     if (play.reason === 'escape') drawText(g, 'TOO SLOW! RUN FOR THE EXIT NEXT TIME', VIEW_W / 2, 165, C.orange, { align: 'center' });
-    else if (play.world.lives > 1) drawText(g, `CAUGHT ${play.world.catches} TIMES. NO CHANCES LEFT!`, VIEW_W / 2, 165, C.orange, { align: 'center' });
+    else if (play.world.lives > 1) drawText(g, `${play.world.catches} CLOSE CALLS. NO CHANCES LEFT!`, VIEW_W / 2, 165, C.orange, { align: 'center' });
   }
   drawText(g, `COINS ${play.world.coins}/${cur.quota}   TIME ${Math.floor(play.world.time)}S`, VIEW_W / 2, 177, C.gray, { align: 'center' });
   if (age > 0.5) drawMenu(g, run ? ['TRY AGAIN', 'NEW HOUSE', 'HOUSE MENU'] : ['TRY AGAIN', 'MAP', 'HIDEOUT'], sel, END_Y);
@@ -730,7 +732,7 @@ function drawClear() {
     drawText(g, missionLabel(cur, ids[i]), x + 10, y + 1, on ? (now && !had ? C.gold : C.white) : C.dgray);
     if (age > at) drawText(g, now && !had ? 'NEW!' : had ? 'DONE' : 'NOT YET', x + 160, y + 1, now && !had ? C.green : had ? C.gray : C.dgray, { align: 'right' });
   }
-  drawText(g, `${cur.giveBack ? 'PUT BACK' : cur.hingi ? 'GIVEN' : 'COINS'} ${r.coins}   TIME ${Math.floor(r.time)}S${r.catches ? `   CAUGHT ${r.catches}X` : ''}`, VIEW_W / 2, 138, C.white, { align: 'center' });
+  drawText(g, `${cur.giveBack ? 'PUT BACK' : cur.hingi ? 'GIVEN' : 'COINS'} ${r.coins}   TIME ${Math.floor(r.time)}S${r.catches ? `   CLOSE CALLS ${r.catches}` : ''}`, VIEW_W / 2, 138, C.white, { align: 'center' });
   if (run) drawText(g, `HOUSE ${cur.seed}   LEVEL ${run.diff}${run.daily ? '   DAILY' : ''}${run.mutators.length ? `   X${mutatorMult(run.mutators)}` : ''}`, VIEW_W / 2, 150, C.gray, { align: 'center' });
   else drawText(g, newBest ? 'NEW BEST TIME! (GHOST SAVED)' : `BEST ${Math.floor(save.best[cur.id] || r.time)}S`, VIEW_W / 2, 150, newBest ? C.green : C.gray, { align: 'center' });
   if (cur.epilogue) drawText(g, 'YOU ONLY HAD TO ASK.', VIEW_W / 2, 162, C.pink, { align: 'center' });
@@ -823,6 +825,8 @@ function afterPlay() {
   // The storm: the moment Jun is through the door with the kittens, he is caught. The ending plays before the results.
   if (!run && cur.ending && !save.story.ending) {
     startStory(ENDING, () => { save.story.ending = true; persist(); setMode('clear'); starShown = [false, false, false]; sfx.clear(); });
+  } else if (!run && AFTER[cur.id] && !save.story.after[cur.id]) { // a scene that closes this level's story beat
+    startStory(AFTER[cur.id], () => { save.story.after[cur.id] = true; persist(); setMode('clear'); starShown = [false, false, false]; });
   }
 }
 

@@ -8,17 +8,20 @@ import { findPath } from '../world/pathfind.js';
 // harmless: never sees or catches (party guests, vehicles). cover: blocks other adults' sight.
 // scan: the cone sweeps side to side while walking (tanod's flashlight). leash: gives up a chase this far from home.
 export const ADULT_TYPES = {
-  mama:  { name: 'MAMA',  speed: 26, range: 72, fov: 0.85, rate: 1.7, shout: "ANO 'YAN?!", scold: 'IKAW TALAGA! BALIK DOON!' },
-  lola:  { name: 'LOLA',  speed: 14, range: 56, fov: 1.15, rate: 1.1, cycle: { on: 9, off: 9 }, sleepy: true, shout: 'APO!?', scold: 'APO, BAWAL YAN HA!' },
-  tita:  { name: 'TITA',  speed: 22, range: 80, fov: 0.7,  rate: 2.0, cycle: { on: 7, off: 3 }, phone: true, shout: 'HOY!', scold: 'ISUSUMBONG KITA!' },
-  tatay: { name: 'TATAY', speed: 34, range: 60, fov: 0.75, rate: 2.2, shout: 'HOY BATA!', scold: 'LAGOT KA SA AKIN!' },
-  kuya:  { name: 'KUYA',  speed: 30, range: 68, fov: 0.8,  rate: 1.6, tattle: { r: 170, windup: 0.5, say: 'MAAA! KUMUKUPIT SIYA!' }, shout: 'SUSUMBONG KITA!', scold: 'HULI! AKIN NA YAN!' },
+  // Lines: shout = when they spot you, scold = when they reach you. The family must never accuse Jun of taking
+  // anything: they find him somewhere odd, not with coins (the one real "HULI KA!" is the story's ending).
+  mama:  { name: 'MAMA',  speed: 26, range: 72, fov: 0.85, rate: 1.7, shout: "SINO 'YAN?!", scold: "JUN! ANO'NG GINAGAWA MO DITO?" },
+  lola:  { name: 'LOLA',  speed: 14, range: 56, fov: 1.15, rate: 1.1, cycle: { on: 9, off: 9 }, sleepy: true, shout: 'APO?', scold: 'APO, MAY KAILANGAN KA?' },
+  tita:  { name: 'TITA',  speed: 22, range: 80, fov: 0.7,  rate: 2.0, cycle: { on: 7, off: 3 }, phone: true, shout: 'HOY!', scold: 'LABAS DITO, BATA!' },
+  tatay: { name: 'TATAY', speed: 34, range: 60, fov: 0.75, rate: 2.2, shout: 'HOY BATA!', scold: 'DOON KA MAGLARO SA LABAS!' },
+  // kuya = Pinsan Jomar, the cousin staying with the family who loves to tell on people (not Kuya Ramil)
+  kuya:  { name: 'JOMAR', speed: 30, range: 68, fov: 0.8,  rate: 1.6, tattle: { r: 170, windup: 0.5, say: 'TITAAA! SI JUN!' }, shout: 'TITA! SI JUN!', scold: 'NANDITO SI JUN SA KWARTO NIYO!' },
   nena:  { name: 'ALING NENA', speed: 22, range: 76, fov: 0.9, rate: 1.8, shout: 'BAYAD MUNA!', scold: 'BAYAD MUNA, IJO!' },
-  ninang: { name: 'NINANG', speed: 18, range: 70, fov: 0.9, rate: 1.6, shout: 'IJO! ANO YAN?!', scold: 'WALANG PAMASKO SAYO!' },
+  ninang: { name: 'NINANG', speed: 18, range: 70, fov: 0.9, rate: 1.6, shout: 'IJO! ANO YAN?!', scold: 'MAMAYA PA ANG REGALO!' },
   aso:   { name: 'ASO',   speed: 40, range: 44, fov: 1.4,  rate: 2.5, dog: true, shout: 'AW AW!', scold: 'GRRR... AW!' },
   // late-game community archetypes (built from the behaviours above)
-  tanod: { name: 'TANOD', speed: 24, range: 92, fov: 0.42, rate: 1.9, scan: { amp: 0.85, speed: 1.4 }, tattle: { r: 190, windup: 0.3, say: 'PRRRT!' }, shout: 'TIGIL!', scold: 'SA BARANGAY KA!' },
-  tindera: { name: 'TINDERA', speed: 22, range: 72, fov: 0.95, rate: 1.8, tattle: { r: 130, windup: 0.4, say: 'MAGNANAKAW!' }, leash: 64, shout: 'MAGNANAKAW!', scold: 'HINDI LIBRE YAN!' },
+  tanod: { name: 'TANOD', speed: 24, range: 92, fov: 0.42, rate: 1.9, scan: { amp: 0.85, speed: 1.4 }, tattle: { r: 190, windup: 0.3, say: 'PRRRT!' }, shout: 'TIGIL!', scold: 'CURFEW NA! UWI!' },
+  tindera: { name: 'TINDERA', speed: 22, range: 72, fov: 0.95, rate: 1.8, tattle: { r: 130, windup: 0.4, say: 'MARE! ANAK MO!' }, leash: 64, shout: 'MARE! ANAK MO!', scold: 'BATA, HUWAG DIYAN!' },
   bisita: { name: 'BISITA', speed: 15, range: 0, fov: 0, rate: 0, harmless: true, cover: true, shout: '' },
   trike: { name: 'TRICYCLE', speed: 52, range: 0, fov: 0, rate: 0, harmless: true, cover: true, vehicle: true, shout: 'BEEP BEEP!' },
 };
@@ -499,7 +502,7 @@ export class Adult {
         if (this.follow(dt, c.speed * 1.2, world)) {
           const h = this.inspectList.shift();
           if (this.stuck) { if (!this.nextInspect()) { this.state = 'search'; this.searchT = 1.2; } break; } // can't reach that spot
-          if (player.hidden && player.hidden === h && !(player.graceT > 0)) { this.talk('HULI KA!', 2); this.caught = true; return; }
+          if (player.hidden && player.hidden === h && !(player.graceT > 0)) { this.talk('NANDIYAN KA PALA!', 2); this.caught = true; return; }
           this.talk('WALA...', 1);
           if (!this.nextInspect()) { this.state = 'search'; this.searchT = 1.2; }
         }

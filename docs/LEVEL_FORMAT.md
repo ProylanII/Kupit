@@ -179,7 +179,7 @@ Extra target kind `candy` (the garapon prize). Adult types `nena` (Aling Nena) a
 at spawn for 4s is safe on every level.
 
 Adult types: `mama`, `lola` (sleeps in cycles, noise wakes her), `tita` (phone cycles), `tatay` (fast),
-`kuya` (tattletale: a wind-up, then a shout that calls everyone nearby), `aso` (dog: barks instead of chasing, eats
+`kuya` (Pinsan Jomar, the cousin: a tattletale, a wind-up, then a shout that calls everyone nearby), `aso` (dog: barks instead of chasing, eats
 pandesal), `nena`, `ninang`. Late-game community archetypes, built from the same behaviours:
 
 - `tanod`: barangay watchman. His flashlight cone sweeps while he walks, and his whistle calls everyone.

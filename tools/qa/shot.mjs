@@ -25,7 +25,7 @@ for (const s of shots) {
   } else if (kind === 'story') {
     await page.evaluate(async (nm, i) => {
       const m = await import('./src/data/story.js');
-      const panels = m[nm] || m.BEFORE[nm];
+      const panels = m[nm] || m.BEFORE[nm] || m.AFTER?.[nm];
       window.__kupit.story(panels, Number(i) || 0);
     }, a, b);
     await sleep(1600);
