@@ -15,7 +15,7 @@ const room = (o = {}) => ({
   spawn: [3, 3], exit: [10, 6], quota: 2, par: 60, adults: [], ...o,
 });
 const dir = new URL('../src/data/levels/', import.meta.url);
-const levels = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8')).map((f) => JSON.parse(readFileSync(new URL(f, dir), 'utf8')));
+const levels = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8')).map((f) => JSON.parse(readFileSync(new URL(f, dir), 'utf8'))).filter((L) => !L.mode); // (mini-games: tests/minigames.test.mjs)
 
 // Hold KUPIT until the stash has given n coins (or is empty); returns the world.
 function take(w, t, n = Infinity) {

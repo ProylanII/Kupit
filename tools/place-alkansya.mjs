@@ -59,6 +59,7 @@ export function suggestAlkansya(L) {
 if (process.argv[1] && new URL(import.meta.url).pathname.endsWith(process.argv[1].replace(/\\/g, '/').split('/').pop())) {
   for (const f of files) {
     const url = new URL(f, dir), L = JSON.parse(readFileSync(url, 'utf8'));
+    if (L.mode) continue; // (a mini-game: no rooms to lint, its own simulation)
     const s = suggestAlkansya({ ...L, alkansya: undefined });
     console.log(`${f.padEnd(24)} ${L.alkansya ? `has ${L.alkansya.at}` : `suggest ${s?.at} (detour ${s?.detour} tiles)`}`);
     if (write && !L.alkansya && s) {

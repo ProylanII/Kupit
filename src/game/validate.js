@@ -1,6 +1,6 @@
 // Level validation shared by the tests and the random-house generator. DOM-free.
 // validateLevel(L) -> array of error strings (empty = valid and solvable).
-import { TileMap, CRAWL } from '../world/tilemap.js';
+import { TileMap, CRAWL, CAT_PASS } from '../world/tilemap.js';
 import { findPath } from '../world/pathfind.js';
 import { ADULT_TYPES, ACTIVITIES } from '../entities/adult.js';
 import { MISSIONS } from './missions.js';
@@ -9,7 +9,7 @@ import { World } from './world.js';
 
 export const KINDS = {
   items: ['tsinelas', 'pandesal', 'key'], hide: ['box', 'curtain', 'basket'],
-  devices: ['tv', 'radio', 'videoke'], traps: ['creak', 'lego'], targets: ['purse', 'bayong', 'wallet', 'piggy', 'candy', 'gatas', 'kuting', 'ibalik', 'regalo', 'bilin', 'isda'],
+  devices: ['tv', 'radio', 'videoke'], traps: ['creak', 'lego'], targets: ['purse', 'bayong', 'wallet', 'piggy', 'candy', 'gatas', 'kuting', 'ibalik', 'regalo', 'bilin', 'isda', 'mingming'],
 };
 
 // Player reachability with keys and switch-operated gates, iterated to a fixpoint.
@@ -23,7 +23,7 @@ export function solve(L, map, blockedDoors = new Set(), { crawl = false, from = 
     const c = map.ch(x, y);
     if (c === 'D') { if (blockedDoors.has(`${x},${y}`)) return false; const k = locks.get(`${x},${y}`); return !k || keys.has(k); }
     if (c === 'G') return gates.has(`${x},${y}`);
-    return !map.tileSolid(x, y, crawl ? CRAWL : null);
+    return !map.tileSolid(x, y, crawl instanceof Set ? crawl : crawl ? CRAWL : null);
   };
   let reach, before = -1;
   while (true) {
@@ -70,6 +70,7 @@ export function validateLevel(L) {
   const map = new TileMap(L.tiles);
   const floor = (p, what) => {
     const c = map.ch(p[0], p[1]);
+    if (L.cat && what.startsWith('targets') && CAT_PASS.has(c)) return; // (the cat's fish waits up on the table)
     if (map.tileSolid(p[0], p[1]) || 'dgDG'.includes(c)) bad(`${what} ${p} must be on plain floor (got '${c}')`);
   };
   if (L.hint && L.hint.length > 58) bad(`hint is ${L.hint.length} chars (max 58 fits the screen)`);
@@ -84,6 +85,8 @@ export function validateLevel(L) {
     if ((has('noSpill') || has('noPuddle')) && !L.targets.some((t) => t.carry)) bad('missions noSpill / noPuddle need something to carry');
     if (has('thunder') && !L.storm) bad('mission thunder needs a storm');
     if (has('noBark') && !L.adults.some((a) => a.type === 'aso')) bad('mission noBark needs a dog');
+    if (has('dryBox') && !L.tulo) bad('mission dryBox needs a tulo block');
+    if (has('stopFlood') && !L.flood?.breaches?.length) bad('mission stopFlood needs flood breaches');
     if (has('noWake') && !L.adults.some((a) => a.type === 'lola' || a.sleepy || a.cfg?.sleepy)) bad('mission noWake needs a sleeper');
     if (has('noDevice') && !(L.devices || []).some((d) => d.kind !== 'videoke')) bad('mission noDevice needs a tv or radio');
     if (has('noTrap') && !(L.traps || []).length) bad('mission noTrap needs traps');
@@ -136,7 +139,8 @@ export function validateLevel(L) {
   for (const c of L.cats || []) { if (map.tileSolid(c.at[0], c.at[1])) bad(`cat ${c.at} must be on floor`); behind(c.at, 'cat'); }
 
   // tag-team: the kid who can crawl does the reaching; the other one must still get out through what was opened
-  const reach = solve(L, map, undefined, { crawl: !!L.team?.includes('bing') });
+  const reach = solve(L, map, undefined, { crawl: L.cat ? CAT_PASS : !!L.team?.includes('bing') });
+  if (L.cat && (L.locks?.length || L.switches?.length)) bad('a cat level cannot need doors unlocked or levers pulled');
   if (!reach.has(L.exit.join())) bad('exit unreachable');
   if (L.team) {
     if (!Array.isArray(L.team) || L.team.length !== 2 || L.team.some((k) => !['jun', 'bing', 'ramil', 'nene'].includes(k)) || L.team[0] === L.team[1]) bad('team must be two different kids');

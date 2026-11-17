@@ -46,7 +46,7 @@ export const CLEAN = -5;      // nothing taken past the quota, no alarm, no clos
 export const RETURNED = -2;   // IBALIK: per coin put back
 export function delta(r, L = {}) {
   const parts = [];
-  if (L.hingi || L.epilogue) return { total: 0, parts };
+  if (L.hingi || L.epilogue || L.mode || L.cat) return { total: 0, parts }; // (the mini-games and Mingming's night: nothing of Jun's for the house to notice)
   if (L.outside) { // not the house: only what the tanod saw gets back home
     const n = Math.min(INPUTS.tanod.cap, (r.tanod | 0) * INPUTS.tanod.each);
     if (n) parts.push({ id: 'tanod', label: INPUTS.tanod.label, n });

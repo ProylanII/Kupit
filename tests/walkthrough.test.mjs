@@ -9,7 +9,7 @@ import { generateHouse, dailySeed, dailyDiff, isPasko, MUTATOR_ORDER } from '../
 
 const dir = new URL('../src/data/levels/', import.meta.url);
 const files = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8'));
-const levels = files.map((f) => JSON.parse(readFileSync(new URL(f, dir), 'utf8')));
+const levels = files.map((f) => JSON.parse(readFileSync(new URL(f, dir), 'utf8'))).filter((L) => !L.mode); // (mini-games: tests/minigames.test.mjs)
 
 const why = (r) => `${r.why || r.status} after ${r.time}s; ${r.log.slice(-3).join(' ; ')}`;
 

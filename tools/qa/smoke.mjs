@@ -19,8 +19,8 @@ for (const phone of [true, false]) {
   await sleep(1000);
   check((await state(page)).mode === 'title', `${tag}: title screen`);
   await shot('title');
-  // menus by keyboard: LEVELS, RANDOM HOUSE, STORE, CHARACTERS, HOW TO PLAY (3 pages), OPTIONS
-  const menus = [['levels', 1], ['house', 2], ['store', 3], ['chars', 4], ['help', 5], ['options', 6]];
+  // menus by keyboard: LEVELS, RANDOM HOUSE, STORE, CHARACTERS, ALBUM, HOW TO PLAY (3 pages), OPTIONS
+  const menus = [['levels', 1], ['house', 2], ['store', 3], ['chars', 4], ['album', 5], ['help', 6], ['options', 7]];
   for (const [name, n] of menus) {
     for (let i = 0; i < n; i++) await key('ArrowDown');
     await key('Enter', 300);

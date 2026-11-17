@@ -115,3 +115,13 @@ Updated after each phase. See AUDIT.md for the findings and DECISIONS.md for the
   `tools/art/make_art.py`, then `npm run art:code` and `npm run build`.
 - Read the new ending in `src/data/story.js` (`ENDING`).
 - Play the rebuilt levels by hand, the fiesta and the palengke first: those changed the most.
+
+## Mini-games, first batch — done (2026-11-17, v0.3.0, uncommitted on design-overhaul)
+
+- Done: TUMBANG PRESO (bonus, level 6), SI MINGMING NAMAN (level 13), HABOL! (level 15, opens Chapter 4), BAGYO rebuilt with
+  TULO (leaks over the kittens' box) and BAHA (flood + sandbags). Rewards per star (coins, photos, looks), the ALBUM screen,
+  how-to cards, map nodes, save v6, new poses in the sprite sheet, two new music tracks. Details: `docs/MINIGAMES.md`.
+- Checks: `npm test` 303/303 (15 new in `tests/minigames.test.mjs`); smoke, ending and PWA QA pass on the local server;
+  screenshots of every new moment by `tools/qa/minigame-shots.mjs`.
+- Needs the owner: a playtest on a phone (PRESO aim timing, HABOL! speed, TULO on touch, MINGMING difficulty), and the
+  merge to main when happy (version 0.3.0 is already set).

@@ -13,7 +13,7 @@ import { hasBigGlyph } from '../src/ui/font.js';
 import { playBot } from './bot.mjs';
 
 const dir = new URL('../src/data/levels/', import.meta.url);
-const levels = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8')).map((f) => JSON.parse(readFileSync(new URL(f, dir), 'utf8')));
+const levels = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8')).map((f) => JSON.parse(readFileSync(new URL(f, dir), 'utf8'))).filter((L) => !L.mode); // (mini-games: tests/minigames.test.mjs)
 const byId = Object.fromEntries(levels.map((L) => [L.id, L]));
 
 test('hinala: four tiers at 25/50/75, chapter floors that only ever rise', () => {

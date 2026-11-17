@@ -19,7 +19,7 @@ const room = (o = {}) => ({
 });
 const walk = (w, x, n = 60) => { for (let i = 0; i < n; i++) w.update(1 / 60, { ...IDLE, mv: { x, y: 0, mag: 1, run: false } }); };
 const dir = new URL('../src/data/levels/', import.meta.url);
-const levels = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8')).map((f) => JSON.parse(readFileSync(new URL(f, dir), 'utf8')));
+const levels = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8')).map((f) => JSON.parse(readFileSync(new URL(f, dir), 'utf8'))).filter((L) => !L.mode); // (mini-games: tests/minigames.test.mjs)
 
 test('MALIIT: Bing crawls under a table; Jun bumps into it', () => {
   const bing = new World(room(), { char: 'bing' }), jun = new World(room());

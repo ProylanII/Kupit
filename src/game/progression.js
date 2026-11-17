@@ -47,6 +47,16 @@ export const NEEDS = {
               open: (s) => !!s.story?.nena, when: "WHEN ALING NENA KNOWS" },
 };
 export const NENA_DISCOUNT = 0.75;
+
+// SI MINGMING NAMAN (level "cat": true): you are the cat. Quick and quiet, up on the tables, counters, beds and
+// sofas (where only someone right beside her notices her), into boxes, but no hands: no doors, no levers, nothing
+// to throw. Her trick: TABIG, a swat that knocks a cup off the counter ahead (a noise that pulls people away).
+// Not one of the crew (she never shows up in the SINO ANG PUPUNTA? row).
+export const MINGMING = {
+  name: 'MINGMING', look: 'pusa', speed: 1.3, radius: 3, runNoise: 0.5, crawl: 'cat', cat: true,
+  skill: { id: 'tabig', label: 'TABIG', cd: 7 },
+  lines: ['TABIG: KNOCK A CUP OFF THE COUNTER', 'UP ON THE TABLES, SHE IS HARD TO SEE.'],
+};
 export const hasNeed = (save, id) => !!(save.needs && save.needs[id]);
 export const needOpen = (save, id) => !!NEEDS[id] && (hasNeed(save, id) || NEEDS[id].open(save));
 export const needCost = (save, id) => Math.ceil(NEEDS[id].cost * (save.story?.nena ? NENA_DISCOUNT : 1));
@@ -96,9 +106,9 @@ export const FLOORS = { runNoise: 24, stealTime: 0.5, alertRate: 0.55 };
 const lvl = (ups, id) => (ups && ups[id]) | 0;
 
 export function computeMods(charId = 'jun', ups = {}) {
-  const c = CHARACTERS[charId] || CHARACTERS.jun;
+  const c = CHARACTERS[charId] || (charId === 'mingming' ? MINGMING : CHARACTERS.jun);
   return {
-    charId: CHARACTERS[charId] ? charId : 'jun',
+    charId: CHARACTERS[charId] || charId === 'mingming' ? charId : 'jun',
     look: c.look,
     skill: c.skill,
     speed: c.speed ?? 1,
@@ -114,7 +124,8 @@ export function computeMods(charId = 'jun', ups = {}) {
     medyas: !!lvl(ups, 'medyas'), // creaky boards stay quiet
     panyo: lvl(ups, 'panyo') ? 1 : 0, // stash openings it can muffle per level
     throwRange: c.throwRange ?? 1,
-    crawl: !!c.crawl,       // Bing: under tables and beds (MALIIT)
+    crawl: c.crawl || false, // Bing: under tables and beds (MALIIT); 'cat': Mingming up on the furniture
+    cat: !!c.cat,
     palusot: c.palusot | 0, // Ramil: close calls he can talk away per level (PALUSOT)
   };
 }
@@ -140,7 +151,8 @@ export const owns = (save, id) => save.chars.includes(id);
 // ---- cosmetics: they never touch balance -------------------------------------------
 // Outfits are palette swaps of the kid's top and bottom (see render/sprites.js).
 // how: cost (coins) | stars (milestone) | mutator (clear a level-3+ Random House with it) | pasko (free in season)
-export const OUTFIT_ORDER = ['basic', 'pula', 'lila', 'jersey', 'pambahay', 'barong', 'glow', 'pasko', 'ginto'];
+// reward: given by a mini-game mission (the level's "rewards"), never bought
+export const OUTFIT_ORDER = ['basic', 'pula', 'lila', 'jersey', 'pambahay', 'barong', 'glow', 'pasko', 'kalye', 'tigre', 'ginto'];
 export const OUTFITS = {
   basic:    { name: 'PAMBAHAY NI NANAY', how: { cost: 0 } },
   pula:     { name: 'PULANG DAMIT', how: { cost: 12 }, top: ['#d94a4a', '#a83a3a'], bottom: ['#3a3550', '#2a2640'] },
@@ -150,19 +162,22 @@ export const OUTFITS = {
   barong:   { name: 'MINI BARONG', how: { mutator: 'bisita' }, top: ['#f3ead2', '#d9cba6'], bottom: ['#5a5468', '#46415a'] },
   glow:     { name: 'GLOW SHIRT', how: { mutator: 'brownout' }, top: ['#7fd7ff', '#4f8fff'], bottom: ['#2a3560', '#1d2448'] },
   pasko:    { name: 'PAMASKONG DAMIT', how: { pasko: true }, top: ['#d94a4a', '#a83a3a'], bottom: ['#2fa55b', '#227a43'] },
-  ginto:    { name: 'GINTONG KUPIT', how: { stars: 48 }, top: ['#ffd84d', '#c9962b'], bottom: ['#ffd84d', '#c9962b'] },
+  kalye:    { name: 'PANG-KALYE', how: { reward: 'preso' }, top: ['#f6f1e7', '#cfc7b8'], bottom: ['#d94a4a', '#a83a3a'] },
+  tigre:    { name: 'TIGRE SHIRT', how: { reward: 'habol' }, top: ['#ff9a3c', '#d9762a'], bottom: ['#6e4424', '#4a2c1c'] },
+  ginto:    { name: 'GINTONG KUPIT', how: { stars: 57 }, top: ['#ffd84d', '#c9962b'], bottom: ['#ffd84d', '#c9962b'] },
 };
 // Title-screen skyline decorations.
-export const DECOR_ORDER = ['pusa', 'alitaptap', 'parol', 'banderitas', 'jeep', 'paputok'];
+export const DECOR_ORDER = ['pusa', 'alitaptap', 'parol', 'banderitas', 'kuting', 'jeep', 'paputok'];
 export const DECOR = {
   pusa:       { name: 'PUSA SA BUBONG', how: { cost: 6 } },
   alitaptap:  { name: 'ALITAPTAP', how: { cost: 8 } },
   parol:      { name: 'PAROL', how: { cost: 10 } },
   banderitas: { name: 'BANDERITAS', how: { cost: 12 } },
+  kuting:     { name: 'MGA KUTING', how: { reward: 'mingming' } }, // three kittens tumbling along the fence
   jeep:       { name: 'JEEPNEY', how: { stars: 20 } },
   paputok:    { name: 'PAPUTOK', how: { stars: 30 } },
 };
-export const MAX_STARS = 48; // 16 levels with stars (the epilogue has none)
+export const MAX_STARS = 57; // 19 levels with stars (the epilogue has none)
 export const STAR_MILESTONES = [10, 20, 30, MAX_STARS].map((stars) => ({
   stars,
   rewards: [
@@ -218,6 +233,25 @@ export function housePayout({ coins, stars, diff, housesToday = 0, daily = false
   if (daily) return prevStars ? Math.max(0, stars - prevStars) : Math.round(base) + 2;
   const day = Math.max(0.25, 1 - 0.15 * housesToday);
   return Math.max(1, Math.round(base * day));
+}
+
+// ---- mini-game rewards ----------------------------------------------------------------
+// A level can pay each of its three stars with something ("rewards": [r0, r1, r2], same order as its missions):
+//   { "coins": 10 }   coins into the bank
+//   { "photo": "preso" }  a picture for the album (scenes/album.js)
+//   { "outfit": "kalye" } / { "decor": "kuting" }   a look (OUTFITS / DECOR with how.reward)
+// Each is given once, the first time its star is earned. fresh = bit mask of the stars earned for the first time.
+// Returns what was given, for the clear screen: [{ kind, id, name, n }].
+export function grantRewards(save, L, fresh) {
+  const out = [];
+  (L.rewards || []).forEach((rw, i) => {
+    if (!rw || !((fresh >> i) & 1)) return;
+    if (rw.coins) { save.bank += rw.coins; out.push({ kind: 'coins', n: rw.coins, name: `+${rw.coins} COINS` }); }
+    if (rw.photo && !(save.album || []).includes(rw.photo)) { save.album = [...(save.album || []), rw.photo]; out.push({ kind: 'photo', id: rw.photo, name: rw.photoName || 'A NEW PHOTO' }); }
+    if (rw.outfit && OUTFITS[rw.outfit] && !save.outfits.includes(rw.outfit)) { save.outfits.push(rw.outfit); out.push({ kind: 'outfit', id: rw.outfit, name: OUTFITS[rw.outfit].name }); }
+    if (rw.decor && DECOR[rw.decor] && !save.decor.includes(rw.decor)) { save.decor.push(rw.decor); out.push({ kind: 'decor', id: rw.decor, name: DECOR[rw.decor].name }); }
+  });
+  return out;
 }
 
 // Select a kid. Siblings join through the story, so one who hasn't yet is 'locked'. Returns 'selected' | 'locked'.

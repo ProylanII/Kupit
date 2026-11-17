@@ -15,7 +15,7 @@ import { hasGlyph } from '../src/ui/font.js';
 import { lint } from '../tools/level-lint.mjs';
 
 const dir = new URL('../src/data/levels/', import.meta.url);
-const levels = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8')).map((f) => JSON.parse(readFileSync(new URL(f, dir), 'utf8')));
+const levels = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8')).map((f) => JSON.parse(readFileSync(new URL(f, dir), 'utf8'))).filter((L) => !L.mode); // (mini-games: tests/minigames.test.mjs)
 const atlas = JSON.parse(readFileSync(new URL('../assets/sprites/atlas.json', import.meta.url), 'utf8'));
 const style = JSON.parse(readFileSync(new URL('../tools/art/style.json', import.meta.url), 'utf8'));
 const IDLE = { mv: { x: 0, y: 0, mag: 0, run: false }, action: false, actionPressed: false, throwPressed: false, abilityPressed: false };

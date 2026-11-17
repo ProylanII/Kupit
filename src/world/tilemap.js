@@ -8,11 +8,14 @@ export const TILE = 16;
 // 'L' hanging laundry: walkable, but nobody sees through it (or into it)
 // dynamic: D closed door (solid, blocks sight) / d open door,
 //          G closed gate (solid, see-through bars) / g open gate
-const SOLID = new Set('#TSBPCFHWAKMDG');
-const OPAQUE = new Set('#DKML');
+// BAGYO: '_' dirt under the house (walkable), 'I' a house post (solid, blocks sight), '~' the kanal (solid, see-through),
+//        'Q' a sandbag (solid, see-through; pushed by walking into it)
+const SOLID = new Set('#TSBPCFHWAKMDGI~Q');
+const OPAQUE = new Set('#DKMLI');
 export const FURNITURE = 'TSBPCFHWAKM';
-export const FLOORS = '.,;:';
+export const FLOORS = '.,;:_';
 export const CRAWL = new Set('TB'); // tables and beds: Bing (and only Bing) crawls under them
+export const CAT_PASS = new Set('TBSCHAW'); // Mingming: up on tables, beds, sofas, counters, stools, shelves and drums
 
 export class TileMap {
   constructor(rows) {

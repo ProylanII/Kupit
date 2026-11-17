@@ -880,6 +880,97 @@ def accessories(c, L, look, ty, view, pose, f):
             c.rows(cx + 3, ty + 1, ['.A', 'Aa', 'aA', 'A.'])
 
 
+# ---- HABOL! (the side-view runner): Jun's run cycle, jump, fall and slide ------------------------------------------
+# Side view only (facing right; left is mirrored in code). Four run frames with a long stride and a tuck, a body that
+# rises on the tuck, arms that swing against the legs, and a slide on a wider canvas, feet first.
+RUN_POSES = ['run0', 'run1', 'run2', 'run3', 'jump', 'fall', 'slide']
+RUN_KIDS = ['jun']
+
+
+def _leg(c, pts, near, last_foot=True):
+    """A side leg as a list of (x0, x1, y) spans, top first: shorts, skin, and the last span is the foot."""
+    for i, (x0, x1, y) in enumerate(pts):
+        if i == len(pts) - 1 and last_foot:
+            col = 'F'
+        elif i == 0:
+            col = 'B' if near else 'b'
+        else:
+            col = 'S' if near else 's'
+        c.hline(x0, x1, y, col)
+
+
+def _arm(c, pts, near, sleeve=1):
+    for i, (x, y) in enumerate(pts):
+        last = i == len(pts) - 1
+        c.px(x, y, ('T' if near else 't') if i < sleeve else (('S' if near else 's') if not last else 's'))
+
+
+def runner(name, pose):
+    look = LOOKS[name]
+    L = layout(look)
+    if pose == 'slide':
+        return runner_slide(name, look, L)
+    c = Cv(L['W'], L['H'])
+    up = 1 if pose in ('run1', 'run3', 'jump') else 0          # the body rises off the ground on the tuck
+    hy, ty = L['top'] - up, L['top'] + HEAD_H - up
+    lt = ty + L['torso']                                        # first leg row
+    cx = L['cx'] - 1                                            # the body sits a pixel behind the head: a forward lean
+    Lb = dict(L, cx=cx)
+    x = cx - 1                                                  # shoulder
+    fwd = [(x, ty), (x + 1, ty + 1), (x + 2, ty + 1), (x + 3, ty)]          # arm swung forward
+    back = [(x, ty), (x - 1, ty + 1), (x - 2, ty + 1), (x - 3, ty + 2)]     # arm swung back
+    stride_f = [(cx - 1, cx, lt), (cx + 1, cx + 2, lt + 1), (cx + 2, cx + 4, lt + 2)]   # leg reaching forward
+    stride_b = [(cx - 3, cx - 2, lt), (cx - 4, cx - 3, lt + 1), (cx - 6, cx - 5, lt + 2)]  # leg pushing off behind
+    tuck_u = [(cx - 1, cx, lt), (cx, cx + 1, lt + 1), (cx, cx + 2, lt + 2)]              # leg under the body
+    tuck_k = [(cx - 3, cx - 2, lt), (cx - 5, cx - 3, lt + 1), (cx - 6, cx - 5, lt)]      # leg kicked up behind
+    if pose == 'run0':
+        far_leg, near_leg, far_arm, near_arm = stride_b, stride_f, fwd, back
+    elif pose == 'run1':
+        far_leg, near_leg, far_arm, near_arm = tuck_k, tuck_u, fwd, back
+    elif pose == 'run2':
+        far_leg, near_leg, far_arm, near_arm = stride_f, stride_b, back, fwd
+    elif pose == 'run3':
+        far_leg, near_leg, far_arm, near_arm = tuck_u, tuck_k, back, fwd
+    elif pose == 'jump':   # knees up, one arm punching the sky
+        far_leg = [(cx - 2, cx - 1, lt), (cx - 4, cx - 2, lt + 1)]
+        near_leg = [(cx, cx + 1, lt), (cx + 1, cx + 3, lt + 1)]
+        far_arm = [(x, ty), (x - 1, ty + 1), (x - 2, ty + 2)]
+        near_arm = [(x + 1, ty), (x + 2, ty - 1), (x + 3, ty - 2), (x + 3, ty - 3), (x + 3, ty - 4)]
+    else:                  # fall: legs reaching for the ground, arms out for balance
+        far_leg = [(cx - 2, cx - 1, lt), (cx - 3, cx - 2, lt + 1), (cx - 5, cx - 3, lt + 2)]
+        near_leg = [(cx, cx + 1, lt), (cx + 1, cx + 2, lt + 1), (cx + 2, cx + 4, lt + 2)]
+        far_arm = [(x - 1, ty), (x - 2, ty - 1), (x - 3, ty - 2)]
+        near_arm = [(x + 1, ty), (x + 2, ty - 1), (x + 3, ty - 2), (x + 4, ty - 2)]
+    sleeve = 0 if look['top'] in ('sando', 'jersey') else 1
+    _arm(c, far_arm, False, sleeve)
+    _leg(c, far_leg, False)
+    torso_side(c, Lb, look, ty, None, 0)
+    c.hline(cx - 3, cx + 2, lt, 'B'); c.px(cx - 3, lt, 'b')     # the seat of the shorts
+    _leg(c, near_leg, True)
+    head(c, name, look, hy, 'side', None)
+    _arm(c, near_arm, True, sleeve)
+    return c, look
+
+
+def runner_slide(name, look, L):
+    """Feet-first slide under a clothesline: head low and back, body tipped, legs straight out along the ground."""
+    W2, H = L['W'] + 6, L['H']
+    c = Cv(W2, H)
+    hy = L['top'] + 4                                   # the head drops 4 rows
+    c.rows(0, hy - L['top'], HEADS[name]['side'])
+    face_side(c, look, hy, None)
+    ty = hy + HEAD_H - 2                                # shoulders tucked under the back of the head
+    g = H - 1                                           # the ground row
+    for i in range(3):                                  # the torso, tipped back
+        c.hline(9 + i, 13 + i, ty + i, 'T')
+        c.px(9 + i, ty + i, 't')
+    c.hline(12, 15, g - 1, 'B'); c.px(12, g - 1, 'b')   # shorts
+    c.hline(14, 19, g, 'S'); c.hline(16, 19, g - 1, 's')  # both legs out in front
+    c.hline(20, 21, g, 'F'); c.px(20, g - 1, 'F')        # feet first
+    c.px(8, ty + 2, 'S'); c.px(7, ty + 3, 'S'); c.px(6, g, 's')   # the hand trailing on the ground
+    return c, look
+
+
 def humanoid(name, d, f):
     look = LOOKS[name]
     L = layout(look)
@@ -1113,12 +1204,23 @@ KIT_SLEEP = [
     'WWOWWWNWN',
     'wwwwwwww.',
 ]
+# HABOL!: a kitten mid-leap, stretched out from tail to front paws (side view)
+KIT_LEAP = [
+    '........W.W.',
+    'W.......WWW.',
+    '.W.....WWEWE',
+    '..WWWOWWWWPW',
+    '...wWWOWWWW.',
+    'ww........ww',
+]
 
 
 def cat(kind, d, f):
     big = kind == 'pusa'
     fr = f if isinstance(f, int) else 0
-    if f == 'sit':
+    if f == 'leap':
+        rows = KIT_LEAP[:]
+    elif f == 'sit':
         rows = (PUSA_SIT if big else KIT_SIT)[:]
     elif f == 'sleep':
         rows = (PUSA_SLEEP if big else KIT_SLEEP)[:]
@@ -1316,6 +1418,13 @@ def build_all():
         if name == 'jun':  # legacy 'kid' look used by old saves/tests
             for d, f in frames_for(name):
                 out[f'kid|{d}|{f}'] = out[f'jun|{d}|{f}']
+        if name in RUN_KIDS:  # HABOL!: side-view run cycle, jump, fall, slide (side only: the runner never turns)
+            for pose in RUN_POSES:
+                c, look = runner(name, pose)
+                out[f'{name}|2|{pose}'] = c.image(look)
+        if name == 'kuting':  # HABOL!: Tigre leaping over things
+            c, look = cat(name, 2, 'leap')
+            out['kuting|2|leap'] = c.image(look)
     for name in KIDS + ADULTS:
         for mood in MOODS:
             c, look = portrait(name, mood)

@@ -26,6 +26,14 @@ export const MISSIONS = {
   inPhoto: { label: () => 'END UP IN THE PHOTO', ok: (w) => w.photo === 'in' }, // NINANG's finale
   noPuddle: { label: () => 'NOBODY FINDS A PUDDLE', strict: true, ok: (w) => !(w.stats.puddles | 0) },
   thunder:  { label: () => 'ONLY RUN UNDER THUNDER', strict: true, ok: (w) => w.stats.loudRunT < 0.4 },
+  // the mini-games (game/preso.js, game/runner.js): `w` is that game's own simulation
+  presoClean: { label: () => 'NEVER GET TAGGED', strict: true, ok: (w) => (w.tagged | 0) === 0 },
+  presoFirst: { label: () => 'TUMBA ON YOUR FIRST THROW', ok: (w) => !!w.firstHit },
+  habolClean: { label: () => 'NO STUMBLES', strict: true, ok: (w) => (w.stumbles | 0) === 0 },
+  habolCoins: { label: () => 'GRAB EVERY COIN', ok: (w) => w.coinsGot >= w.coinsTotal },
+  // BAGYO: the leaks and the flood (game/world.js tulo / flood)
+  dryBox:    { label: () => 'KEEP THE BOX DRY', strict: true, ok: (w) => !w.tulo || w.tulo.wet < 1 },
+  stopFlood: { label: () => 'STOP THE FLOOD', ok: (w) => !!w.flood?.stopped },
   // SWELDO: every coin from Tatay's payday wallet taken while he is in the shower
   ligo:     { label: () => 'SWELDO WHILE TATAY SHOWERS', ok: (w) => { const t = w.targets.find((x) => x.owner === 'tatay'); return !!t && (t.whileAway | 0) > 0 && !(t.notAway | 0); } },
 };

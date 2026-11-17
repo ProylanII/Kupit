@@ -1,6 +1,6 @@
 {
   "name": "kupit",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "Kupit - a pixel stealth game about a Filipino kid secretly feeding a stray cat and her kittens.",

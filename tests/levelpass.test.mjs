@@ -175,10 +175,12 @@ test('L11 IBALIK: running with coins still to put back jingles (louder running);
 test('Chapter 4 order is PALENGKE -> BARANGAY -> PARTY; save v5 moves a player who had reached the barangay', async () => {
   const { migrate, fresh } = await import('../src/core/save.js');
   const order = JSON.parse(readFileSync(new URL('../src/data/levels/index.json', import.meta.url), 'utf8'));
-  assert.deepEqual(order.slice(12, 15), ['palengke.json', 'barangay.json', 'boss4-fiesta.json']);
-  assert.equal(migrate({ ...fresh(), v: 4, unlocked: 14 }).unlocked, 13, 'the barangay is at 13 now');
-  assert.equal(migrate({ ...fresh(), v: 4, unlocked: 13 }).unlocked, 13);
-  assert.equal(migrate({ ...fresh(), v: 4, unlocked: 15 }).unlocked, 15, 'past both: unchanged');
+  const at = (f) => order.indexOf(f);
+  assert.ok(at('palengke.json') + 1 === at('barangay.json') && at('barangay.json') + 1 === at('boss4-fiesta.json'), 'PALENGKE -> BARANGAY -> PARTY');
+  // (since v6 the mini-games sit in the list too: what matters is that the player lands on the same level)
+  assert.equal(order[migrate({ ...fresh(), v: 4, unlocked: 14 }).unlocked], 'barangay.json', 'a player who had reached the barangay is still at it');
+  assert.equal(order[migrate({ ...fresh(), v: 4, unlocked: 13 }).unlocked], 'barangay.json');
+  assert.equal(order[migrate({ ...fresh(), v: 4, unlocked: 15 }).unlocked], 'bagyo.json', 'past both: unchanged');
 });
 
 const escortRoom = (extra = {}) => ({

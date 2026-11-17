@@ -49,6 +49,13 @@ const SIT_TIME = 0.5, SNEAK_IN = 1; // MAMA's finale: sitting down takes this lo
 const CREAKY_HOLD = 1.5, CREAKY_R = 96; // a creaky door: hold this long to open it quietly; its creak carries this far
 const JINGLE_R = 36; // IBALIK: what jingling pockets add to the sound of running
 const FAMILY = new Set(['mama', 'tatay', 'lola', 'tita']);
+// BAGYO, Act 2 TULO: drops fall every DROP_EVERY s; a container holds this many before it overflows
+export const DROP_EVERY = 0.8;
+export const CONT_CAP = { palanggana: 12, kaldero: 8, timba: 16 };
+const BOX_R = 22;       // drips this close to the kittens' box soak it
+const DUMP_R = 52;      // TAPON: the splash of a container emptied into the drain
+const PUSH_T = 0.22;    // BAHA: lean on a sandbag this long and it slides one tile
+const PUSH_R = 36;      // ... with a scrape this loud
 const CHAT = [ // by HINALA tier: [first line, the reply]
   [['KUMAIN KA NA?', 'MAMAYA NA.'], ['ANG INIT NGAYON!', 'OO NGA...'], ['NAKITA MO ANG REMOTE?', 'WALA DITO.']],
   [['PARANG KULANG ANG BARYA KO.', 'BAKA NAIWAN MO?'], ['MAY DAGA YATA DITO.', 'BAKA PUSA.']],
@@ -62,7 +69,8 @@ export class World {
   //   alkansyaFound: this level's secret alkansya was already emptied on an earlier run
   constructor(level, loadout = {}) {
     this.level = level;
-    this.mods = computeMods(loadout.char, loadout.upgrades);
+    // SI MINGMING NAMAN (level "cat"): you are the cat, whoever was picked (and no gear: she has no pockets)
+    this.mods = level.cat ? computeMods('mingming') : computeMods(loadout.char, loadout.upgrades);
     this.map = new TileMap(level.tiles);
     this.rng = mulberry32(level.seed ?? hashStr(level.id || 'level')); // gameplay randomness, separate from generation
     this.noThrow = !!level.noThrow;
@@ -165,11 +173,43 @@ export class World {
     this.aim = null;      // throw preview while the throw button is held
     this.lastTile = this.player.tx + ',' + this.player.ty;
     this.runRingT = 0;
+    // BAGYO (Blueprint 9.1 + mini-game MG-4): TULO, the floor leaking onto the kittens' box (catch the drips in
+    // containers, empty them down the drain), then BAHA, the flood from the broken kanal (push sandbags into the
+    // breaches to stop it) with the clock running to get the kittens inside.
+    this.tulo = level.tulo ? this.makeTulo(level.tulo) : null;
+    this.flood = level.flood ? this.makeFlood(level.flood) : null;
+    this.underBag = new Map(); // "x,y" -> the floor under a sandbag ('Q')
+    for (let y = 0; y < this.map.h; y++) for (let x = 0; x < this.map.w; x++) {
+      if (this.map.ch(x, y) !== 'Q') continue;
+      const nb = [[0, 1], [0, -1], [1, 0], [-1, 0]].map(([dx, dy]) => this.map.ch(x + dx, y + dy)).find((c) => ';:._,'.includes(c));
+      this.underBag.set(x + ',' + y, nb || ';');
+    }
+    this.pushT = 0; this.pushAnim = null;
   }
+
+  makeTulo(def) {
+    const at2 = (p) => ({ x: p[0] * TILE + TILE / 2, y: p[1] * TILE + TILE / 2, tx: p[0], ty: p[1] });
+    return {
+      stage: 'idle', t: 0, dur: def.dur ?? 22, box: at2(def.box), drain: at2(def.drain), wet: 0, wetCap: def.wetCap ?? 16, cryT: 0, scooped: false,
+      drips: def.drips.map((p, i) => ({ ...at2(p), on: false, startAt: def.starts?.[i] ?? i * 5, dropT: 0.3 + i * 0.17, fallT: 0 })),
+      conts: def.containers.map((c) => ({ ...at2(c.at), kind: c.kind, cap: CONT_CAP[c.kind] ?? 10, fill: 0, drip: null, held: false })),
+    };
+  }
+  makeFlood(def) {
+    const n = this.map.w * this.map.h;
+    return {
+      active: false, stopped: false, t: 0, tick: 0, spread: def.spread ?? 0.85, deepAfter: def.deepAfter ?? 7, escape: def.escape ?? 34,
+      adults: def.adults || [], banner: def.banner, depth: new Uint8Array(n), wetT: new Float32Array(n), wadeT: 0,
+      sources: def.breaches.map(([tx, ty]) => ({ tx, ty, x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2, sealed: false })),
+    };
+  }
+  depthAt(tx, ty) { const F = this.flood; return F?.active ? F.depth[ty * this.map.w + tx] | 0 : 0; }
 
   makeAdult(d) {
     // HINGI (the epilogue): nobody is watching for you any more, they are just family in their house
     if (this.level.hingi) d = { ...d, cfg: { ...d.cfg, harmless: true, cover: false } };
+    // SI MINGMING NAMAN: nobody is looking for Jun tonight, they just shoo the cat
+    if (this.level.cat && d.type !== 'aso') d = { ...d, cfg: { shout: 'UY, PUSA!', scold: 'SHOO! LABAS, PUSA!', ...d.cfg } };
     const a = new Adult(d, this.map, this.adultLocks);
     a.covers = this.adults; // guests and vehicles in this list block sight
     return a;
@@ -298,8 +338,8 @@ export class World {
   dogGrab(dog) {
     if (this.god) { dog.state = 'eat'; dog.eatT = 3; this.player.graceT = 1; return; } // (bots and the dev mode: no close calls)
     const tatay = this.adults.find((a) => a.type === 'tatay');
-    tatay?.talk('HAHA! IKAW PALA, ASO!', 2.4);
-    dog.state = 'eat'; dog.eatT = 3; dog.talk('NOM NOM', 1.5);
+    if (!this.mods.cat) tatay?.talk('HAHA! IKAW PALA, ASO!', 2.4); // (SI MINGMING: he snatches it from the cat, and Tatay sleeps on)
+    dog.state = 'eat'; dog.eatT = 3; dog.talk(this.mods.cat ? 'GRRR! AKIN YAN!' : 'NOM NOM', 1.5);
     this.caught(dog);
   }
 
@@ -352,6 +392,15 @@ export class World {
         this.finish();
         return;
       }
+    }
+    if (f.type === 'tulo') { // bring the kittens back to their box, then keep it dry until the leaks stop
+      const T = this.tulo;
+      if (f.stage === 'gather' && dist(this.player, T.box) < 20 && !this.player.hidden) {
+        f.stage = 'leak'; f.wait = true; T.stage = 'leak'; T.t = 0;
+        this.emit({ type: 'kittensIn', x: T.box.x, y: T.box.y });
+        this.emit({ type: 'phase', text: 'TULO! KEEP THE BOX DRY!', n: this.phase });
+      }
+      return;
     }
     if (f.type === 'carryOut' && !f.started && this.player.carry?.scent) { f.started = true; this.escapeT = f.escape ?? 35; this.emit({ type: 'phase', text: 'TAKBO! TO THE CRAWLSPACE!', n: this.phase }); }
     if (f.type === 'seat' && boss) {
@@ -504,10 +553,24 @@ export class World {
     // TATAY's fish waits on the table until the finale ("NOW THE FISH!"): it is the last thing you take, not the first
     const fishLater = (t) => t.scent && this.level.boss?.finale === 'carryOut' && f?.type !== 'carryOut';
     let o = near(this.targets, (t) => !t.done && !fishLater(t));
-    if (o) return { kind: 'steal', obj: o, label: o.profile.verb || 'KUPIT', detail: o.profile.tip };
-    o = p.carry?.scent ? null : near(this.hides); // (carrying the fish you cannot hide: you smell of it)
+    if (o) return { kind: 'steal', obj: o, label: o.verb || o.profile.verb || 'KUPIT', detail: o.profile.tip };
+    // BAGYO, TULO: lift a container, set it under a drip, empty it down the drain, or put it down
+    const T = this.tulo;
+    if (T && T.stage === 'leak') {
+      const h = p.holding;
+      if (!h) { const c = near(T.conts, (k) => !k.held); if (c) return { kind: 'buhat', obj: c, label: 'BUHAT' }; }
+      else {
+        let d = null, bd = REACH + 2;
+        for (const dd of T.drips) { const e = dist(dd, p); if (e <= bd && !T.conts.some((k) => k.drip === dd)) { d = dd; bd = e; } }
+        if (d) return { kind: 'sahod', obj: d, label: 'SAHOD' };
+        if (h.fill > 0 && dist(T.drain, p) <= REACH + 4) return { kind: 'tapon', obj: T.drain, label: 'TAPON' };
+        return { kind: 'baba', obj: null, label: 'BABA' };
+      }
+    }
+    o = p.carry?.scent || p.holding ? null : near(this.hides); // (carrying the fish you cannot hide: you smell of it)
     if (this.breadBag && this.breadBag.cd <= 0 && !p.items.includes('pandesal') && dist(this.breadBag, p) <= REACH) return { kind: 'bread', obj: this.breadBag, label: 'PANDESAL' };
     if (o) return { kind: 'hide', obj: o, label: 'TAGO' };
+    if (this.mods.cat) return null; // a cat has no hands: no doors, levers or TVs
     const doors = [];
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
       const tx = p.tx + dx, ty = p.ty + dy, c = this.map.ch(tx, ty);
@@ -553,6 +616,17 @@ export class World {
     const p = this.player;
     switch (c.kind) {
       case 'bread': p.items.push('pandesal'); this.breadBag.cd = this.breadBag.every; this.emit({ type: 'pickup' }); break;
+      case 'buhat': { const k = c.obj; k.held = true; k.drip = null; p.holding = k; this.emit({ type: 'lift', kind: k.kind, x: k.x, y: k.y }); break; }
+      case 'sahod': { const k = p.holding; p.holding = null; k.held = false; k.x = c.obj.x; k.y = c.obj.y; k.drip = c.obj; this.emit({ type: 'place', kind: k.kind, x: k.x, y: k.y }); break; }
+      case 'tapon': {
+        const k = p.holding, d = c.obj, loud = !this.masked(d.x, d.y);
+        if (loud) this.noise({ x: d.x, y: d.y, r: DUMP_R, lure: true });
+        k.fill = 0;
+        this.stats.dumps = (this.stats.dumps | 0) + 1;
+        this.emit({ type: 'dump', x: d.x, y: d.y, loud });
+        break;
+      }
+      case 'baba': { const k = p.holding; p.holding = null; k.held = false; k.x = p.x; k.y = p.y + 3; k.drip = null; this.emit({ type: 'place', kind: k.kind, x: k.x, y: k.y }); break; }
       case 'seat': this.sitting = { t: SIT_TIME }; this.emit({ type: 'sit' }); break;
       case 'unhide':
         p.hidden = null;
@@ -620,6 +694,16 @@ export class World {
         this.talk('HOY!');
         break;
       }
+      case 'tabig': { // Mingming swats a cup off the counter in front of her: a crash that pulls people over
+        if (p.hidden) return false;
+        const [fx, fy] = p.facing(), m = Math.hypot(fx, fy) || 1;
+        let d = 40;
+        while (d > 10 && this.map.tileSolid(Math.floor((p.x + (fx / m) * d) / TILE), Math.floor((p.y + (fy / m) * d) / TILE), p.crawl)) d -= 6;
+        const x = p.x + (fx / m) * d, y = p.y + (fy / m) * d;
+        this.noise({ x, y, r: 84, lure: true });
+        this.emit({ type: 'tabig', x, y });
+        break;
+      }
       case 'charm': {
         let n = 0;
         for (const a of this.adults) {
@@ -650,6 +734,7 @@ export class World {
       const f = this.finale, boss = this.adults[this.level.boss?.index ?? 0];
       if (f.type === 'photo') { f.noExit = true; f.count = f.countdown ?? 8; f.gathered = false; }
       if (f.type === 'seat') { f.seatPt = { x: f.seat[0] * TILE + TILE / 2, y: f.seat[1] * TILE + TILE / 2 }; f.noExit = true; f.plateN = 0; f.lastI = boss?.i; f.lastSeen = -9; }
+      if (f.type === 'tulo' && this.tulo) { f.noExit = true; f.stage = 'gather'; f.goal = this.tulo.box; }
     }
     this.emit({ type: 'phase', text: ph.banner || '', n: this.phase });
   }
@@ -797,6 +882,7 @@ export class World {
 
     this.abilityCd = Math.max(0, this.abilityCd - dt);
     p.graceT = Math.max(0, (p.graceT || 0) - dt);
+    if (this.pushAnim && (this.pushAnim.t -= dt) <= 0) this.pushAnim = null;
     if (p.hidden && p.hideT > 0 && (p.hideT -= dt) <= 0) this.interact({ kind: 'unhide' });
     this.noises.length = 0;
 
@@ -814,7 +900,11 @@ export class World {
     const stealing = !p.hidden && input.action && ctx?.kind === 'steal';
     p.stealing = stealing; // drawn with the 'reach' pose
     if (input.cyclePressed) this.cycleItem();
-    for (const k of this.kids || [p]) k.under = !!k.crawl && k.crawl.has(map.ch(k.tx, k.ty)); // MALIIT: Bing under a table or bed
+    for (const k of this.kids || [p]) {
+      const on = !!k.crawl && k.crawl.has(map.ch(k.tx, k.ty));
+      if (this.mods.cat) { k.up = on; k.under = false; } // SI MINGMING: up on the furniture (seen from about half as far)
+      else k.under = on;                                 // MALIIT: Bing under a table or bed
+    }
     if (this.laundryRuns.length && (this.laundryT -= dt) <= 0) { // the washing comes in, line by line
       this.laundryT = this.level.laundryDown.every;
       const run = this.laundryRuns.shift();
@@ -827,8 +917,21 @@ export class World {
     if (input.throwPressed && canThrow) this.throwItem();
     if (input.abilityPressed) this.useAbility();
 
-    // --- player move
+    // --- player move (BAGYO: wading through the flood and carrying a container both slow you down)
+    let slow = 1;
+    if (p.holding) slow *= p.holding.fill >= 1 ? 0.7 : 0.82;
+    p.wading = this.depthAt(p.tx, p.ty);
+    if (p.wading) slow *= p.wading === 2 ? 0.45 : 0.7;
+    p.slowMul = slow;
     const n = p.update(dt, map, input.mv, stealing || !!p.hidden);
+    if (p.holding) { p.holding.x = p.x; p.holding.y = p.y; }
+    if (this.tulo) this.tuloAfterMove(dt);
+    if (this.flood && p.moving && p.wading && (this.flood.wadeT -= dt) <= 0) { // splash, splash
+      this.flood.wadeT = 0.42;
+      if (!this.masked(p.x, p.y)) this.noise({ x: p.x, y: p.y, r: p.wading === 2 ? 44 : 32 });
+      this.emit({ type: 'wade', x: p.x, y: p.y, deep: p.wading === 2 });
+    }
+    this.pushBags(dt, input.mv);
     // crowd blending: walking right beside a party guest, you are just another kid at the fiesta
     p.blend = !p.hidden && !p.running && !(p.dashT > 0) && this.adults.some((a) => a.cfg.cover && !a.cfg.vehicle && dist(a, p) < BLEND_R);
     this.cover = this.masked(p.x, p.y);
@@ -866,6 +969,8 @@ export class World {
       }
     }
     for (const t of this.targets) {
+      if (t.flinch > 0) t.flinch -= dt;
+      if (stealing && t === ctx.obj && t.profile.calm && this.thunder) { t.flinch = 0.6; continue; } // BAGYO: Mingming will not come while it thunders
       if (stealing && t === ctx.obj) {
         const pf = t.profile;
         if (!t.started) {
@@ -987,6 +1092,8 @@ export class World {
     this.chatter(dt);
     this.stagedBeat(dt);
     this.finaleUpdate(dt);
+    this.tuloUpdate(dt);
+    this.floodUpdate(dt);
     this.ninangCall(dt);
     this.checkPuddles(dt);
     this.escortUpdate(dt);
@@ -1021,6 +1128,137 @@ export class World {
         this.emit({ type: 'teamOut', who: this.mods.charId });
         this.swap(true);
       } else this.finish();
+    }
+  }
+
+  // ---- BAGYO, Act 2: TULO ----------------------------------------------------------------------------------------
+  // Drips start one by one over the box. A drop into a container fills it a little; into a full one it overflows
+  // (a splash anyone near can hear); onto the floor by the box it soaks the box. A soaked box: the kittens cry.
+  tuloUpdate(dt) {
+    const T = this.tulo;
+    if (!T || T.stage !== 'leak') return;
+    T.t += dt;
+    for (const d of T.drips) {
+      if (!d.on && T.t >= d.startAt) { d.on = true; this.emit({ type: 'dripOn', x: d.x, y: d.y }); }
+      if (!d.on) continue;
+      d.fallT += dt;
+      if ((d.dropT -= dt) > 0) continue;
+      d.dropT = DROP_EVERY; d.fallT = 0;
+      const k = T.conts.find((c) => c.drip === d);
+      if (k && k.fill < 1) {
+        k.fill = Math.min(1, k.fill + 1 / k.cap);
+        if (k.fill >= 1) this.emit({ type: 'full', kind: k.kind, x: k.x, y: k.y });
+        this.emit({ type: 'drip', x: d.x, y: d.y, into: k.kind });
+        continue;
+      }
+      if (k) { // overflowing
+        if (!this.masked(k.x, k.y)) this.noise({ x: k.x, y: k.y, r: 40 });
+        this.emit({ type: 'overflow', x: k.x, y: k.y });
+      }
+      if (dist(d, T.box) <= BOX_R) {
+        T.wet = Math.min(1, T.wet + 1 / T.wetCap);
+        this.emit({ type: 'wet', x: T.box.x, y: T.box.y, wet: T.wet });
+      }
+      this.emit({ type: 'drip', x: d.x, y: d.y, into: null });
+    }
+    if (T.wet >= 1 && (T.cryT -= dt) <= 0) { // the kittens are soaked and crying
+      T.cryT = 2.6;
+      if (!this.masked(T.box.x, T.box.y)) this.noise({ x: T.box.x, y: T.box.y, r: 70, lure: true });
+      this.emit({ type: 'cry', x: T.box.x, y: T.box.y });
+    }
+    if (T.t >= T.dur) { T.stage = 'done'; this.startFlood(); }
+  }
+  // Running with water in a container sloshes it out (and makes a noise).
+  tuloAfterMove() {
+    const k = this.player.holding;
+    if (!k || !this.player.running || k.fill < 0.25) return;
+    if (!this.masked(k.x, k.y)) this.noise({ x: k.x, y: k.y, r: 50, lure: true });
+    k.fill = 0;
+    this.talk('NATAPON!', 1.2);
+    this.emit({ type: 'slosh', x: k.x, y: k.y });
+  }
+
+  // ---- BAGYO, Act 3: BAHA ------------------------------------------------------------------------------------------
+  startFlood() {
+    const F = this.flood, T = this.tulo, p = this.player;
+    if (!F || F.active) { this.finale = null; return; }
+    F.active = true; F.tick = 0;
+    this.finale = { type: 'flood', t: 0 }; // the exit is open again: get them inside
+    if (T) {
+      T.scooped = true;
+      for (const c of T.conts) { c.held = false; c.drip = null; }
+      if (p.holding) { p.holding.x = p.x; p.holding.y = p.y + 3; p.holding = null; }
+    }
+    this.escapeT = F.escape;
+    for (const m of F.adults) { const a = this.adults[m.index]; if (a) { a.retune(m); a.alert = 0; a.state = 'patrol'; } }
+    this.emit({ type: 'flood' });
+    this.emit({ type: 'phase', text: F.banner || 'BAHA! STOP THE WATER!', n: this.phase });
+  }
+  // The water comes in at every breach that is not sandbagged and spreads a tile a tick (closed doors hold it).
+  // Water that has stood a while next to deep water gets deep. Once every breach is sealed, it all drains away.
+  floodUpdate(dt) {
+    const F = this.flood;
+    if (!F?.active) return;
+    const W = this.map.w, H = this.map.h, D = F.depth;
+    F.t += dt;
+    for (let i = 0; i < D.length; i++) if (D[i]) F.wetT[i] += dt;
+    if ((F.tick -= dt) > 0) return;
+    F.tick = F.spread;
+    const live = F.sources.filter((s) => !s.sealed);
+    if (!live.length) {
+      if (!F.stopped) { F.stopped = true; this.emit({ type: 'floodStopped' }); this.emit({ type: 'phase', text: 'NATIGIL ANG BAHA!', n: this.phase }); }
+      for (let i = 0; i < D.length; i++) if (D[i]) { D[i]--; if (!D[i]) F.wetT[i] = 0; }
+      return;
+    }
+    for (const s of live) D[s.ty * W + s.tx] = 2;
+    const add = [], deep = [];
+    const open = (x, y) => x >= 0 && y >= 0 && x < W && y < H && !this.map.tileSolid(x, y);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      if (!D[i]) continue;
+      if (this.map.tileSolid(x, y)) { D[i] = 0; continue; } // a sandbag landed on it
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy, j = ny * W + nx;
+        if (!open(nx, ny)) continue;
+        if (!D[j]) add.push(j);
+        else if (D[i] === 2 && D[j] === 1 && F.wetT[j] >= F.deepAfter) deep.push(j);
+      }
+    }
+    for (const j of add) D[j] = 1;
+    for (const j of deep) D[j] = 2;
+  }
+
+  // Lean into a sandbag (lined up with it, pushing along a row or column) and it slides one tile, if the tile beyond
+  // is clear. Slid into a breach, it seals it.
+  pushBags(dt, mv) {
+    const p = this.player;
+    if (p.hidden || p.holding || !mv || mv.mag < 0.5) { this.pushT = 0; return; }
+    const horiz = Math.abs(mv.x) >= Math.abs(mv.y);
+    if (Math.abs(horiz ? mv.x : mv.y) < 0.75) { this.pushT = 0; return; }
+    const dx = horiz ? Math.sign(mv.x) : 0, dy = horiz ? 0 : Math.sign(mv.y);
+    const tx = Math.floor((p.x + dx * (p.r + 2)) / TILE), ty = Math.floor((p.y + dy * (p.r + 2)) / TILE);
+    if (this.map.ch(tx, ty) !== 'Q') { this.pushT = 0; return; }
+    const cx = tx * TILE + TILE / 2, cy = ty * TILE + TILE / 2;
+    if (horiz ? Math.abs(p.y - cy) > 6 : Math.abs(p.x - cx) > 6) { this.pushT = 0; return; }
+    if ((this.pushT += dt) < PUSH_T) return;
+    this.pushT = 0;
+    const nx = tx + dx, ny = ty + dy, c = this.map.ch(nx, ny);
+    const busy = this.occupied(nx, ny) || 'dDgG'.includes(c) || (this.exit.tx === nx && this.exit.ty === ny)
+      || [...this.targets, ...this.hides, ...this.items].some((o) => Math.floor(o.x / TILE) === nx && Math.floor(o.y / TILE) === ny && !o.done)
+      || (this.tulo && [this.tulo.box, this.tulo.drain, ...this.tulo.drips].some((o) => o.tx === nx && o.ty === ny));
+    if (this.map.tileSolid(nx, ny) || busy) { this.emit({ type: 'pushBlocked', x: cx, y: cy }); return; }
+    this.map.set(tx, ty, this.underBag.get(tx + ',' + ty) || ';');
+    this.underBag.delete(tx + ',' + ty);
+    this.underBag.set(nx + ',' + ny, c);
+    this.map.set(nx, ny, 'Q');
+    this.pushAnim = { tx: nx, ty: ny, dx, dy, t: 0.16 };
+    if (!this.masked(cx, cy)) this.noise({ x: cx, y: cy, r: PUSH_R });
+    this.stats.pushes = (this.stats.pushes | 0) + 1;
+    this.emit({ type: 'push', x: nx * TILE + 8, y: ny * TILE + 8 });
+    const F = this.flood, src = F?.sources.find((s) => s.tx === nx && s.ty === ny && !s.sealed);
+    if (src) {
+      src.sealed = true; F.depth[ny * this.map.w + nx] = 0;
+      this.emit({ type: 'seal', x: src.x, y: src.y, left: F.sources.filter((s) => !s.sealed).length });
     }
   }
 
@@ -1077,6 +1315,7 @@ export class World {
     }
     this.catches++;
     if (a.type === 'tanod') this.stats.tanod = (this.stats.tanod | 0) + 1; // (outside: this is what gets back home)
+    if (this.player.holding) { const k = this.player.holding; k.held = false; k.drip = null; this.player.holding = null; } // (TULO: you drop it)
     if (this.catches >= this.lives) { this.fail('seen', a); return; }
     this.spill();
     // (putting coins back: what is back stays back)
@@ -1204,6 +1443,7 @@ export class World {
   devFillQuota() { this.coins = Math.max(this.coins, this.level.quota); for (const t of this.targets) if (t.must) t.done = true; }
   // Drop the player on a free tile next to the exit (walk in to finish).
   devGoToExit() {
+    if (this.finale?.type === 'tulo') { if (this.tulo) this.tulo.stage = 'done'; this.startFlood(); } // (BAGYO: past the leaks, the flood starts)
     const e = this.exit;
     const side = [[-1, 0], [1, 0], [0, -1], [0, 1]].find(([dx, dy]) => !this.map.tileSolid(e.tx + dx, e.ty + dy));
     const [dx, dy] = side || [0, 0];

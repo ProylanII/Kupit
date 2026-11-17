@@ -47,6 +47,7 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '
   console.log('level                 open  islands  ways        sneak/run/par   notes');
   for (const f of files) {
     const L = JSON.parse(readFileSync(new URL(f, dir), 'utf8'));
+    if (L.mode) continue; // (a mini-game: no rooms to lint, its own simulation)
     const { open, islands, ways } = lint(L);
     const errs = validateLevel(L);
     if (!idleSafe(L, 4)) errs.push('caught standing at spawn');

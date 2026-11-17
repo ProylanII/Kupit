@@ -24,12 +24,14 @@ const opensAfter = {
 const gearTotal = UPGRADE_ORDER.reduce((s, id) => s + UPGRADES[id].costs[0], 0);
 const needTotal = NEED_ORDER.reduce((s, id) => s + NEEDS[id].cost, 0);
 const cosmetics = [...Object.values(OUTFITS), ...Object.values(DECOR)].reduce((s, c) => s + (c.how.cost || 0), 0);
-const coinsIn = (L) => L.targets.filter((t) => !t.bonus).reduce((s, t) => s + (t.coins ?? 2), 0);
+const coinsIn = (L) => (L.targets || []).filter((t) => !t.bonus).reduce((s, t) => s + (t.coins ?? 2), 0)
+  + (L.course || []).filter((c) => c.t === 'coins').reduce((s, c) => s + (c.n ?? 1), 0); // (HABOL!: the coins in the street)
+const prize = (L, stars) => (L.rewards || []).slice(0, stars).reduce((s, r) => s + (r.coins || 0), 0); // mini-game rewards
 const ch4End = levels.findIndex((L) => L.id === CHAPTERS[4].from) - 1; // the level before the storm chapter
 
 const players = {
-  sakto: (L) => campaignPayout({ coins: L.giveBack ? 0 : L.quota, stars: L.epilogue ? 0 : 2, first: true, bossBonus: L.boss?.bonus || 0, alkansya: Math.floor((L.alkansya?.coins || 0) / 2) }),
-  sobra: (L) => campaignPayout({ coins: L.giveBack ? 0 : coinsIn(L), stars: L.epilogue ? 0 : 3, first: true, bossBonus: L.boss?.bonus || 0, alkansya: L.alkansya?.coins || 0 }),
+  sakto: (L) => campaignPayout({ coins: L.giveBack ? 0 : L.quota ?? 0, stars: L.epilogue ? 0 : 2, first: true, bossBonus: L.boss?.bonus || 0, alkansya: Math.floor((L.alkansya?.coins || 0) / 2) }) + prize(L, 2),
+  sobra: (L) => campaignPayout({ coins: L.giveBack ? 0 : coinsIn(L), stars: L.epilogue ? 0 : 3, first: true, bossBonus: L.boss?.bonus || 0, alkansya: L.alkansya?.coins || 0 }) + prize(L, 3),
 };
 
 console.log(`store: cat needs ${needTotal} + gear ${gearTotal} = ${needTotal + gearTotal} coins (cosmetics ${cosmetics} more, optional)`);

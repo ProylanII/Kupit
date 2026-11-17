@@ -21,6 +21,7 @@ World.prototype.update = function (...a) { // watch the bot's world without chan
 const dir = new URL('../src/data/levels/', import.meta.url);
 const only = process.argv.slice(2); // optional level ids: node tools/playtest-proxy.mjs 02-kusina bagyo
 const levels = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8')).map((f) => JSON.parse(readFileSync(new URL(f, dir), 'utf8')))
+  .filter((L) => !L.mode) // (the mini-games have bots of their own: tests/minigames.test.mjs)
   .filter((L) => !only.length || only.includes(L.id));
 const play = (L, o) => { const r = playBot(L, { maxT: 600, ...o }); return { ...r, catches: w.catches, spotted: w.spotted, esc: escAt && { used: w.time - escAt.t, len: escAt.len } }; };
 const out = (r) => (r.ok ? `CLEAR ${r.time}s, ${r.catches} close` : `fail (${r.reason || r.why})`);

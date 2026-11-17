@@ -129,6 +129,9 @@ export const mapScrollFor = (lay, sel) => {
 export const mapNodeRect = (node, scroll) => ({ x: 8, y: MAP_TOP + node.y - scroll, w: VIEW_W - 16, h: NODE_H - 2 });
 export const mapVisible = (r) => r.y >= MAP_TOP - 4 && r.y + r.h <= MAP_BOTTOM + 4;
 
+const subline = (L, best) => L.epilogue ? 'NO SNEAKING. JUST ASK' : L.bonus ? 'BONUS: LARO!' : L.mode === 'habol' ? (best ? `HABOL  BEST ${Math.floor(best)}S` : 'HABOL!') : L.cat ? 'YOU ARE THE CAT'
+  : L.boss ? (best ? `BOSS  BEST ${Math.floor(best)}S` : 'BOSS') : best ? `BEST ${Math.floor(best)}S  PAR ${L.par}S` : `PAR ${L.par}S`;
+
 function house(g, x, y, { boss, done, lock, heart, t }) {
   const w = boss ? 26 : 20, h = boss ? 16 : 13, x0 = Math.round(x - w / 2), top = y - h;
   const wall = lock ? '#3a3648' : '#5a4a6a', roof = lock ? '#2a2636' : boss ? '#a83a3a' : '#3b2a1c';
@@ -140,6 +143,17 @@ function house(g, x, y, { boss, done, lock, heart, t }) {
   px(g, lock ? '#2a2636' : '#3b2a1c', x0 + Math.floor(w / 2) - 2, y - 7, 4, 7);
   if (heart) { px(g, C.pink, x - 3, top - 12, 2, 1); px(g, C.pink, x + 1, top - 12, 2, 1); px(g, C.pink, x - 3, top - 11, 6, 1); px(g, C.pink, x - 2, top - 10, 4, 1); px(g, C.pink, x - 1, top - 9, 2, 1); }
   if (boss && !lock && Math.floor(t * 2) % 2) px(g, C.gold, x0 + w, top - 4, 2, 2);
+}
+
+// A mini-game's spot on the map is not a house: a can and a slipper, a kitten running, a cat's face.
+function gameNode(g, x, y, L, { lock, t }) {
+  const bob = lock ? 0 : Math.round(Math.sin(t * 3 + x) * 1);
+  px(g, C.ink, x - 12, y - 17, 24, 17); px(g, lock ? '#2a2636' : L.cat ? '#3b2a4a' : '#2f5f8f', x - 11, y - 16, 22, 15);
+  if (lock) { drawText(g, '?', x - 1, y - 11, C.dgray); return; }
+  if (L.mode === 'preso') { drawObj(g, 'lata', x + 4, y - 9 + bob); drawObj(g, 'tsinela', x - 5, y - 6, 'blue'); }
+  else if (L.mode === 'habol') { const s = getSprite('tigre', 2, Math.floor(t * 10) % 4); g.drawImage(s, Math.round(x - s.width / 2), y - 4 - s.height + bob); }
+  else if (L.cat) { const s = getSprite('pusa', 0, 'sit'); g.drawImage(s, Math.round(x - s.width / 2), y - 2 - s.height); }
+  px(g, C.gold, x - 11, y - 16, 22, 1);
 }
 
 // ctx: { save, sel, scroll, unlocked(i) -> bool, t }
@@ -165,15 +179,17 @@ export function drawMap(g, levels, lay, { save, sel, scroll, isOpen, t }) {
     }
     const L = levels[r.i], lock = !isOpen(r.i), on = sel === r.i, stars = save.stars[L.id], left = r.x < VIEW_W / 2;
     if (on) { px(g, C.gold, 6, y, VIEW_W - 12, NODE_H - 2); px(g, '#2a2440', 7, y + 1, VIEW_W - 14, NODE_H - 4); }
-    house(g, r.x, y + 30, { boss: !!L.boss, done: stars !== undefined, lock, heart: !!L.epilogue && !lock, t });
+    if (L.mode || L.cat) gameNode(g, r.x, y + 30, L, { lock, t });
+    else house(g, r.x, y + 30, { boss: !!L.boss, done: stars !== undefined, lock, heart: !!L.epilogue && !lock, t });
+    if (!lock && (L.mode || L.cat) && stars === undefined && r.i < save.unlocked && Math.floor(t * 2) % 2) { px(g, C.green, r.x - 13, y + 8, 15, 7); drawText(g, 'NEW', r.x - 12, y + 9, C.ink); } // added in an update: waiting for you
     const tx = left ? r.x + 22 : r.x - 22, al = { align: left ? 'left' : 'right' };
     const best = save.best[L.id];
-    const sub = L.epilogue ? 'NO SNEAKING. JUST ASK' : L.boss ? (best ? `BOSS  BEST ${Math.floor(best)}S` : 'BOSS') : best ? `BEST ${Math.floor(best)}S  PAR ${L.par}S` : `PAR ${L.par}S`;
+    const sub = subline(L, best);
     const tw = lock ? 22 : Math.max(L.name.length, sub.length, 14) * 4 + 3; // a plate behind the words, so the road never runs through them
     px(g, on ? '#2a2440' : '#14111f', left ? tx - 2 : tx - tw, y + 4, tw + 2, lock ? 9 : 28);
     drawText(g, lock ? '? ? ?' : L.name, tx, y + 6, lock ? C.dgray : C.white, al);
     if (lock) continue;
-    drawText(g, L.epilogue ? 'NO SNEAKING. JUST ASK' : L.boss ? (best ? `BOSS  BEST ${Math.floor(best)}S` : 'BOSS') : best ? `BEST ${Math.floor(best)}S  PAR ${L.par}S` : `PAR ${L.par}S`, tx, y + 15, L.boss ? C.red : C.gray, al);
+    drawText(g, sub, tx, y + 15, L.boss ? C.red : L.bonus ? C.green : L.mode || L.cat ? C.orange : C.gray, al);
     if (!L.epilogue) for (let k = 0; k < 3; k++) drawStar(g, (left ? tx : tx - 38) + k * 8, y + 24, k < (stars || 0));
     if (L.alkansya) {
       const ax = left ? tx + 34 : tx - 48;

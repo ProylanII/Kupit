@@ -1,4 +1,4 @@
-import { TILE, CRAWL } from '../world/tilemap.js';
+import { TILE, CRAWL, CAT_PASS } from '../world/tilemap.js';
 
 export const SNEAK_SPEED = 30;
 export const RUN_SPEED = 58;
@@ -26,7 +26,7 @@ export class Player {
     this.items = []; // throwables, last picked is thrown first
     this.keys = new Set();
     this.carry = null; // a full bowl of milk (a Target): slower, and running spills it
-    this.crawl = mods.crawl ? CRAWL : null; // Bing: tables and beds are passable (MALIIT)
+    this.crawl = mods.crawl ? (mods.crawl === 'cat' ? CAT_PASS : CRAWL) : null; // Bing: tables and beds are passable (MALIIT); Mingming: up on the furniture
     this.under = false;                     // right now under a table or bed (the World keeps this up to date)
   }
 
@@ -44,7 +44,7 @@ export class Player {
     if (frozen || (mv.mag === 0 && !dash)) return null;
     const run = mv.run && !dash;
     const mx = mv.mag === 0 ? this.fx : mv.x, my = mv.mag === 0 ? this.fy : mv.y;
-    const speed = dash ? DASH_SPEED : this.speedMul * (this.carry ? 0.85 : 1) * (run ? RUN_SPEED : SNEAK_SPEED * (0.5 + 0.5 * Math.min(1, mv.mag / 0.9)));
+    const speed = (dash ? DASH_SPEED : this.speedMul * (this.carry ? 0.85 : 1) * (run ? RUN_SPEED : SNEAK_SPEED * (0.5 + 0.5 * Math.min(1, mv.mag / 0.9)))) * (this.slowMul ?? 1); // (BAGYO: water, a heavy container)
     const dx = mx * speed * dt, dy = my * speed * dt;
     if (!map.blocked(this.x + dx, this.y, this.r, this.crawl)) this.x += dx;
     if (!map.blocked(this.x, this.y + dy, this.r, this.crawl)) this.y += dy;

@@ -11,6 +11,7 @@ const idle = { mv: { x: 0, y: 0, mag: 0, run: false }, action: false, actionPres
 for (const f of files) {
   test(`dev helpers can finish ${f}: quota, exit, boss phases`, () => {
     const L = JSON.parse(readFileSync(new URL(f, dir), 'utf8'));
+    if (L.mode) return; // (a mini-game has its own simulation: tests/minigames.test.mjs)
     const w = new World(L);
     w.god = true;
     let phases = 0;

@@ -6,7 +6,7 @@ import { hashStr } from './rng.js';
 import { maskFromStars, starsOf } from '../game/missions.js';
 
 const KEY = 'kupit.save.v1'; // the storage key never changes; the schema version is inside the save
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 export const DEFAULT_OPTS = { music: 0.75, sfx: 1, shake: 1, flash: true, pulse: true, left: false, ghost: true };
 
@@ -32,6 +32,8 @@ export const fresh = () => ({
   hinalaPlay: 0,            // the part of it Jun's own play caused (no chapter floors): flavours the ending
   ledger: {},               // level id -> what the first clear took { by: {owner: n}, sobra, emptied, catches, spills }
   pick: {},                 // level id -> the kid who went last time (the pre-level card remembers)
+  // v6
+  album: [],                // photos earned on mini-game missions (scenes/album.js)
 });
 
 // version -> function that upgrades a save of that version by one step
@@ -63,6 +65,14 @@ const MIGRATIONS = {
     const u = Math.max(0, Math.floor(Number(s.unlocked) || 0));
     if (u === 14) s.unlocked = 13;
     s.v = 5;
+    return s;
+  },
+  5: (s) => { // v6 (mini-games): TUMBANG PRESO, SI MINGMING and HABOL! join the campaign at 5, 12 and 14. Progress stays on the
+    // same level, unless one of the new ones sits right before it: then that is next (the rest wait on the map).
+    const NEW_INDEX = [0, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 13, 15, 16, 17, 18, 19], ADDED = new Set([5, 12, 14]);
+    const u = Math.max(0, Math.floor(Number(s.unlocked) || 0)), n = NEW_INDEX[Math.min(u, NEW_INDEX.length - 1)];
+    s.unlocked = ADDED.has(n - 1) ? n - 1 : n;
+    s.v = 6;
     return s;
   },
 };

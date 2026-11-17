@@ -36,7 +36,9 @@ export function playBot(L, { run = false, maxT = 900, lives = 3, god = true } = 
     if (p !== w.player) { p = w.player; path = null; goal = null; lastPos = [p.x, p.y]; } // the other kid now
     // ---- what to go for
     let kind, obj;
-    if (w.finale?.type === 'photo') { kind = 'hide'; obj = w.hides.slice().sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0]; }
+    if (w.finale?.type === 'tulo' && w.finale.stage === 'gather') { kind = 'goal'; obj = w.finale.goal; } // BAGYO: the kittens back to their box
+    else if (w.finale?.wait) { kind = 'wait'; obj = p; } // (TULO: god mode keeps the box safe enough; just wait it out)
+    else if (w.finale?.type === 'photo') { kind = 'hide'; obj = w.hides.slice().sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0]; }
     else if (w.open && w.finale?.type === 'seat') { kind = 'seat'; obj = w.finale.seatPt; }
     else if (w.open) { kind = 'exit'; obj = w.exit; }
     else {
@@ -58,6 +60,8 @@ export function playBot(L, { run = false, maxT = 900, lives = 3, god = true } = 
     const inp = { ...IDLE, mv: { x: 0, y: 0, mag: 0, run: false } };
     const ctx = w.context();
     if (p.hidden && kind === 'hide') { /* the photo: stay put */ }
+    else if (kind === 'wait') { /* TULO */ }
+    else if (kind === 'goal' && Math.hypot(obj.x - p.x, obj.y - p.y) < 10) { /* there */ }
     else if (p.hidden) inp.mv = { x: 0, y: 1, mag: 1, run: false }; // never meant to hide: step out
     else if (kind === 'hide' && ctx?.kind === 'hide' && ctx.obj === obj) { if (pressT <= 0) { inp.action = true; inp.actionPressed = true; pressT = 0.5; } }
     else if (kind === 'steal' && near(obj) && ctx?.kind === 'steal' && ctx.obj === obj) inp.action = true;
@@ -91,7 +95,7 @@ export function playBot(L, { run = false, maxT = 900, lives = 3, god = true } = 
     w.update(1 / 60, inp);
     // caught without god mode: after the respawn, plan again from where you are (the old path is from elsewhere)
     if (Math.hypot(p.x - lastPos[0], p.y - lastPos[1]) > 24) { path = null; goal = null; stuckT = 0; }
-    else if (Math.hypot(p.x - lastPos[0], p.y - lastPos[1]) < 0.2 && !inp.action && !w.scold) stuckT += 1 / 60; else stuckT = 0; // (Bing sneaks at 0.44 px a frame)
+    else if (Math.hypot(p.x - lastPos[0], p.y - lastPos[1]) < 0.2 && !inp.action && !w.scold && kind !== 'wait' && kind !== 'goal') stuckT += 1 / 60; else stuckT = 0; // (Bing sneaks at 0.44 px a frame)
     lastPos = [p.x, p.y];
     if (stuckT > 12) return fail(`stuck at ${p.tx},${p.ty} going to ${kind} ${tileOf(obj)}`, t);
   }

@@ -75,6 +75,14 @@ export const sfx = {
   tune: () => [784, 659, 880].forEach((f, i) => beep(f, 0.12, { at: i * 0.14, type: 'sine', vol: 0.025 })), // Tatay whistling a tune
   ringtone: () => [1320, 1320, 1320].forEach((f, i) => beep(f, 0.06, { at: i * 0.09, type: 'square', vol: 0.025 })), // Tita's phone
   horn: () => { beep(330, 0.12, { vol: 0.06 }); beep(330, 0.12, { at: 0.18, vol: 0.06 }); },
+  // the mini-games
+  jump: () => beep(330, 0.11, { slide: 420, type: 'square', vol: 0.045 }),
+  splash: () => { beep(900, 0.08, { slide: -500, type: 'triangle', vol: 0.06 }); beep(500, 0.12, { at: 0.04, slide: -300, type: 'sawtooth', vol: 0.03 }); },
+  clank: () => { beep(1250, 0.05, { type: 'square', vol: 0.06 }); beep(880, 0.12, { at: 0.04, slide: -120, type: 'square', vol: 0.05 }); beep(1660, 0.06, { at: 0.09, type: 'triangle', vol: 0.04 }); }, // a tin can falling over
+  cheer: () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => beep(f, 0.09, { at: i * 0.07, type: 'triangle', vol: 0.05 })),
+  drip: () => beep(1800 + Math.random() * 300, 0.04, { slide: -900, type: 'sine', vol: 0.05 }),
+  push: () => beep(110, 0.18, { slide: -30, type: 'triangle', vol: 0.1 }), // a sandbag scraping along
+  bark: () => { beep(420, 0.07, { slide: -160, type: 'sawtooth', vol: 0.06 }); beep(380, 0.08, { at: 0.12, slide: -160, type: 'sawtooth', vol: 0.06 }); },
   unlock: () => ac(),
 };
 

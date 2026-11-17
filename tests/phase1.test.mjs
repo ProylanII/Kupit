@@ -12,7 +12,7 @@ import { World } from '../src/game/world.js';
 import { fresh, migrate } from '../src/core/save.js';
 
 const dir = new URL('../src/data/levels/', import.meta.url);
-const levels = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8')).map((f) => JSON.parse(readFileSync(new URL(f, dir), 'utf8')));
+const levels = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8')).map((f) => JSON.parse(readFileSync(new URL(f, dir), 'utf8'))).filter((L) => !L.mode); // (mini-games: tests/minigames.test.mjs)
 const byId = Object.fromEntries(levels.map((L) => [L.id, L]));
 const src = (p) => readFileSync(new URL(`../src/${p}`, import.meta.url), 'utf8');
 const IDLE = { mv: { x: 0, y: 0, mag: 0, run: false }, action: false, actionPressed: false, throwPressed: false, abilityPressed: false };

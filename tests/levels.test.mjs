@@ -16,6 +16,7 @@ test('there are at least 12 levels and ids are unique', () => {
 for (const f of files) {
   test(`level ${f} is valid, solvable and safe at spawn`, () => {
     const L = load(f);
+    if (L.mode) return; // (a mini-game: tests/minigames.test.mjs)
     assert.deepEqual(validateLevel(L), []);
     assert.ok(idleSafe(L, 4), 'caught while standing still at spawn');
   });

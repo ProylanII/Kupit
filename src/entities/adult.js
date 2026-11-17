@@ -59,6 +59,7 @@ const SEARCH_TIME = 2.5;
 const CHASE_MULT = 1.5;
 const CATCH_DIST = 10;
 export const UNDER_SEE = 20; // Bing under a table or bed: only someone right next to it sees her (and can reach in)
+export const UP_SEE = 0.55;  // SI MINGMING up on a table or sofa: seen from about half as far
 const COVER_R = 6; // half-width of a person standing in the way
 export const BLEND_SEE = 30; // a kid walking with a guest is only noticed from this close
 
@@ -454,7 +455,7 @@ export class Adult {
     const dx = player.x - this.x, dy = player.y - this.y, dist = Math.hypot(dx, dy);
     if (player.blend && this.state !== 'chase' && dist > BLEND_SEE) return false; // one more kid in the crowd
     if (player.under && dist > UNDER_SEE) return false; // MALIIT: under the table, out of sight
-    return dist < this.range * (player.darkMul ?? 1) && Math.abs(angDiff(Math.atan2(dy, dx) - this.va)) < this.fov && // (A6: the dark hides you)
+    return dist < this.range * (player.darkMul ?? 1) * (player.up ? UP_SEE : 1) && Math.abs(angDiff(Math.atan2(dy, dx) - this.va)) < this.fov && // (A6: the dark hides you)
       hasLos(this.map, this, player) && !this.covered(player.x, player.y);
   }
 
@@ -522,7 +523,8 @@ export class Adult {
     // guests and vehicles just follow their route
     if (c.harmless) {
       this.awake = true; this.alert = 0; this.seen = false;
-      this.patrol(dt, world);
+      if (this.state === 'return') { if (this.follow(dt, c.speed, world)) { this.state = 'patrol'; this.wait = 0; } } // (BAGYO: the family heading in)
+      else this.patrol(dt, world);
       return;
     }
 

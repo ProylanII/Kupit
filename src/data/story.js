@@ -35,6 +35,11 @@ export const BEFORE = {
     { who: 'jun', lines: ['Bing! Shh! ...Okay. Come look.', "But you can't tell anyone."] },
     { who: 'bing', lines: ['KITTENS! I can help! I am small.', 'Nobody ever sees me.'], join: 'bing' },
   ],
+  preso: [ // a break: the street game, with Aling Nena's prize
+    { who: 'bing', mood: 'happy', lines: ['Kuya! The kids are playing', 'tumbang preso outside!'] },
+    { who: 'nena', lines: ['Three TUMBA and you win a', 'prize from my store, ha.'] },
+    { who: 'jun', mood: 'happy', lines: ['A prize is milk for Mingming.', 'And nobody has to miss a coin.'] },
+  ],
   '06-kwarto': [ // the tattletale arrives (he is not Kuya Ramil)
     { who: 'kuya', mood: 'happy', lines: ['Bakasyon ko dito! Hi, Jun.', 'I see EVERYTHING, ha. Everything.'] },
     { who: 'jun', mood: 'sad', lines: ['Pinsan Jomar. He tells on', 'everyone. Now of all times...'] },
@@ -60,10 +65,20 @@ export const BEFORE = {
     { who: 'jun', lines: ['I took too much. Tonight I put', 'it back. Every coin.'] },
     { who: 'jun', mood: 'sad', when: 'brokeAlkansya', lines: ['My savings are not enough.', 'I will break my own alkansya.'] },
   ],
+  mingming: [ // no kupit tonight: Mingming goes and gets dinner herself (Tatay's fish, so the boss after this is his)
+    { who: 'jun', mood: 'sad', lines: ['Mama counts every coin now.', 'No kupit tonight.'] },
+    { who: 'cat', lines: ['Mrrrow.'] },
+    { who: 'jun', mood: 'shock', lines: ['Mingming? Where are you going?', "That's the kitchen..."] },
+    { who: 'jun', lines: ["Tatay's fried fish! She's going", 'to get it herself.'] },
+  ],
   'boss3-tatay': [
     { who: 'tatay', mood: 'angry', lines: ['Who keeps taking my fried fish?', 'And the coins from my wallet?'] },
     { who: 'ramil', mood: 'shock', lines: ['Jun... he is starting to notice.', 'Tatay is setting the dog loose.'] },
     { who: 'jun', lines: ['Then we have to be quieter.', 'Mingming needs that fish.'] },
+  ],
+  habol: [ // the kittens are big enough to wander: Tigre gets out, and the chase takes Jun out into the barangay
+    { who: 'bing', mood: 'shock', lines: ['Kuya! Tigre got out through', 'the fence! He is chasing a butiki!'] },
+    { who: 'jun', mood: 'shock', lines: ['Out in the street? He is so', 'small! Wait for me, Tigre!'] },
   ],
   '08-palengke': [ // the errand (the "Oops" happens at the stall, after the level)
     { who: 'nene', lines: ['Kuya Jun, can I come?', 'The tinderas all love me.'], join: 'nene' },
@@ -80,11 +95,11 @@ export const BEFORE = {
     { who: 'nena', lines: ['Free vaccination at the', 'barangay hall tonight, ijo.', 'Bring the mother too.'] },
     { who: 'jun', lines: ['Mingming, stay close.', 'Nobody can know.'] },
   ],
-  bagyo: [
-    { who: 'jun', lines: ['Signal number three. The yard', 'is already filling with water.'] },
-    { who: 'jun', mood: 'shock', lines: ['The kittens are still under the', 'house. I have to get them out.'] },
+  bagyo: [ // the plan: get them back in the box, keep it dry, keep the secret. The storm has other plans.
+    { who: 'jun', lines: ['Signal number three. The kanal', 'is already over its edge.'] },
+    { who: 'jun', mood: 'shock', lines: ['The thunder scared them out of', 'the box. They are all over the', 'yard, under the house...'] },
     { who: 'mama', mood: 'angry', lines: ['Jun? JUN! Where is that boy?', 'In THIS weather?!'] },
-    { who: 'jun', lines: ['If they catch me now, they will', 'know everything. Run when the', 'thunder rolls. Nobody hears then.'] },
+    { who: 'jun', lines: ['Back in the box, keep it dry,', 'and nobody finds out. Run when', 'the thunder rolls.'] },
   ],
 };
 
@@ -98,6 +113,10 @@ export const AFTER = {
   '07-sampayan': [ // KASABWAT: the two of them, together for once
     { who: 'ramil', lines: ['The washing is out, Bing. You go', 'under the tables, I keep watch.'] },
     { who: 'bing', mood: 'happy', lines: ['Then we both get out.', 'Together, Kuya.'] },
+  ],
+  mingming: [ // she made it home with the fish
+    { who: 'cat', lines: ['Nom. Nom. Nom.'] },
+    { who: 'jun', mood: 'happy', lines: ['Clever girl. But now Tatay will', 'be watching his fish.'] },
   ],
   ibalik: [ // the arc beat: he took too much, put it back, and decides what kind of kupit is allowed
     { who: 'mama', mood: 'happy', lines: ['Ay, nandito pala! The money was', 'in my purse all along. Hay...'] },
@@ -150,6 +169,6 @@ export const CHAPTERS = [
   { name: 'ANG SIKRETO', sub: 'THE SECRET', from: '01-sala' },
   { name: 'GATAS', sub: 'MILK', from: '04-bakuran' },
   { name: 'KASABWAT', sub: 'PARTNERS IN CRIME', from: '05-gabi' },
-  { name: 'SA LABAS', sub: 'OUT IN THE BARANGAY', from: '08-palengke' },
+  { name: 'SA LABAS', sub: 'OUT IN THE BARANGAY', from: 'habol' },
   { name: 'BAGYO', sub: 'THE STORM', from: 'bagyo' },
 ];

@@ -97,10 +97,16 @@ const TIPS = {
   palusot: 'ONE EXCUSE A LEVEL. THEY STILL WONDER (HINALA +3)',
   team: 'TWO OF YOU: Z (OR THE PURPLE BUTTON) SWITCHES KIDS',
   dark: 'IN THE DARK THEY ONLY SEE YOU UP CLOSE. AVOID LIGHT',
+  cat: 'UP ON A TABLE OR SOFA THEY SEE YOU FROM HALF AS FAR',
+  tabig: (p) => (p.input.touchUsed ? 'TABIG: THE GREEN BUTTON KNOCKS A CUP OFF. IT PULLS THEM AWAY' : 'TABIG: F KNOCKS A CUP OFF. IT PULLS THEM AWAY'),
+  tulo: 'BUHAT A CONTAINER, SAHOD IT UNDER A DRIP. TAPON IT WHEN FULL',
+  tapon: 'EMPTY IT DOWN THE DRAIN. DO IT IN THE THUNDER: NOBODY HEARS',
+  baha: 'WALK INTO A SANDBAG TO PUSH IT. PUSH IT INTO THE BROKEN KANAL',
+  mingming: 'MINGMING ONLY COMES WHEN IT IS QUIET. WAIT FOR THE THUNDER TO PASS',
 };
 
 // Tips about a button ring that button while they show: [button, hold?]
-const TIP_BUTTONS = { hide: ['act'], door: ['act'], creaky: ['act', true], switch: ['act'], device: ['act'], throw: ['throw', true], pandesal: ['throw', true], skill: ['skill'] };
+const TIP_BUTTONS = { tulo: ['act'], tabig: ['skill'], hide: ['act'], door: ['act'], creaky: ['act', true], switch: ['act'], device: ['act'], throw: ['throw', true], pandesal: ['throw', true], skill: ['skill'] };
 
 export class Play {
   // opts: { tips: { seen, mark(id) }, ghost: samples | null, outfit: 'pula', record: true }
@@ -109,7 +115,8 @@ export class Play {
     this.world = new World(level, loadout);
     this.level = level;
     this.opts = opts;
-    this.look = opts.outfit && opts.outfit !== 'basic' ? `${this.world.mods.look}~${opts.outfit}` : this.world.mods.look;
+    this.look = opts.outfit && opts.outfit !== 'basic' && !this.world.mods.cat ? `${this.world.mods.look}~${opts.outfit}` : this.world.mods.look;
+    this.drops = [];   // BAGYO: water drops falling from the floor above, splashes
     this.bg = buildBackground(this.world.map, { night: !!level.night, pasko: !!level.pasko });
     this.parts = [];
     this.rings = [];
@@ -192,7 +199,12 @@ export class Play {
       if (new Set(p.items).size > 1) this.showTip('cycle');
       if (w.time > 2 && !this.level.tutorial && w.abilityCd <= 0) this.showTip('skill');
       if (w.patience && w.time > 1) this.showTip('kain');
-      if (this.level.night && w.time > 1.5) this.showTip('dark');
+      if (this.level.night && w.time > 1.5 && !w.mods.cat) this.showTip('dark');
+      if (w.mods.cat && w.time > 0.5) { this.showTip('cat'); if (w.time > 5) this.showTip('tabig'); }
+      if (pr?.kind === 'steal' && pr.obj.kind === 'mingming') this.showTip('mingming');
+      if (pr?.kind === 'buhat' || pr?.kind === 'sahod') this.showTip('tulo');
+      if (pr?.kind === 'tapon') this.showTip('tapon');
+      if (w.flood?.active) this.showTip('baha');
       if (w.time > 0.5) for (const a of w.adults) {
         if (a.type === 'aso') this.showTip('dog');
         else if (['tanod', 'tindera', 'bisita', 'trike'].includes(a.type)) this.showTip(a.type);
@@ -247,6 +259,9 @@ export class Play {
     for (const d of this.dust) { d.x += d.vx * dt; d.y -= 6 * dt; d.l -= dt; }
     keep(this.dust, (d) => d.l > 0);
     for (const p of this.parts) { p.y += p.vy * dt; p.vy += 90 * dt; p.l -= dt * 1.6; }
+    for (const d of this.drops) { d.x += (d.vx || 0) * dt; d.y += d.vy * dt; d.vy += 300 * dt; d.l -= dt; }
+    keep(this.drops, (d) => d.l > 0);
+    if (this.cup && (this.cup.t -= dt) <= 0) this.cup = null;
     keep(this.parts, (p) => p.l > 0);
     if (this.banner && (this.banner.t -= dt) <= 0) this.banner = null;
     if (this.toast && (this.toast.t -= dt) <= 0) this.toast = null;
@@ -359,6 +374,27 @@ export class Play {
       case 'land': sfx.thud(); break;
       case 'hide': case 'unhide': sfx.hide(); if (e.seen) this.showTip('seenHide'); break;
       case 'device': sfx.music(); break;
+      // ---- SI MINGMING
+      case 'tabig': sfx.clank(); this.kick(1); this.cup = { x: e.x, y: e.y, t: 0.5 }; for (let i = 0; i < 8; i++) this.parts.push({ x: e.x + Math.random() * 8 - 4, y: e.y - 2, vy: -40 - Math.random() * 30, l: 0.5, shard: true }); break;
+      // ---- BAGYO: the leaks
+      case 'kittensIn': sfx.meow(); this.toast = { text: 'IN THE BOX! NOW KEEP IT DRY', col: C.green, t: 2.4 }; break;
+      case 'dripOn': sfx.drip(); this.toast = { text: 'ANOTHER LEAK!', col: C.orange, t: 1.4 }; break;
+      case 'drip': if (this.onScreen(e.x, e.y, 20)) { if (Math.random() < 0.4) sfx.drip(); for (let i = 0; i < 3; i++) this.drops.push({ x: e.x + Math.random() * 6 - 3, y: e.y + 4, vx: Math.random() * 30 - 15, vy: -20 - Math.random() * 20, l: 0.3, splash: true }); } break;
+      case 'full': sfx.pickup(); break;
+      case 'overflow': if (Math.random() < 0.5) sfx.splash(); break;
+      case 'wet': if (e.wet >= 1 && !this.soaked) { this.soaked = true; this.toast = { text: 'THE BOX IS SOAKED! THE KITTENS CRY', col: C.orange, t: 2.4 }; } break;
+      case 'cry': sfx.meow(); break;
+      case 'lift': sfx.hide(); break;
+      case 'place': sfx.thud(); break;
+      case 'dump': sfx.splash(); if (e.loud) this.kick(1); for (let i = 0; i < 10; i++) this.drops.push({ x: e.x + Math.random() * 10 - 5, y: e.y, vx: Math.random() * 50 - 25, vy: -40 - Math.random() * 40, l: 0.5, splash: true }); break;
+      case 'slosh': sfx.splash(); this.toast = { text: 'NATAPON! DO NOT RUN WITH IT FULL', col: C.orange, t: 2 }; break;
+      // ---- BAGYO: the flood
+      case 'flood': sfx.thunder(); this.kick(4); this.buzz([60, 40, 60]); break;
+      case 'floodStopped': sfx.cheer(); break;
+      case 'seal': sfx.thud(); sfx.clear(); this.kick(2); this.toast = { text: e.left ? `SEALED! ${e.left} MORE TO GO` : 'ALL SEALED!', col: C.green, t: 2 }; break;
+      case 'push': sfx.push(); break;
+      case 'pushBlocked': if (!this.blockedT || this.blockedT < performance.now()) { sfx.creak(); this.blockedT = performance.now() + 600; } break;
+      case 'wade': if (this.onScreen(e.x, e.y)) { sfx.splash(); for (let i = 0; i < (e.deep ? 6 : 3); i++) this.drops.push({ x: e.x + Math.random() * 8 - 4, y: e.y + 4, vx: Math.random() * 40 - 20, vy: -30 - Math.random() * 30, l: 0.35, splash: true }); } break;
     }
     this.opts.log?.(e, w);
   }
@@ -499,6 +535,20 @@ export class Play {
       } else if (c === 'd') {
         g.fillStyle = C.table; g.fillRect(x, y, 3, TILE);
         g.fillStyle = C.table2; g.fillRect(x + 1, y + 1, 1, 14);
+      } else if (c === 'Q') { // a sandbag (it slides when pushed)
+        const pa = this.world.pushAnim, k = pa && pa.tx === tx && pa.ty === ty ? Math.max(0, pa.t) / 0.16 : 0;
+        const ox = Math.round(-((pa?.dx) || 0) * 16 * k), oy = Math.round(-((pa?.dy) || 0) * 16 * k);
+        const sx = x + ox, sy = y + oy;
+        const sack = (ox2, oy2, w2) => { // a lumpy sack, rounded corners, burlap weave, a tie at the neck
+          g.fillStyle = C.ink; g.fillRect(sx + ox2 + 1, sy + oy2, w2 - 2, 7); g.fillRect(sx + ox2, sy + oy2 + 1, w2, 5);
+          g.fillStyle = '#a89a72'; g.fillRect(sx + ox2 + 1, sy + oy2 + 1, w2 - 2, 5);
+          g.fillStyle = '#c4b88e'; g.fillRect(sx + ox2 + 2, sy + oy2 + 1, w2 - 5, 2);
+          g.fillStyle = '#8a7e5a'; for (let i = 2; i < w2 - 2; i += 2) g.fillRect(sx + ox2 + i, sy + oy2 + 4, 1, 1);
+          g.fillStyle = '#5a4e36'; g.fillRect(sx + ox2 + w2 - 3, sy + oy2 + 2, 2, 2);
+        };
+        g.globalAlpha = 0.3; g.fillStyle = C.ink; g.fillRect(sx + 1, sy + 13, 15, 3); g.globalAlpha = 1;
+        sack(1, 8, 15); sack(2, 2, 12);
+        g.fillStyle = C.white; if (this.world.flood?.active && Math.floor(performance.now() / 400) % 2) { g.fillRect(sx + 7, sy - 4, 2, 2); } // (in the flood: these are what you push)
       } else if (c === 'G' || c === 'g') {
         g.fillStyle = C.dgray; g.fillRect(x, y, TILE, 2);
         if (c === 'G') for (let i = 1; i < TILE; i += 3) { g.fillStyle = C.ink; g.fillRect(x + i, y + 2, 2, 14); g.fillStyle = C.gray; g.fillRect(x + i, y + 2, 1, 14); }
@@ -509,6 +559,12 @@ export class Play {
   drawExit(g) {
     if (['seat', 'photo'].includes(this.level.boss?.finale)) return; // these finales do not end at a door
     const w = this.world, x = w.exit.x - 8, y = w.exit.y - 8;
+    if (this.level.exitStyle === 'hole') { // SI MINGMING: the gap under the house where the kittens wait
+      g.fillStyle = C.ink; g.fillRect(x + 1, y + 4, 14, 10); g.fillStyle = '#15101f'; g.fillRect(x + 2, y + 5, 12, 8);
+      if (w.open && Math.floor(performance.now() / 300) % 2) { g.fillStyle = C.yellow; g.fillRect(x + 5, y + 8, 1, 1); g.fillRect(x + 8, y + 8, 1, 1); g.fillRect(x + 10, y + 9, 1, 1); g.fillRect(x + 12, y + 9, 1, 1); } // little eyes
+      drawText(g, w.open ? 'UWI!' : 'BUTAS', w.exit.x, y - 4, w.open ? C.green : C.gray, { align: 'center', shadow: C.ink });
+      return;
+    }
     const pulse = w.open && Math.floor(performance.now() / 250) % 2;
     g.fillStyle = C.table; g.fillRect(x + 1, y, 14, 16);
     g.fillStyle = w.open ? (pulse ? C.green : '#2fb56b') : C.dgray; g.fillRect(x + 3, y + 2, 10, 14);
@@ -570,6 +626,8 @@ export class Play {
       g.fillRect(Math.round(pd.x) - 5, Math.round(pd.y) + 2, 10, 3); g.fillRect(Math.round(pd.x) - 3, Math.round(pd.y) + 1, 6, 5);
       g.globalAlpha = 1;
     }
+    this.drawFlood(g, now);
+    this.drawTulo(g, now);
     this.drawExit(g);
     for (const s of w.switches) {
       drawObj(g, s.on ? 'leverOn' : 'leverOff', s.x, s.y + 2);
@@ -589,6 +647,7 @@ export class Play {
     }
     for (const t of w.targets) {
       drawTarget(g, t.kind, t.x, t.y, t.done);
+      if (t.kind === 'mingming' && !t.done && t.flinch > 0) drawText(g, '!', t.x, t.y - 18 - (Math.floor(now / 100) % 2), C.orange, { align: 'center', shadow: C.ink }); // she flinches at the thunder
       if (t.bonus && !t.done && Math.floor(now / 400) % 3 === 0) { g.fillStyle = C.white; g.fillRect(Math.round(t.x) + 3, Math.round(t.y) - 5, 1, 1); } // glint
       else if (!t.bonus && !t.done && !this.fishLater(t)) this.drawTwinkle(g, t, now); // what you came for: a gold twinkle
     }
@@ -640,11 +699,15 @@ export class Play {
       if (e.look) drawActor(g, e.look, e.x, e.y, e.dir, e.pose || (e.moving ? Math.floor(e.stepT) % 4 : 'sit'));
       else if (e === p) {
         // kid poses: caught > skill cast > kupit (reach) > walk cycle (sneak 8 fps, run 13.6 fps) > idle
-        if (!blink) drawActor(g, this.look, p.x, p.y, p.dir, w.status === 'caught' || w.scold ? 'caught' : this.castT > 0 ? 'cast' : p.stealing ? 'reach' : p.moving ? Math.floor(p.stepT * 8) % 4 : 0);
+        if (!blink && w.mods.cat) this.drawCat(g, p, now);
+        else if (!blink) {
+          drawActor(g, this.look, p.x, p.y, p.dir, w.status === 'caught' || w.scold ? 'caught' : this.castT > 0 ? 'cast' : p.stealing ? 'reach' : p.moving ? Math.floor(p.stepT * 8) % 4 : 0);
+          if (this.level.tulo && w.coins > 0 && !(w.tulo?.stage === 'leak')) this.drawShirtKittens(g, p, now);
+        }
       } else this.drawAdult(g, e);
     }
     for (const k of w.kids || [p]) {
-      if (k.under && !k.hidden && !k.out) { // MALIIT: the table or bed drawn back over Bing, her eyes peeking out
+      if (k.under && !k.hidden && !k.out && !w.mods.cat) { // MALIIT: the table or bed drawn back over Bing, her eyes peeking out (the cat is ON top)
         const tx = k.tx * TILE, ty = k.ty * TILE;
         g.globalAlpha = 0.82; g.drawImage(this.bg, tx, ty - 4, TILE, TILE + 4, tx, ty - 4, TILE, TILE + 4); g.globalAlpha = 1;
         g.fillStyle = C.white; g.fillRect(Math.round(k.x) - 2, Math.round(k.y) - 1, 1, 1); g.fillRect(Math.round(k.x) + 1, Math.round(k.y) - 1, 1, 1);
@@ -701,7 +764,8 @@ export class Play {
     for (const a of w.adults) if (a.say) bubble(g, a.say.text, a.x, Math.round(a.y) - 34, this.cx, C.ink, w.scold?.who === a ? C.orange : a.state === 'chase' ? C.red : C.white);
     if (this.coach) this.drawCoachFocus(g);
     g.restore();
-    if (p.carry) drawTarget(g, 'gatas', p.x - this.cx + sx, p.y - this.cy + sy - 21, false);
+    if (p.carry && !w.mods.cat) drawTarget(g, p.carry.kind === 'isda' ? 'isda' : 'gatas', p.x - this.cx + sx, p.y - this.cy + sy - 21, false);
+    if (p.holding) this.drawHeld(g, p, sx, sy);
     if (this.level.storm) this.drawStorm(g, fd);
     this.drawCover(g);
     if (w.finale?.type === 'photo' && w.finale.count > 0) drawText(g, String(Math.ceil(w.finale.count)), VIEW_W / 2, 52, C.gold, { scale: 3, align: 'center', shadow: C.ink }); // PICTURE! 3, 2, 1
@@ -716,6 +780,105 @@ export class Play {
     this.drawCompass(g);
     this.drawHud(g);
   }
+
+  // ---- SI MINGMING: the cat walks, sits, crouches to bite, and hops up onto the furniture
+  drawCat(g, p, now) {
+    const w = this.world, up = p.up ? 5 : 0;
+    const pose = w.scold || w.status === 'caught' ? 'sleep' : p.stealing ? 'sit' : p.moving ? Math.floor(p.stepT * 10) % 4 : this.castT > 0 ? 1 : 'sit';
+    if (up) { g.globalAlpha = 0.25; g.fillStyle = C.ink; g.fillRect(Math.round(p.x) - 5, Math.round(p.y) + 4, 11, 2); g.globalAlpha = 1; } // her shadow stays on the floor
+    drawActor(g, 'pusa', p.x, p.y - up, p.dir, pose);
+    if (p.carry) { // the fish in her mouth
+      const [ox, oy] = [[0, -3], [-8, -6], [8, -6], [0, -10]][p.dir];
+      drawObj(g, 'isdaBit', p.x + ox, p.y - up + oy);
+    }
+    if (up && Math.floor(now / 500) % 2) { g.fillStyle = C.green; g.fillRect(Math.round(p.x) - 1, Math.round(p.y) - up - 16, 3, 1); } // up high: harder to see
+    if (this.cup) { // the cup she swatted, falling and breaking
+      const k = 1 - this.cup.t / 0.5;
+      g.fillStyle = '#cfe9f2'; g.fillRect(Math.round(this.cup.x) - 2, Math.round(this.cup.y) - 8 + Math.round(k * 8), 4, 4);
+    }
+  }
+
+  // ---- BAGYO: three kittens peeking out of Jun's shirt
+  drawShirtKittens(g, p, now) {
+    const n = Math.min(3, this.world.coins), looks = ['puti', 'muning', 'tigre'];
+    for (let i = 0; i < n; i++) {
+      const s = getSprite(looks[i], 0, 'sit'), bob = Math.floor(now / 260 + i) % 3 === 0 ? 1 : 0;
+      g.drawImage(s, 0, 0, s.width, 5, Math.round(p.x) - 6 + i * 4, Math.round(p.y) - 9 - bob, s.width, 5);
+    }
+  }
+  // the container you are carrying, held up in front, showing how full it is
+  drawHeld(g, p, sx, sy) {
+    const k = p.holding, x = Math.round(p.x - this.cx + sx), y = Math.round(p.y - this.cy + sy) - 22;
+    drawObj(g, k.kind, x, y);
+    if (k.fill > 0) { g.fillStyle = '#5a7fb5'; g.fillRect(x - 3, y - 1, 6, Math.max(1, Math.round(2 * k.fill))); }
+    if (k.fill >= 1 && Math.floor(performance.now() / 200) % 2) drawText(g, 'PUNO', x, y - 12, C.orange, { align: 'center', shadow: C.ink });
+  }
+
+  // TULO: the drain, the box, the containers on the floor, and the drips (a drop falls from the floorboards)
+  drawTulo(g, now) {
+    const T = this.world.tulo;
+    if (!T) return;
+    drawObj(g, 'drain', T.drain.x, T.drain.y);
+    if (T.stage === 'leak') drawText(g, 'DRAIN', T.drain.x, T.drain.y + 6, C.gray, { align: 'center' });
+    // the box: empty until you bring them, full of kittens while it leaks, empty once they are in your shirt
+    const bx = Math.round(T.box.x) - 11, by = Math.round(T.box.y) - 6;
+    g.fillStyle = C.ink; g.fillRect(bx - 1, by - 1, 24, 13);
+    g.fillStyle = '#8a6a42'; g.fillRect(bx, by, 22, 11); g.fillStyle = '#a8845a'; g.fillRect(bx, by, 22, 2);
+    g.fillStyle = T.wet >= 1 ? '#7a5a8a' : '#d86a8a'; g.fillRect(bx + 2, by - 2, 18, 3);
+    if (T.stage === 'leak') ['puti', 'muning', 'tigre'].forEach((k, i) => { const s = getSprite(k, 0, 'sit'); g.drawImage(s, 0, 0, s.width, 6, bx + 2 + i * 6, by - 4 - (T.wet >= 1 && Math.floor(now / 200 + i) % 2 ? 1 : 0), s.width, 6); });
+    if (T.wet > 0) { g.globalAlpha = 0.25 + 0.35 * T.wet; g.fillStyle = '#5a7fb5'; g.fillRect(bx, by + 6, 22, 5); g.globalAlpha = 1; }
+    if (T.stage === 'leak' && T.wet >= 1 && Math.floor(now / 400) % 2) drawText(g, 'MEW!', bx + 11, by - 14, C.white, { align: 'center', shadow: C.ink });
+    if (T.stage === 'idle' && this.world.finale?.type === 'tulo' && Math.floor(now / 300) % 2) { g.fillStyle = C.green; g.fillRect(bx, by + 12, 22, 2); } // bring them here
+    for (const d of T.drips) {
+      if (!d.on) { if (T.stage === 'leak') { g.globalAlpha = 0.35; g.fillStyle = '#5a7fb5'; g.fillRect(d.x - 2, d.y - 9, 4, 1); g.globalAlpha = 1; } continue; } // a dark seam: it will leak here
+      const cont = T.conts.find((k) => k.drip === d);
+      if (!cont) { g.globalAlpha = 0.45; g.fillStyle = '#5a7fb5'; g.fillRect(d.x - 4, d.y + 2, 8, 3); g.fillRect(d.x - 2, d.y + 1, 4, 5); g.globalAlpha = 1; } // a puddle
+      const k = Math.min(1, d.fallT / 0.5), y = Math.round(d.y - 14 + k * 16);
+      g.fillStyle = '#9fc0ff'; g.fillRect(d.x, y, 1, 2); g.fillStyle = C.white; g.fillRect(d.x, y, 1, 1);
+      g.fillStyle = '#3a5a8a'; g.fillRect(d.x - 2, d.y - 15, 5, 1); // the wet seam in the boards above
+    }
+    for (const k of T.conts) {
+      if (k.held) continue;
+      drawObj(g, k.kind, k.x, k.y);
+      if (k.fill > 0) { g.fillStyle = k.fill >= 1 ? '#7f9fd8' : '#5a7fb5'; g.fillRect(Math.round(k.x) - 3, Math.round(k.y) - 1, 6, Math.max(1, Math.round(2 * k.fill))); }
+      if (k.drip && T.stage === 'leak') { // a little gauge
+        g.fillStyle = C.ink; g.fillRect(Math.round(k.x) - 6, Math.round(k.y) + 5, 12, 3);
+        g.fillStyle = k.fill >= 1 ? (Math.floor(now / 150) % 2 ? C.red : C.orange) : k.fill > 0.7 ? C.yellow : '#4f8fff'; g.fillRect(Math.round(k.x) - 5, Math.round(k.y) + 6, Math.round(10 * k.fill), 1);
+      }
+    }
+    for (const d of this.drops) { g.fillStyle = '#9fc0ff'; g.fillRect(Math.round(d.x), Math.round(d.y), 1, 1); }
+  }
+
+  // BAHA: shallow water lets the floor show through, deep water does not; ripples drift; the breaches gush
+  drawFlood(g, now) {
+    const F = this.world.flood, map = this.world.map;
+    if (!F) return;
+    const t = now / 1000;
+    for (const s of F.sources) { // the broken lip of the kanal
+      const x = s.tx * TILE, y = s.ty * TILE;
+      if (s.sealed) continue;
+      g.fillStyle = '#5a5468'; g.fillRect(x + 13, y + 2, 3, 3); g.fillRect(x + 14, y + 9, 2, 4);
+      if (F.active) for (let i = 0; i < 3; i++) { const k = ((t * 3 + i / 3) % 1); g.fillStyle = C.white; g.fillRect(Math.round(x + 14 - k * 12), Math.round(y + 4 + i * 4 + Math.sin(k * 6) * 2), 2, 1); }
+      else if (Math.floor(t * 2) % 2) { g.fillStyle = '#7f9fd8'; g.fillRect(x + 12, y + 7, 2, 2); } // a trickle: this is where it will break
+    }
+    if (!F.active) return;
+    const W = map.w;
+    for (let ty = 0; ty < map.h; ty++) for (let tx = 0; tx < W; tx++) {
+      const d = F.depth[ty * W + tx];
+      if (!d) continue;
+      const x = tx * TILE, y = ty * TILE;
+      g.globalAlpha = d === 2 ? 0.8 : 0.5; g.fillStyle = d === 2 ? '#1d3466' : '#5a8ac8'; g.fillRect(x, y, TILE, TILE);
+      if (d === 2) { g.globalAlpha = 0.5; g.fillStyle = '#9fc0ff'; if (F.depth[ty * W + tx - 1] === 1) for (let k = 0; k < TILE; k += 3) g.fillRect(x, y + k, 1, 1); if (F.depth[(ty - 1) * W + tx] === 1) for (let k = 0; k < TILE; k += 3) g.fillRect(x + k, y, 1, 1); }
+      g.globalAlpha = 0.55; g.fillStyle = '#9fc0ff';
+      const o = Math.floor((t * 6 + tx * 3 + ty * 5) % 12);
+      g.fillRect(x + o, y + 4 + ((tx + ty) % 3) * 4, 3, 1);
+      // the edge of the water: foam where it meets dry floor
+      if (!F.depth[ty * W + tx + 1] && !map.tileSolid(tx + 1, ty)) g.fillRect(x + 15, y, 1, TILE);
+      if (!F.depth[(ty + 1) * W + tx] && !map.tileSolid(tx, ty + 1)) g.fillRect(x, y + 15, TILE, 1);
+      g.globalAlpha = 1;
+    }
+  }
+
 
   // Dev overlay: badges plus optional live stats.
   drawDev(g) {
@@ -767,7 +930,15 @@ export class Play {
     if (w.escapeT > 0) { // escape countdown
       const blink = w.escapeT < 6 && Math.floor(performance.now() / 200) % 2;
       g.globalAlpha = 0.75; g.fillStyle = C.ink; g.fillRect(VIEW_W / 2 - 50, 31, 100, 20); g.globalAlpha = 1;
-      drawText(g, `TAKBO! ${Math.ceil(w.escapeT)}`, VIEW_W / 2, 34, blink ? C.white : C.red, { scale: 2, align: 'center', shadow: C.ink });
+      drawText(g, `${w.flood?.active ? 'BAHA!' : 'TAKBO!'} ${Math.ceil(w.escapeT)}`, VIEW_W / 2, 34, blink ? C.white : C.red, { scale: 2, align: 'center', shadow: C.ink });
+    }
+    const T = w.tulo;
+    if (T && T.stage === 'leak') { // TULO: how long the leaks last, and how wet the box is
+      g.globalAlpha = 0.75; g.fillStyle = C.ink; g.fillRect(VIEW_W / 2 - 52, 31, 104, 22); g.globalAlpha = 1;
+      drawText(g, `TULO ${Math.max(0, Math.ceil(T.dur - T.t))}`, VIEW_W / 2, 33, C.yellow, { scale: 2, align: 'center', shadow: C.ink });
+      g.fillStyle = C.ink; g.fillRect(VIEW_W / 2 - 40, 47, 80, 4);
+      g.fillStyle = T.wet >= 1 ? C.red : T.wet > 0.6 ? C.orange : '#4f8fff'; g.fillRect(VIEW_W / 2 - 39, 48, Math.round(78 * T.wet), 2);
+      drawText(g, 'BASA', VIEW_W / 2 - 44, 46, C.gray, { align: 'right' });
     }
     const bn = this.banner;
     if (bn) {
@@ -974,16 +1145,19 @@ export class Play {
 
   // Small icon on the action button saying what it will do.
   actIcon(g, pr, x, y) {
-    const icon = !pr ? 'hand' : { steal: 'hand', hide: 'box', unhide: 'out', door: 'door', locked: 'lock', switch: 'leverOff', device: 'radio' }[pr.kind] || 'hand';
+    const icon = !pr ? 'hand' : { steal: 'hand', hide: 'box', unhide: 'out', door: 'door', locked: 'lock', switch: 'leverOff', device: 'radio', buhat: 'palanggana', sahod: 'palanggana', baba: 'palanggana', tapon: 'drain' }[pr.kind] || 'hand';
     drawObj(g, icon, x, y); // pixel art is never scaled by a fraction (it would drop pixels)
   }
 
   drawHud(g) {
     const w = this.world, sh = { shadow: C.ink }, now = performance.now();
-    drawCoin(g, 5, 5);
+    if (w.mods.cat) { // the cat has one job
+      drawObj(g, 'isdaBit', 9, 8);
+      drawText(g, w.player.carry ? 'GOT IT!' : w.open ? 'HOME!' : '0/1', 16, 6, w.player.carry || w.open ? C.green : C.white, sh);
+    } else drawCoin(g, 5, 5);
     const sob = w.sobra, q = this.level.quota;
-    const base = `${sob ? q : w.coins}/${q}`, coinTxt = sob ? `${base} +${sob}` : base; // SOBRA in orange
-    drawText(g, base, 13, 6, w.coins >= q && q > 0 && !sob ? C.green : C.white, sh);
+    const base = `${sob ? q : w.coins}/${q}`, coinTxt = w.mods.cat ? `   ${w.player.carry ? 'GOT IT!' : w.open ? 'HOME!' : '0/1'}` : sob ? `${base} +${sob}` : base; // SOBRA in orange
+    if (!w.mods.cat) drawText(g, base, 13, 6, w.coins >= q && q > 0 && !sob ? C.green : C.white, sh);
     if (sob) drawText(g, ` +${sob}`, 13 + textWidth(base), 6, C.orange, sh);
     // chances left: little tsinelas, crossed out once used
     if (w.lives > 1 && !this.level.hingi) { // (nobody is counting chances in the epilogue)
@@ -1050,14 +1224,15 @@ export class Play {
     g.fillStyle = C.ink; g.fillRect(0, MAP_H, VIEW_W, VIEW_H - MAP_H);
     g.fillStyle = C.wallD; g.fillRect(0, MAP_H, VIEW_W, 1);
     const pr = w.prompt;
-    const left = this.level.quota - w.coins, need = left > 0 ? `${this.level.giveBack ? 'PUT BACK' : this.level.hingi ? 'ASK FOR' : 'NEED'} ${left} MORE` : w.escort ? 'BRING MINGMING TO THE DESK' : w.missing?.kind === 'bilin' ? `ERRAND: ${w.targets.filter((t) => t.must && !t.done).length} LEFT` : 'GET THE MILK';
-    drawText(g, pr ? pr.label : w.open ? (w.escort && !w.escortHere ? 'WAIT FOR MINGMING' : w.escort ? 'TO THE VET DESK!' : w.finale?.type === 'seat' ? 'UPO NA! TO YOUR SEAT' : w.finale?.type === 'photo' ? 'PICTURE! BLEND IN OR HIDE' : 'GO TO THE EXIT!') : need, tx, MAP_H + 8, pr ? C.gold : w.open ? C.green : C.gray, al);
+    const left = this.level.quota - w.coins, need = left > 0 ? `${this.level.giveBack ? 'PUT BACK' : this.level.hingi ? 'ASK FOR' : this.level.tulo ? 'KITTENS: FIND' : 'NEED'} ${left} MORE` : w.escort ? 'BRING MINGMING TO THE DESK' : w.missing?.kind === 'bilin' ? `ERRAND: ${w.targets.filter((t) => t.must && !t.done).length} LEFT` : w.missing?.kind === 'isda' ? 'GET THE FISH' : 'GET THE MILK';
+    const goal = w.finale?.type === 'tulo' ? (w.finale.stage === 'gather' ? 'BACK TO THE BOX!' : 'KEEP THE BOX DRY!') : w.flood?.active ? (w.flood.stopped ? 'GET THEM INSIDE!' : 'STOP THE WATER! GET INSIDE!') : w.mods.cat ? 'BRING IT HOME: THE BUTAS!' : null;
+    drawText(g, pr ? pr.label : goal && (w.open || w.finale) ? goal : w.open ? (w.escort && !w.escortHere ? 'WAIT FOR MINGMING' : w.escort ? 'TO THE VET DESK!' : w.finale?.type === 'seat' ? 'UPO NA! TO YOUR SEAT' : w.finale?.type === 'photo' ? 'PICTURE! BLEND IN OR HIDE' : 'GO TO THE EXIT!') : need, tx, MAP_H + 8, pr ? C.gold : w.open || goal ? C.green : C.gray, al);
     if (w.player.blend) drawText(g, 'BLENDING IN', tx, MAP_H + 17, C.green, al);
     let kx = L ? VIEW_W - 9 : 9;
     for (const k of w.player.keys) { drawObj(g, 'key', kx, MAP_H + 24, k); kx += L ? -10 : 10; }
     const hints = this.level.tutorial || w.time < 12; // control reminders: the first level, and the first seconds of the rest
     if (!hints) { /* a clean strip */ }
-    else if (!L) drawText(g, this.input.touchUsed ? 'DRAG: MOVE   DRAG FAR: RUN' : 'SHIFT RUN  E ACT  Q THROW  F SKILL', 6, MAP_H + 32, C.dgray);
+    else if (!L) drawText(g, this.input.touchUsed ? 'DRAG: MOVE   DRAG FAR: RUN' : w.mods.cat ? 'SHIFT RUN  E BITE / HIDE  F TABIG' : 'SHIFT RUN  E ACT  Q THROW  F SKILL', 6, MAP_H + 32, C.dgray);
     else drawText(g, this.input.touchUsed ? 'DRAG: MOVE' : 'E ACT Q THROW', tx, MAP_H + 32, C.dgray, al);
 
     // KASABWAT: switch to the other kid (their initial; grey while it cools down or once they are out)
@@ -1083,7 +1258,7 @@ export class Play {
     disc(g, BUTTON.x, BUTTON.y, BUTTON.r, C.ink);
     disc(g, BUTTON.x, BUTTON.y, BUTTON.r - 2, pr ? (down ? C.gold : C.gold2) : C.dgray);
     if (pr) this.actIcon(g, pr, BUTTON.x, BUTTON.y - 7);
-    const label = pr ? pr.label : this.level.hingi ? 'HINGI' : 'KUPIT';
+    const label = pr ? pr.label : this.level.hingi ? 'HINGI' : w.mods.cat ? 'KAGAT' : this.level.tulo ? 'SAGIP' : 'KUPIT';
     drawText(g, label.length > 6 ? label.slice(0, 6) : label, BUTTON.x, BUTTON.y + (pr ? 2 : -2), pr ? C.ink : C.gray, { align: 'center' });
 
     // throw button (hold to aim) + item selector

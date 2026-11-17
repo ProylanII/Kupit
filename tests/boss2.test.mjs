@@ -135,7 +135,7 @@ test('a final phase can drop a shutter (an open gate closes); the lever opens it
 test('every boss declares its own finale; only carryOut keeps an escape timer', () => {
   const dir = new URL('../src/data/levels/', import.meta.url);
   const files = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8'));
-  const TYPES = ['silentExit', 'seat', 'carryOut', 'photo', 'flood'], seen = new Set();
+  const TYPES = ['silentExit', 'seat', 'carryOut', 'photo', 'tulo'], seen = new Set(); // (tulo: the storm's leaks, then the flood with its own clock)
   let bosses = 0;
   for (const f of files) {
     const L = JSON.parse(readFileSync(new URL(f, dir), 'utf8'));

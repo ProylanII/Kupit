@@ -10,7 +10,7 @@ import { TILE } from '../src/world/tilemap.js';
 
 const dir = new URL('../src/data/levels/', import.meta.url);
 const files = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8'));
-const levels = files.map((f) => JSON.parse(readFileSync(new URL(f, dir), 'utf8')));
+const levels = files.map((f) => JSON.parse(readFileSync(new URL(f, dir), 'utf8'))).filter((L) => !L.mode); // (mini-games: tests/minigames.test.mjs)
 const houses = [];
 for (let d = 1; d <= 5; d++) for (const seed of [4001, 4002]) houses.push(generateHouse(seed, d));
 houses.push(generateHouse(4003, 4, { mutators: ['bisita', 'brownout'] }), generateHouse(4004, 3, { pasko: true }));

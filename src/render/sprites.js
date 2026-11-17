@@ -123,6 +123,10 @@ export const VARIANTS = {
   titanora: { base: 'tita', map: { '#2fa59b': '#4f7fd0', '#22807a': '#3a62a8', '#7fe0d4': '#a8c8ff', '#ff7eb6': '#3a2418', '#d9578f': '#24160f', '#ffb0d4': '#5a3a28' } },  // Tita Nora: blue, dark hair
   kapitbahay: { base: 'tatay', map: { '#f6f1e7': '#e0603a', '#cfc7b8': '#b04428', '#3a4f8a': '#5a5468', '#2b3b6a': '#46415a', '#2a1f33': '#9a94a8', '#1b1424': '#7a7488', '#4a3d5c': '#c4bfd0' } }, // a neighbour: grey hair, red shirt
   tindera: { base: 'nena', map: { '#4f7fd0': '#46e08a', '#3a62a8': '#2fa55b', '#6b3a5a': '#a8433f', '#4f2a44': '#7a2a2a', '#9a94a8': '#2a1f33', '#7a7488': '#1b1424', '#c4bfd0': '#4a3d5c' } },
+  // TUMBANG PRESO: the neighbourhood kids (recoloured crew)
+  buboy: { base: 'ramil', map: { '#2fa55b': '#d94a4a', '#227a43': '#a83a3a', '#3a3550': '#2a3560', '#2a2640': '#1d2448' } },   // the big kid: red jersey
+  toto:  { base: 'jun', map: { '#ffd84d': '#46a0e0', '#e0a92e': '#3580b8', '#2f5fbf': '#5a5468', '#24488f': '#46415a' } },     // blue shirt, grey shorts
+  lina:  { base: 'nene', map: { '#ff9a3c': '#2fa59b', '#d9762a': '#22807a', '#4a2c1c': '#2a1f33', '#33201a': '#1b1424' } },     // teal blouse, black hair
   // the three kittens are one sprite in three coats
   tigre:   { base: 'kuting', map: {} },
   puti:    { base: 'kuting', map: { '#ff9a3c': '#f6f1e7', '#d9762a': '#cfc7b8', '#a8433f': '#9a94a8' } },
@@ -277,6 +281,12 @@ const STORY_TARGETS = {
 };
 
 export function drawTarget(g, kind, x, y, done) {
+  if (kind === 'mingming') { // BAGYO: Mingming herself, huddled against the storm
+    if (done) return;
+    const s = getSprite('pusa', 0, 'sit');
+    g.drawImage(s, Math.round(x) - Math.floor(s.width / 2), Math.round(y) + 5 - s.height);
+    return;
+  }
   if (STORY_TARGETS[kind]) { // taken = gone (the milk is in your hands, the kitten is in your shirt)
     if (done) return;
     if (kind === 'kuting' && atlasSprite('kuting|0|sit')) { // a real kitten, one of the three coats
@@ -321,6 +331,16 @@ export const OBJ = {
     '..pp.bb.yy..', '.pppbbbbyyy.', 'RRRRRRRRRRRR', 'sWsWsWsWsWsW', 'WsWsWsWsWsWs', 'sWsWsWsWsWsW', '.ssssssssss.',
   ],
   tsinelas: ['.ggg..ggg.', 'gGGGggGGGg', '.ggg..ggg.'],
+  tsinela: ['.ggg.', 'gGGGg', 'gGsGg', 'gGGGg', '.ggg.'], // TUMBANG PRESO: one slipper, seen from above
+  lata: ['.ggg.', 'gwwwg', 'rrrrr', 'ryyyr', 'rrrrr', 'gwwwg', '.ggg.'],   // the can (the preso), standing
+  lataDown: ['.grrrg.', 'gwryrwg', 'gwryrwg', '.grrrg.'],                    // knocked over
+  isdaBit: ['.ooo.t.', 'oeooott', '.ooo.t.'],                               // a fish in a cat's mouth
+  // BAGYO, TULO: the containers (seen from above) and the drain
+  palanggana: ['.bbbbbbbb.', 'bBBBBBBBBb', 'bB......Bb', 'bB......Bb', 'bBBBBBBBBb', '.bbbbbbbb.'],
+  kaldero: ['h.gggggg.h', 'hgGGGGGGgh', '.gG....Gg.', '.gG....Gg.', '.gGGGGGGg.', '..gggggg..'],
+  timba: ['..kkkkkk..', '.k.rrrr.k.', 'k.rRRRRr.k', '.rR....Rr.', '.rR....Rr.', '.rRRRRRRr.', '..rrrrrr..'],
+  drain: ['kkkkkkkkkk', 'kgkgkgkgkk', 'kkkkkkkkkk', 'kgkgkgkgkk', 'kkkkkkkkkk'],
+  lusak: ['..bbbbbb..', '.bBBBBBBb.', 'bBwBBBBBBb', '.bBBBBwBb.', '..bbbbbb..'], // a puddle
   pandesal: ['.pppp.', 'pPPPPp', 'pPPPPp', '.pppp.'],
   holen: ['.kkk.', 'kwbBk', 'kbBbk', 'kBbbk', '.kkk.'], // a glass marble (HOLEN gear)
   key: ['kk.....', 'k.kkkkk', 'kk...k.'],
@@ -361,6 +381,15 @@ const OBJ_PAL = {
   curtain: { r: C.dgray, o: C.gold, c: '#4a7fb5', C: '#6a9fd5', f: C.white, h: '#3a62a8' },
   basket: { R: '#e0b070', W: '#d9b27c', s: '#a67a42', p: C.pink, b: '#4f8fff', y: C.yellow },
   tsinelas: { g: C.blue, G: '#5f8fe0' },
+  tsinela: { g: C.blue, G: '#5f8fe0', s: C.white },
+  lata: { g: C.gray, w: C.white, r: C.red, y: C.gold },
+  lataDown: { g: C.gray, w: C.white, r: C.red, y: C.gold },
+  lusak: { b: '#3a5a8a', B: '#5a7fb5', w: '#9fc0ff' },
+  isdaBit: { o: '#d9902e', e: C.ink, t: '#a8602a' },
+  palanggana: { b: '#2f5fbf', B: '#4f8fff' },
+  kaldero: { g: C.dgray, G: C.gray, h: C.ink },
+  timba: { r: '#a83a3a', R: C.red, k: C.gray },
+  drain: { k: '#2a2440', g: '#5a5468' },
   pandesal: { p: '#a8642c', P: '#e0a35a' },
   holen: { k: C.ink, w: C.white, b: '#7fd7ff', B: '#2f5fbf' },
   tv: { m: C.ink, s: '#3a4a6a', a: C.gray, W: C.table2, w: C.table, k: C.gold },
@@ -383,9 +412,13 @@ const OBJ_PAL = {
 
 export const KEY_COLORS = { red: C.red, blue: '#4f8fff', green: C.green, gold: C.gold };
 
+// TUMBANG PRESO: every kid's slippers have their own colour
+export const SLIPPER_COLORS = { blue: [C.blue, '#5f8fe0'], red: ['#a83a3a', C.red], green: ['#227a43', '#2fa55b'], pink: ['#d9578f', C.pink], gold: [C.gold2, C.gold] };
+
 export function objSprite(name, variant = '') {
   let pal = OBJ_PAL[name];
   if (name === 'key') pal = { k: KEY_COLORS[variant] || C.gold };
+  if ((name === 'tsinela' || name === 'tsinelas') && SLIPPER_COLORS[variant]) pal = { ...pal, g: SLIPPER_COLORS[variant][0], G: SLIPPER_COLORS[variant][1] };
   return mapSprite(`o|${name}|${variant}`, OBJ[name], pal);
 }
 

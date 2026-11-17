@@ -33,7 +33,7 @@ export function rules(L) {
   const near = (t) => Math.min(99, ...L.adults.filter((a) => !['bisita', 'trike'].includes(a.type)).flatMap((a) => (a.route || [a.at]).map((p) => Math.hypot(p[0] - t.at[0], p[1] - t.at[1]))));
   const richest = coinT.slice().sort((a, b) => b.coins - a.coins)[0];
   const riskiest = coinT.slice().sort((a, b) => near(a) - near(b))[0];
-  out.R1 = { ratio: +ratio.toFixed(2), ok: !L.quota || L.giveBack || L.hingi || (ratio >= RATIO[0] && ratio <= RATIO[1] && (!richest || richest.coins === riskiest.coins)), note: richest && richest !== riskiest && richest.coins !== riskiest.coins ? `richest ${richest.at} is not the riskiest ${riskiest.at}` : '' };
+  out.R1 = { ratio: +ratio.toFixed(2), ok: !L.quota || L.giveBack || L.hingi || L.targets.every((t) => t.kind === 'kuting' || t.kind === 'mingming') || (ratio >= RATIO[0] && ratio <= RATIO[1] && (!richest || richest.coins === riskiest.coins)), note: richest && richest !== riskiest && richest.coins !== riskiest.coins ? `richest ${richest.at} is not the riskiest ${riskiest.at}` : '' };
   // R2: the way in = spawn -> richest stash; the way out = richest stash -> exit
   const goal = (richest || L.targets[0])?.at || L.exit; // (no stash at all: an escort level)
   const pin = findPath(map, L.spawn[0], L.spawn[1], goal[0], goal[1], pass) || [];
@@ -51,7 +51,7 @@ export function rules(L) {
   // R6
   const bare = [];
   for (const t of L.targets) {
-    if (t.carry || t.kind === 'kuting') continue;
+    if (t.carry || t.kind === 'kuting' || t.kind === 'mingming') continue; // (rescues are not stashes)
     let furn = false;
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (FURN.has(map.ch(t.at[0] + dx, t.at[1] + dy))) furn = true;
     const owner = t.owner || OWNERS[t.kind || 'purse'];
@@ -74,6 +74,7 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '
   let fails = 0;
   for (const f of files) {
     const L = JSON.parse(readFileSync(new URL(f, dir), 'utf8'));
+    if (L.mode) continue; // (a mini-game: no rooms to lint, its own simulation)
     const r = rules(L);
     const notes = [r.R1.note, r.R6.note, r.R7.note].filter(Boolean).join(' | ');
     if (r.judged) fails += ['R1', 'R2', 'R4', 'R6', 'R7'].filter((k) => !r[k].ok).length;

@@ -1,0 +1,65 @@
+{
+ "id": "mingming",
+ "name": "SI MINGMING",
+ "cat": true,
+ "night": true,
+ "noThrow": true,
+ "lamps": [[5, 4, 58], [3, 15, 30], [6, 10, 56]],
+ "exitStyle": "hole",
+ "hint": "UP ON THE FURNITURE THEY SEE YOU FROM HALF AS FAR",
+ "clearText": "NOM NOM NOM!",
+ "failTitle": "SHOO, PUSA!",
+ "missions": ["silent", "noBark"],
+ "rewards": [
+  {"photo": "mingming"},
+  {"coins": 6},
+  {"decor": "kuting"}
+ ],
+ "howto": [
+  ["pusa", "YOU ARE MINGMING. TATAY'S FISH IS ON THE TABLE"],
+  ["table", "JUMP UP ON TABLES AND SOFAS: UP THERE THEY SEE YOU FROM HALF AS FAR"],
+  ["tabig", "TABIG: KNOCK A CUP OFF THE COUNTER TO PULL PEOPLE AWAY"],
+  ["hole", "BRING IT HOME: THE GAP IN THE SALA FLOOR. ASO SMELLS THE FISH!"]
+ ],
+ "tiles": [
+  "###############",
+  "#CCCCF,,,,,AA,#",
+  "#,,,,,,,,,,,,,#",
+  "#,,,TTT,,,,,,,#",
+  "#,,,TTT,,,,H,,#",
+  "#,,,,,,,,,,,,,#",
+  "#,,,,,,,,,,,,,#",
+  "####d#####d####",
+  "#.............#",
+  "#.AA......K...#",
+  "#.........RRR.#",
+  "#.SSSS....RRR.#",
+  "#.............#",
+  "#.....H.......#",
+  "###d######d####",
+  "#;;;;;;;;;;;;;#",
+  "#;;;;;;;;;;;;;#",
+  "#;;;PP;;;;;W;;#",
+  "#;;;;;;;;;;;;;#",
+  "#;;;;;;;;;;;;;#",
+  "#;;;;;;;;;;;;;#",
+  "###############"
+ ],
+ "spawn": [2, 19],
+ "exit": [12, 12],
+ "quota": 0,
+ "par": 70,
+ "targets": [
+  {"kind": "isda", "at": [4, 3], "coins": 0, "time": 1.2, "carry": true, "must": true, "noSpill": true, "verb": "KAGAT", "scent": true}
+ ],
+ "hide": [
+  {"kind": "box", "at": [1, 15]},
+  {"kind": "basket", "at": [13, 8]},
+  {"kind": "box", "at": [12, 5]}
+ ],
+ "adults": [
+  {"type": "tatay", "route": [[3, 12, 99, -1.5708, "idlip"]], "cfg": {"range": 64}},
+  {"type": "mama", "route": [[4, 5, 1], [6, 10, 4, 3.0], [4, 5, 1], [2, 2, 5, -1.5708, "hugas"], [9, 4, 1], [9, 9, 2, 3.14159]], "cfg": {"range": 64, "speed": 31}},
+  {"type": "aso", "route": [[6, 17, 99, 3.14159]], "cycle": {"on": 6, "off": 6}, "sleepy": true, "cfg": {"range": 56, "tracker": true}}
+ ]
+}

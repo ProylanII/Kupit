@@ -13,6 +13,8 @@ export const TARGET_KINDS = {
   gatas:    { name: 'GATAS',  hold: 1.0, verb: 'KUNIN',  tip: 'MILK! WALK IT OUT SLOWLY. RUNNING SPILLS IT' },
   kuting:   { name: 'KUTING', hold: 1.0, verb: 'SAGIP',  tick: { every: 0.9, r: 30 }, end: { r: 0, say: 'MEOW!' }, tip: 'A KITTEN! IT MEOWS AS YOU PICK IT UP' },
   ibalik:   { name: 'PITAKA', hold: 1.0, verb: 'IBALIK', end: { r: 36, say: 'KLIK!' }, tip: 'PUT THE COINS BACK. QUIETLY' },
+  // BAGYO: Mingming, scared by the storm. calm = she only comes while it is quiet (thunder makes her flinch away)
+  mingming: { name: 'MINGMING', hold: 1.5, verb: 'TAWAG', calm: true, tick: { every: 1.2, r: 22 }, end: { r: 0, say: 'MRRROW...' }, tip: 'MINGMING IS SCARED OF THE THUNDER: CALL HER IN THE QUIET' },
   isda:     { name: 'PRITONG ISDA', hold: 1.0, verb: 'KUNIN', tip: 'THE FISH! ASO WILL SMELL IT. PANDESAL KEEPS HIM BUSY' }, // TATAY's boss
   bilin:    { name: 'BILIN',  hold: 0.8, verb: 'KUNIN',  tip: 'AN ERRAND: JUST PICK IT UP. BUT NOT WHERE MAMA SEES' }, // PALENGKE: free things, an errand
   regalo:   { name: 'HINGI',  hold: 0.6, verb: 'HINGI',  tip: 'NO SNEAKING. JUST ASK!' },
@@ -44,7 +46,8 @@ export class Target {
     this.must = !!def.must;   // the exit stays shut until this one is taken, whatever the coin count
     this.from = def.from;     // HINGI: index of the adult who gives it, and what they say
     this.say = def.say;
-    this.label = def.label;   // written on it (Ninang's envelope "PARA KAY JUN"): Jun reads it when he takes it
+    this.label = def.label;
+    this.verb = def.verb;     // what the action button says, if not the stash's own word (the cat: KAGAT)   // written on it (Ninang's envelope "PARA KAY JUN"): Jun reads it when he takes it
     this.owner = def.owner || OWNERS[this.kind] || null;
     // coin by coin (SOBRA)? Not for the alkansya, things you carry, or story stashes (milk, kittens, IBALIK, HINGI)
     this.perCoin = !this.bonus && !this.carry && !this.profile.verb && this.coins > 1;

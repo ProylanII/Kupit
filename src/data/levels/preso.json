@@ -1,0 +1,17 @@
+{
+ "id": "preso",
+ "name": "TUMBANG PRESO",
+ "mode": "preso",
+ "bonus": true,
+ "par": 90,
+ "hint": "KNOCK THE CAN DOWN THREE TIMES",
+ "clearText": "PANALO!",
+ "missions": ["presoClean", "presoFirst"],
+ "rewards": [{ "coins": 10 }, { "photo": "preso" }, { "outfit": "kalye" }],
+ "howto": [
+  ["aim", "HOLD BATO: A MARK SLIDES OUT. LET GO WHEN IT IS ON THE CAN"],
+  ["run", "TUMBA! GRAB YOUR TSINELAS, GET BACK BEHIND THE LINE"],
+  ["taya", "THE TAYA TAGS YOU ONLY WHILE THE CAN STANDS"],
+  ["safe", "STANDING ON YOUR OWN TSINELAS IS SAFE"]
+ ]
+}

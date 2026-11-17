@@ -30,6 +30,24 @@ export const TRACKS = {
       { wave: 'square', vol: 0.11, len: 1.2, notes: [76, 79, 83, 79, 76, 79, 83, 79, 74, 78, 81, 78, 74, 78, 81, 78, 76, 79, 83, 79, 76, 79, 83, 79, 81, 84, 88, 84, 79, 83, 86, 83] },
     ],
   },
+  // TUMBANG PRESO: a sunny afternoon in the street. Bouncy G major, a skipping bass.
+  laro: {
+    bpm: 126, steps: 32,
+    voices: [
+      { wave: 'square', vol: 0.13, len: 1.4, notes: [79, 0, 76, 79, 0, 81, 79, 0, 74, 0, 76, 0, 78, 0, 74, 0, 79, 0, 76, 79, 0, 83, 81, 0, 79, 0, 76, 0, 74, 0, 0, 0] },
+      { wave: 'triangle', vol: 0.3, len: 1.6, notes: [43, 0, 50, 0, 47, 0, 50, 0, 38, 0, 45, 0, 42, 0, 45, 0, 43, 0, 50, 0, 47, 0, 50, 0, 36, 0, 43, 0, 38, 0, 45, 0] },
+      { wave: 'square', vol: 0.05, len: 1, notes: loop([0, 0, 71, 0, 0, 74, 0, 0], 4) },
+    ],
+  },
+  // HABOL!: running after Tigre down the eskinita. Fast, bright, a driving off-beat.
+  takbo: {
+    bpm: 160, steps: 32,
+    voices: [
+      { wave: 'square', vol: 0.12, len: 1, notes: [76, 79, 81, 0, 81, 79, 76, 74, 76, 0, 79, 0, 83, 81, 79, 0, 76, 79, 81, 0, 84, 83, 81, 79, 81, 0, 83, 0, 79, 0, 76, 0] },
+      { wave: 'triangle', vol: 0.3, len: 1, notes: [45, 0, 57, 0, 45, 0, 57, 0, 43, 0, 55, 0, 43, 0, 55, 0, 41, 0, 53, 0, 41, 0, 53, 0, 40, 0, 52, 0, 40, 0, 52, 0] },
+      { wave: 'square', vol: 0.05, len: 0.6, notes: loop([0, 69, 0, 69, 0, 69, 0, 69], 4) },
+    ],
+  },
   // Boss fights: heavy D minor with a pulsing bass.
   boss: {
     bpm: 124, steps: 32,

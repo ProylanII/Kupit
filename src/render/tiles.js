@@ -11,10 +11,16 @@ const shade = (g, a, x, y, w, h, c = C.ink) => { g.globalAlpha = a; r(g, c, x, y
 const FURN = new Set(FURNITURE);
 const LOW_SHADOW = new Set('PHW'); // small round things: no long contact shadow
 const isWall = (c) => c === '#';
-const isFloorish = (c) => !isWall(c) && !FURN.has(c);
+const SPECIAL = new Set('IQ~'); // BAGYO: a house post, a sandbag (drawn live, it moves), the kanal
+const isFloorish = (c) => !isWall(c) && !FURN.has(c) && !SPECIAL.has(c);
 
 // ---------------------------------------------------------------- floors
 function floor(g, ch, tx, ty, x, y) {
+  if (ch === '_') { // packed dirt under the house: dark, pebbly
+    r(g, '#3a2c24', x, y, TILE, TILE);
+    for (let i = 0; i < 5; i++) { const h = hash(tx, ty, 30 + i); r(g, i < 2 ? '#4a3a2e' : '#2c2019', x + (h % 14), y + ((h >>> 7) % 14), 2, 1); }
+    return;
+  }
   if (ch === ';') { // grass with tufts and the odd flower
     r(g, C.leaf, x, y, TILE, TILE);
     for (let i = 0; i < 5; i++) {
@@ -403,8 +409,8 @@ export function buildBackground(map, { night = false, pasko = false } = {}) {
     if (isWall(ch)) return;
     if (ch === 'R') return rug(g, map, tx, ty, x, y);
     let f = ch;
-    if (FURN.has(ch) || ch === 'L' || ch === 'D' || ch === 'd' || ch === 'G' || ch === 'g') {
-      const nb = [map.ch(tx, ty + 1), map.ch(tx - 1, ty), map.ch(tx + 1, ty), map.ch(tx, ty - 1)].find((c) => c === '.' || c === ',' || c === ';' || c === ':');
+    if (FURN.has(ch) || SPECIAL.has(ch) || ch === 'L' || ch === 'D' || ch === 'd' || ch === 'G' || ch === 'g') {
+      const nb = [map.ch(tx, ty + 1), map.ch(tx - 1, ty), map.ch(tx + 1, ty), map.ch(tx, ty - 1)].find((c) => c === '.' || c === ',' || c === ';' || c === ':' || c === '_');
       f = nb || '.';
     }
     floor(g, f, tx, ty, x, y);
@@ -432,6 +438,14 @@ export function buildBackground(map, { night = false, pasko = false } = {}) {
     else if (ch === 'A') estante(g, map, tx, ty, x, y);
     else if (ch === 'K') aparador(g, map, tx, ty, x, y);
     else if (ch === 'M') stall(g, map, tx, ty, x, y);
+    else if (ch === 'I') { // a house post: a thick timber, lit on its left edge
+      shade(g, 0.3, x + 3, y + 13, 12, 3);
+      r(g, C.ink, x + 4, y - 4, 9, 18); r(g, '#5c4630', x + 5, y - 3, 7, 16); r(g, '#7a5c3c', x + 5, y - 3, 2, 16); r(g, '#3b2a1c', x + 5, y + 8, 7, 1);
+    } else if (ch === '~') { // the kanal: a concrete channel, brimming
+      r(g, '#86818f', x, y, TILE, TILE); r(g, '#2a3a5a', x + 3, y, 10, TILE); r(g, '#3a5a8a', x + 4, y, 8, TILE);
+      for (let i = 0; i < 3; i++) { const h = hash(tx, ty, 40 + i); r(g, '#7f9fd8', x + 5 + (h % 6), y + (h >>> 5) % 14, 2, 1); }
+      r(g, '#a7a3ad', x + 2, y, 1, TILE); r(g, '#a7a3ad', x + 13, y, 1, TILE);
+    }
   });
   // 4. walls
   const lights = [];
