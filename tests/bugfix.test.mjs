@@ -211,3 +211,17 @@ test('the pixel font has a glyph for every character the game draws', () => {
   }
   for (const s of texts) for (const ch of s) assert.ok(hasGlyph(ch), `no glyph for ${JSON.stringify(ch)} in ${JSON.stringify(s)}`);
 });
+
+test('respawn at a doorway checkpoint whose door was shut since: the door opens, Jun is never stuck inside it', async () => {
+  const { World } = await import('../src/game/world.js');
+  const { readFileSync } = await import('node:fs');
+  const L = JSON.parse(readFileSync(new URL('../src/data/levels/bagyo.json', import.meta.url), 'utf8'));
+  const w = new World(L);
+  w.map.set(3, 12, 'd');
+  w.checkpoints.push({ x: 3 * 16 + 8, y: 12 * 16 + 8, hide: null });
+  w.map.set(3, 12, 'D'); // Mama closed it behind her
+  for (const a of w.adults) { a.x = 13 * 16 + 8; a.y = 20 * 16 + 8; } // nobody near the doorway
+  w.respawn();
+  assert.equal(w.player.tx + ',' + w.player.ty, '3,12');
+  assert.equal(w.map.ch(3, 12), 'd');
+});

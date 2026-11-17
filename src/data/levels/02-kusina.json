@@ -1,7 +1,7 @@
 {
  "id": "02-kusina",
  "name": "KUSINA",
- "hint": "SEEN? HIDE IN THE BOX. THROW TSINELAS TO LURE",
+ "hint": "MAMA SEES NOTHING WHILE SHE COOKS. MOVE THEN",
  "missions": [
   "silent",
   "alkansya"
@@ -109,19 +109,20 @@
     [
      2,
      2,
-     2.5,
+     4,
      -1.5708,
      "luto"
     ],
     [
      10,
      2,
-     1
+     2.5,
+     1.5708
     ],
     [
      10,
-     6,
-     2,
+     7,
+     3,
      1.5708
     ],
     [
@@ -138,10 +139,10 @@
     12,
     12
    ],
-   "face": 3.14159,
+   "face": -1.5708,
    "sweep": 0.6,
    "phase": 0
   }
  ],
- "notes": "Near-miss: when her cooking stop ends Mama turns from the stove toward the coin jar beside it. The exit is the back door at the end of the kitchen side hall."
+ "notes": "Near-miss: when her cooking stop ends Mama turns from the stove toward the coin jar beside it. Her cooking (4 s, blind) is the window: the rest of her loop stops facing the purse table (10,2) and looks down into the middle room at the piggy (10,6). The exit is the back door at the end of the kitchen side hall."
 }

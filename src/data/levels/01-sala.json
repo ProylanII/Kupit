@@ -9,24 +9,24 @@
  ],
  "tiles": [
   "###############",
-  "#A..P.........#",
+  "#A............#",
   "#.............#",
+  "#.P.......T...#",
   "#.............#",
-  "#..T..........#",
   "#.............#",
   "#.....SSST....#",
   "#.............#",
-  "#.P...........#",
+  "#..........P..#",
+  "#####G#########",
   "#.............#",
-  "####..#########",
+  "#...........W.#",
+  "###########D###",
   "#.............#",
-  "#.BB......BB..#",
-  "#.BB......BB..#",
+  "#.BB.......BB.#",
+  "#.BB.......BB.#",
   "#.............#",
   "#....RRRR.....#",
-  "#....RRRR...A.#",
-  "#.............#",
-  "#.K...........#",
+  "#.K..RRRR.....#",
   "#.............#",
   "#.............#",
   "###############"
@@ -36,11 +36,11 @@
   19
  ],
  "exit": [
-  13,
-  8
+  7,
+  1
  ],
  "quota": 3,
- "par": 60,
+ "par": 90,
  "targets": [
   {
    "kind": "purse",
@@ -50,6 +50,29 @@
    ],
    "coins": 4,
    "time": 1.4
+  }
+ ],
+ "items": [
+  {
+   "kind": "tsinelas",
+   "at": [
+    8,
+    11
+   ]
+  }
+ ],
+ "switches": [
+  {
+   "at": [
+    2,
+    10
+   ],
+   "gates": [
+    [
+     5,
+     9
+    ]
+   ]
   }
  ],
  "hide": [
@@ -64,7 +87,7 @@
    "kind": "box",
    "at": [
     11,
-    5
+    4
    ]
   },
   {
@@ -106,15 +129,21 @@
    }
   }
  ],
+ "coach": {
+  "throwAt": [
+   10,
+   8
+  ]
+ },
  "staged": {
   "afterCoins": 1,
   "adult": 0,
   "to": [
    6,
-   15
+   10
   ],
   "delay": 1.2,
   "say": "ANO YUN?"
  },
- "notes": "Near-miss: every ~12 s the teleserye goes to an ad break and Mama looks toward her bag for 3 s. Staged beat: after the first coin she hears something and walks to the kids room, checks, shrugs, comes back."
+ "notes": "The tutorial (src/game/tutorial.js walks the player through it step by step). Kids room (spawn) -> door -> hall (tsinelas, lever) -> gate -> sala. Near-miss: every ~12 s the teleserye goes to an ad break and Mama looks toward her bag for 3 s. Staged beat: after the first coin she hears something and walks out through the gate to the hall, checks, shrugs, comes back (the coach says TAGO). The exit is the front door beside the TV, inside her TV cone: throw the tsinelas to send her to look, or go during the ad break."
 }

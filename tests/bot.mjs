@@ -41,7 +41,7 @@ export function playBot(L, { run = false, maxT = 900, lives = 3, god = true } = 
     else if (w.open) { kind = 'exit'; obj = w.exit; }
     else {
       let best = null, bl = Infinity;
-      for (const x of w.targets) if (!x.done && !x.bonus) { const r = route(tileOf(x)); if (r && r.length < bl) { bl = r.length; best = x; } }
+      for (const x of w.targets) if (!x.done && !x.bonus && !(x.scent && w.level.boss?.finale === 'carryOut' && w.finale?.type !== 'carryOut')) { const r = route(tileOf(x)); if (r && r.length < bl) { bl = r.length; best = x; } } // (TATAY's fish: only at the finale)
       if (best) { kind = 'steal'; obj = best; }
       else if ((obj = keyItem())) kind = 'key';
       else if ((obj = openGateSwitch())) kind = 'switch';

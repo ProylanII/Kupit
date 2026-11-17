@@ -1,7 +1,7 @@
 {
  "id": "03-buong-bahay",
  "name": "BUONG BAHAY",
- "hint": "DOORS BLOCK SIGHT. LOLA HAS THE BACK DOOR KEY",
+ "hint": "LOLA HAS THE BACK DOOR KEY. DON'T WAKE HER",
  "missions": [
   "noWake",
   "sakto"

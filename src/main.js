@@ -1,5 +1,6 @@
 import { Input, VIEW_W, VIEW_H } from './core/input.js';
-import { loadSave, writeSave, requestPersist, saveCode, readSaveCode } from './core/save.js';
+import { VERSION } from './core/version.js';
+import { loadSave, writeSave, requestPersist, saveCode, readSaveCode, newGameSave } from './core/save.js';
 import { sfx, setMuted, isMuted, suspendAudio } from './core/audio.js';
 import { Play } from './scenes/play.js';
 import { drawText, drawBig } from './ui/font.js';
@@ -7,7 +8,7 @@ import { drawActor, drawStar, drawTarget, drawCoin, drawPortrait, drawObj } from
 import { parol } from './render/tiles.js';
 import {
   CHARACTERS, CHAR_ORDER, STAR_MILESTONES, MAX_STARS, totalStars, grantUnlocks, campaignPayout, housePayout,
-  grantSiblings, NEED_ORDER, hasNeed, needCost, needOpen,
+  grantSiblings, NEED_ORDER, hasNeed, needCost, needOpen, UPGRADE_ORDER, upgradeCost,
 } from './game/progression.js';
 import {
   generateHouse, dailySeed, dailyId, dailyDiff, isPasko, prevDailyId, MUTATORS, MUTATOR_ORDER, mutatorMult,
@@ -20,7 +21,7 @@ import { music } from './core/music.js';
 import { loadAtlas } from './render/atlas.js';
 import { hapticsOn, vibrate, canVibrate } from './core/haptics.js';
 import { settings, applySettings, SHAKE_LEVELS, shakeLabel, VOLUME_STEPS } from './core/settings.js';
-import { loadGhost, storeGhost } from './game/ghost.js';
+import { loadGhost, storeGhost, clearGhosts } from './game/ghost.js';
 import { INTRO, BEFORE, AFTER, ENDING, EPILOGUE, NAMES, CHAPTERS } from './data/story.js';
 import { missionIds, missionLabel, maskOf, starsOf } from './game/missions.js';
 import { applyHinala, tierOf, effective, delta as hinalaDelta, next as hinalaNext, TIERS } from './game/hinala.js';
@@ -434,7 +435,6 @@ function drawTitle() {
   }
   drawDecor(t);
   drawText(g, 'KUPIT', VIEW_W / 2, 44, C.gold, { scale: 8, align: 'center', shadow: C.gold2 });
-  drawText(g, save.story.epilogue ? 'MAGSABI KA LANG. JUST ASK.' : 'SNEAK. KUPIT. ESCAPE.', VIEW_W / 2, 98, C.white, { align: 'center' });
   drawHideout(g, save, t, HUB_Y, { tier: save.story.intro && !save.story.ending ? tierOf(hinalaNow(unlockedMax())) : -1 });
   const items = titleItems();
   TITLE_RECTS.forEach((r, i) => drawButton(g, r, items[i], i === sel));
@@ -450,6 +450,7 @@ function drawTitle() {
     g.fillStyle = Math.floor(t * 2) % 2 ? C.green : '#2fb56b'; g.fillRect(r.x, r.y, r.w, r.h);
     drawText(g, 'UPDATE READY! TAP TO RESTART', VIEW_W / 2, r.y + 4, C.ink, { align: 'center' });
   }
+  drawText(g, `V${VERSION}`, VIEW_W - 4, VIEW_H - 9, C.dgray, { align: 'right' }); // which build this is
   drawMsg(362);
 }
 const updateRect = () => ({ x: 30, y: 112, w: VIEW_W - 60, h: 13 });
@@ -467,7 +468,7 @@ function updateTitle() {
   if (pick === 0) begin(unlockedMax());
   else if (pick === 1) { prevMode = 'title'; setMode('levels'); sel = unlockedMax(); }
   else if (pick === 2) setMode('house');
-  else if (pick === 3) { shopScreen.sel = 0; setMode('store'); }
+  else if (pick === 3) openShop(null);
   else if (pick === 4) { charScreen.sel = CHAR_ORDER.indexOf(save.char); setMode('chars'); }
   else if (pick === 5) { prevMode = 'title'; helpPage = 0; setMode('help'); }
   else if (pick === 6) { prevMode = 'title'; setMode('options'); }
@@ -589,7 +590,8 @@ function updateHelp() {
 }
 
 // ---- options -----------------------------------------------------------------------
-const OPT_Y = 44, OPT_GAP = 20;
+const OPT_Y = 44, OPT_GAP = 19;
+let eraseArmed = 0; // NEW GAME: seconds left to tap it a second time
 const pct = (v) => `${Math.round(v * 100)}%`;
 function optionItems() {
   return [
@@ -597,14 +599,16 @@ function optionItems() {
     `SCREEN SHAKE: ${shakeLabel(settings.shake)}`, `SCREEN FLASH: ${settings.flash ? 'ON' : 'OFF'}`,
     canVibrate() ? `VIBRATE: ${hapticsOn() ? 'ON' : 'OFF'}` : 'VIBRATE: NOT ON THIS DEVICE',
     `VISUAL PULSE: ${settings.pulse ? 'ON' : 'OFF'}`, `BUTTONS: ${settings.left ? 'LEFT' : 'RIGHT'}-HANDED`,
-    `GHOST OF BEST RUN: ${settings.ghost ? 'ON' : 'OFF'}`, 'COPY SAVE CODE', 'LOAD SAVE CODE', 'BACK',
+    `GHOST OF BEST RUN: ${settings.ghost ? 'ON' : 'OFF'}`, 'COPY SAVE CODE', 'LOAD SAVE CODE',
+    eraseArmed > 0 ? 'SIGURADO KA? TAP AGAIN TO ERASE' : 'NEW GAME (ERASE SAVE)', 'BACK',
     ...(playtest ? [`COPY PLAYTEST LOG (${ptRead().length})`] : []),
   ];
 }
 const OPT_HELP = [
   'MUSIC VOLUME', 'BEEPS AND CREAKS', 'SILENCE EVERYTHING (M KEY)', 'HOW MUCH THE SCREEN SHAKES', 'COLOUR FLASH ON A CLOSE CALL',
   'PHONE BUZZES ON ALERTS', 'COLOURED SCREEN EDGE INSTEAD OF A BUZZ', 'MIRROR THE BUTTONS FOR YOUR LEFT THUMB',
-  'SEE-THROUGH KID REPLAYS YOUR BEST TIME', 'MOVE YOUR SAVE TO ANOTHER PHONE', 'PASTE A CODE FROM ANOTHER PHONE', '', 'ALL DEATHS, PAUSES AND IDLE MOMENTS (JSON)',
+  'SEE-THROUGH KID REPLAYS YOUR BEST TIME', 'MOVE YOUR SAVE TO ANOTHER PHONE', 'PASTE A CODE FROM ANOTHER PHONE',
+  'START OVER: STORY, COINS, STARS AND CREW ARE ERASED', '', 'ALL DEATHS, PAUSES AND IDLE MOMENTS (JSON)',
 ];
 
 function drawOptions() {
@@ -612,8 +616,8 @@ function drawOptions() {
   drawText(g, 'OPTIONS', VIEW_W / 2, 14, C.gold, { scale: 3, align: 'center', shadow: C.gold2 });
   const items = optionItems();
   items.forEach((l, i) => drawButton(g, { ...buttonRect(i, OPT_Y, OPT_GAP, 200) }, l, i === sel));
-  drawText(g, OPT_HELP[sel] || '', VIEW_W / 2, 308, C.gray, { align: 'center' });
-  drawMsg(318);
+  drawText(g, eraseArmed > 0 && sel === 11 ? 'YOUR SETTINGS STAY. THIS CANNOT BE UNDONE' : OPT_HELP[sel] || '', VIEW_W / 2, 314, eraseArmed > 0 && sel === 11 ? C.orange : C.gray, { align: 'center' });
+  drawMsg(326);
 }
 
 async function copyText(text) {
@@ -622,6 +626,7 @@ async function copyText(text) {
 }
 
 function updateOptions() {
+  if (eraseArmed > 0 && (eraseArmed -= 1 / 60) <= 0) eraseArmed = 0; // the confirm runs out after 3 s
   const items = optionItems(), n = items.length;
   if (input.pressed('Escape')) { setMode(prevMode); return; }
   if (input.pressed('ArrowUp') || input.pressed('w')) sel = (sel + n - 1) % n;
@@ -655,8 +660,18 @@ function updateOptions() {
       say('SAVE LOADED!', C.green);
       break;
     }
-    case 11: setMode(prevMode); return;
-    case 12: copyText(JSON.stringify(ptRead(), null, 1)).then((ok) => say(ok ? 'PLAYTEST LOG COPIED' : 'COULD NOT COPY', ok ? C.green : C.orange)); break;
+    case 11: { // NEW GAME: the first tap asks, the second (within 3 s) erases
+      if (prevMode === 'paused') { say('QUIT THE LEVEL FIRST, THEN START OVER', C.orange); sfx.creak(); return; }
+      if (eraseArmed <= 0) { eraseArmed = 3; sfx.creak(); return; }
+      eraseArmed = 0;
+      save = newGameSave(save); clearGhosts(); persist(); applySettings(save); setMuted(save.muted);
+      unlocked = grantUnlocks(save, { pasko: isPasko() }); persist();
+      run = null; play = null; shopReturn = null;
+      setMode('title'); say('NEW GAME! START THE STORY', C.green);
+      return;
+    }
+    case 12: setMode(prevMode); return;
+    case 13: copyText(JSON.stringify(ptRead(), null, 1)).then((ok) => say(ok ? 'PLAYTEST LOG COPIED' : 'COULD NOT COPY', ok ? C.green : C.orange)); break;
   }
   persist(); applySettings(save);
   if (pick === 5) vibrate(40);
@@ -813,9 +828,28 @@ function updateCaught() {
 
 const clearItems = () => {
   const last = !run && idx === levels.length - 1;
-  if (run?.daily) return ['COPY RESULT', 'PLAY AGAIN', 'HOUSE MENU', "ALING NENA'S"];
-  return [run ? 'NEW HOUSE' : last ? 'HIDEOUT' : 'NEXT LEVEL', 'PLAY AGAIN', run ? 'HOUSE MENU' : 'MAP', "ALING NENA'S"];
+  const shop = canBuyAnything() ? 'UPGRADES (NEW!)' : 'UPGRADES';
+  if (run?.daily) return ['COPY RESULT', 'PLAY AGAIN', 'HOUSE MENU', shop];
+  return [run ? 'NEW HOUSE' : last ? 'HIDEOUT' : 'NEXT LEVEL', 'PLAY AGAIN', run ? 'HOUSE MENU' : 'MAP', shop];
 };
+
+// Something at Aling Nena's you can buy right now: a cat need the story has opened, or a piece of gear.
+const canBuyAnything = () => canAffordNeed() || UPGRADE_ORDER.some((id) => { const c = upgradeCost(save, id); return c !== null && save.bank >= c; });
+
+// Aling Nena's after a level: from the clear screen's UPGRADES button (BACK returns to the results), or on the way to
+// the next level whenever there is something to buy (the bottom button then says NEXT LEVEL and goes on).
+let shopReturn = null; // null: the title | 'clear' | { next: level index }
+function openShop(ret) {
+  shopReturn = ret; shopScreen.sel = 0; setMode('store');
+  if (ret?.next !== undefined) shopScreen.say('SPEND YOUR COINS, THEN GO ON', C.green);
+}
+function shopBack() {
+  const r = shopReturn;
+  shopReturn = null;
+  if (r === 'clear') setMode('clear');
+  else if (r?.next !== undefined) begin(r.next);
+  else setMode('title');
+}
 
 function drawClear() {
   play.draw(g);
@@ -860,7 +894,7 @@ function updateClear() {
   const last = !run && idx === levels.length - 1;
   const pick = menuPick(4, END_Y, 21, age > 0.5);
   if (pick < 0) return;
-  if (pick === 3) { shopScreen.sel = 0; setMode('store'); return; }
+  if (pick === 3) { openShop('clear'); return; }
   if (run?.daily) {
     if (pick === 0) copyText(shareText).then((ok) => say(ok ? 'RESULT COPIED! PASTE IT ANYWHERE' : 'COULD NOT COPY', ok ? C.green : C.orange));
     else if (pick === 1) restart();
@@ -870,6 +904,7 @@ function updateClear() {
   if (pick === 0) {
     if (run) startHouse(newSeed(), run.diff);
     else if (last) { if (!save.story.epilogue) startStory(EPILOGUE, () => { save.story.epilogue = true; persist(); setMode('title'); }); else setMode('title'); }
+    else if (canBuyAnything()) openShop({ next: idx + 1 }); // upgrades between levels
     else begin(idx + 1);
   } else if (pick === 1) restart();
   else if (pick === 2) { if (run) setMode('house'); else { prevMode = 'title'; setMode('levels'); sel = Math.min(idx + 1, levels.length - 1); } }
@@ -951,7 +986,8 @@ function afterPlay() {
   }
 }
 
-const shopCtx = { get save() { return save; }, persist, back: () => setMode('title'), go: (m) => { cosmeticsScreen.sel = 0; if (grantUnlocks(save, { pasko: isPasko() }).length) persist(); setMode(m); } };
+const shopCtx = { get save() { return save; }, persist, back: shopBack, get backLabel() { return shopReturn?.next !== undefined ? 'NEXT LEVEL >' : 'BACK'; }, go: (m) => { cosmeticsScreen.sel = 0; if (grantUnlocks(save, { pasko: isPasko() }).length) persist(); setMode(m); } };
+const crewCtx = { get save() { return save; }, persist, back: () => setMode('title'), go: () => {} };
 const upgradesCtx = { get save() { return save; }, persist, back: () => setMode('store'), go: () => {} };
 const cosmeticsCtx = { get save() { return save; }, persist, back: () => setMode('store'), go: () => {} };
 
@@ -1015,7 +1051,7 @@ function frame(now) {
     store: [() => shopScreen.update(input, shopCtx, dt), () => shopScreen.draw(g, shopCtx)],
     upgrades: [() => upgradesScreen.update(input, upgradesCtx, dt), () => upgradesScreen.draw(g, upgradesCtx)],
     cosmetics: [() => cosmeticsScreen.update(input, cosmeticsCtx, dt), () => cosmeticsScreen.draw(g, cosmeticsCtx)],
-    chars: [() => charScreen.update(input, shopCtx, dt), () => charScreen.draw(g, shopCtx)],
+    chars: [() => charScreen.update(input, crewCtx, dt), () => charScreen.draw(g, crewCtx)],
     house: [updateHouse, drawHouse],
     dev: [updateDevMenu, drawDevMenu],
     paused: [updatePaused, drawPaused], caught: [updateCaught, drawCaught], clear: [updateClear, drawClear],

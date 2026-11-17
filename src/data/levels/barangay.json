@@ -51,7 +51,7 @@
   1
  ],
  "quota": 0,
- "par": 150,
+ "par": 90,
  "targets": [],
  "items": [
   {
@@ -225,7 +225,10 @@
      32,
      1
     ]
-   ]
+   ],
+   "cfg": {
+    "ears": 1.6
+   }
   },
   {
    "type": "kapitbahay",
@@ -242,7 +245,10 @@
      19,
      2
     ]
-   ]
+   ],
+   "cfg": {
+    "ears": 1.6
+   }
   },
   {
    "type": "bisita",
@@ -292,5 +298,5 @@
  ],
  "escort": {},
  "outside": true,
- "notes": "Escort: no coins, no family (audit S1). Neighbours watch the plaza; the guests are harmless cover. Near-miss: the tricycle passes between you and Mingming at the plaza crossing. HINALA: only tanod close calls count (+2 each)."
+ "notes": "Escort: no coins, no family (audit S1). Neighbours watch the plaza; the guests are harmless cover. Near-miss: the tricycle passes between you and Mingming at the plaza crossing. HINALA: only tanod close calls count (+2 each). The neighbours have sharp ears (1.6): running past them is heard."
 }

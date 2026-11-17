@@ -37,6 +37,7 @@ export function ghostAt(samples, t) {
 function all() {
   try { const o = JSON.parse(localStorage.getItem(KEY)); return o && typeof o === 'object' ? o : {}; } catch { return {}; }
 }
+export function clearGhosts() { try { localStorage.removeItem(KEY); } catch { /* storage off */ } } // NEW GAME
 export function loadGhost(id) { return decodeGhost(all()[id]); }
 export function storeGhost(id, samples) {
   const o = all();

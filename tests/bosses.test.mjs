@@ -116,15 +116,16 @@ test('MAMA finale: seen in the last second before you sit is a close call; so is
 
 // ---- 8.3 TATAY + ASO
 const fishOf = (w) => w.targets.find((t) => t.kind === 'isda');
-test('TATAY: only the fish leaves a scent trail, twice as dense when you run; it never spills', () => {
+test('TATAY: the dog follows Jun until the finale, then only the fish (twice as dense when you run); it never spills', () => {
   const L = load('boss3-tatay');
-  const trail = (carry, run) => {
-    const w = new World(L); w.adults.length = 0;
+  const trail = (carry, run, finale = true) => {
+    const w = finale ? atFinale(L) : new World(L); w.adults.length = 0; w.trail.length = 0;
     if (carry) { const f = fishOf(w); f.done = true; w.player.carry = f; }
-    for (let i = 0; i < 60 * 3; i++) w.update(1 / 60, { ...idle, mv: { x: i % 120 < 60 ? 1 : -1, y: 0, mag: 1, run } });
+    for (let i = 0; i < 60 * 6; i++) w.update(1 / 60, { ...idle, mv: { x: i % 120 < 60 ? 1 : -1, y: 0, mag: 1, run } });
     return { n: w.trail.length, carry: !!w.player.carry };
   };
-  assert.equal(trail(false, false).n, 0);
+  assert.ok(trail(false, false, false).n >= 6, 'before the finale the dog tracks Jun');
+  assert.equal(trail(false, false).n, 0, 'at the finale, without the fish, no trail');
   const walk = trail(true, false), run = trail(true, true);
   assert.ok(run.n >= walk.n * 1.7, `walk ${walk.n} run ${run.n}`);
   assert.ok(run.carry, 'running did not spill the fish');
@@ -158,15 +159,20 @@ test('TATAY: the bread bag gives one pandesal at a time, every 8 s; with the fis
   assert.notEqual(w.context()?.kind, 'hide');
 });
 
-test('TATAY finale: carryOut; the 35 s timer starts once you have the quota and the fish', () => {
+test('TATAY finale: carryOut; the fish waits until the finale, then a 15 s timer starts once you carry it', () => {
+  const before = new World(load('boss3-tatay')), fish = fishOf(before);
+  before.player.x = fish.x; before.player.y = fish.y + 8;
+  assert.notEqual(before.context()?.obj, fish, 'the fish is not on offer before the finale');
   const w = atFinale(load('boss3-tatay'));
   assert.equal(w.finale.type, 'carryOut');
+  const f0 = fishOf(w); w.player.x = f0.x; w.player.y = f0.y + 8;
+  assert.equal(w.context()?.obj, f0, 'at the finale it is');
   w.adults.length = 0;
   step(w);
   assert.equal(w.escapeT, 0, 'not yet: no fish');
   const f = fishOf(w); f.done = true; w.player.carry = f;
   step(w);
-  assert.ok(w.escapeT > 34);
+  assert.ok(w.escapeT > 14 && w.escapeT <= 15);
 });
 
 // ---- 8.4 NINANG'S PARTY

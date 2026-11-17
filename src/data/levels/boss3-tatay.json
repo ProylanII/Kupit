@@ -38,7 +38,7 @@
     },
     "finale": {
      "type": "carryOut",
-     "escape": 35
+     "escape": 15
     }
    }
   ],
@@ -60,7 +60,7 @@
   "#.............#",
   "#..TT..K..SS..#",
   "#.............#",
-  "#.............#",
+  "#............H#",
   "#.PP.......PP.#",
   "#.............#",
   "#....H...A....#",
@@ -297,5 +297,5 @@
   ],
   "every": 8
  },
- "notes": "carryOut: the fried fish leaves a scent trail (twice as dense when you run) that the dog follows; near you he barks and Tatay comes; on you he grabs it (Tatay laughs, a close call, the fish goes back). The bread bag gives one pandesal every 8 s; a pandesal keeps the dog eating 6 s. 35 s to the crawlspace once you have the quota and the fish. No hiding with the fish."
+ "notes": "carryOut: the fried fish leaves a scent trail (twice as dense when you run) that the dog follows; near you he barks and Tatay comes; on you he grabs it (Tatay laughs, a close call, the fish goes back). The bread bag gives one pandesal every 8 s; a pandesal keeps the dog eating 6 s. The fish waits on the table until the finale (NOW THE FISH!): take the coins first, then carry the fish from the house out through the yard to the crawlspace, 15 s. No hiding with the fish."
 }

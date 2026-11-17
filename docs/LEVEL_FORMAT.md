@@ -28,7 +28,9 @@ and that standing still at the spawn for 4 s is safe. The same validator checks 
 ```jsonc
 {
   "id": "05-gabi", "name": "GABI",
-  "tutorial": true,            // level 1 only: step-by-step coaching line, skill tip held back
+  "tutorial": true,            // level 1 only: the step-by-step coach (src/game/tutorial.js): a two-line panel, an arrow on
+                               // the thing to use and a ring on the button; one-time tips and the skill tip are held back
+  "coach": { "throwAt": [x, y] }, // tutorial: the floor mark for the throw lesson (a slipper there sends Mama off the sofa)
   "hint": "SHORT TIP",         // shown for the first 8s (max 58 chars, checked)
   "missions": ["silent", "allCoins"], // the level's second and third star (the first is always "clear it"); see Missions
   "ending": true,              // the story's ending plays the first time this level is cleared (the storm)

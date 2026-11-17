@@ -185,7 +185,10 @@
      4,
      1
     ]
-   ]
+   ],
+   "cfg": {
+    "followsDog": 0
+   }
   }
  ],
  "hinala": {
@@ -214,5 +217,5 @@
    ]
   }
  },
- "notes": "Near-miss: the dog loop runs right past the laundry line you are standing in. The spawn yard is open lawn on purpose (Bing crawls under the mango-tree table)."
+ "notes": "Near-miss: the dog loop runs right past the laundry line you are standing in. The spawn yard is open lawn on purpose (Bing crawls under the mango-tree table). When the dog barks, Tatay comes out to look (followsDog), so running past the dog costs a visit."
 }

@@ -53,7 +53,7 @@ function makeList({ title, items, rowH, drawRow, pick }) {
         drawRow(g, id, r, ctx);
       });
       if (s.msg) drawText(g, s.msg.text, VIEW_W / 2, 323, s.msg.color, { align: 'center' });
-      drawButton(g, backRect(), 'BACK', s.sel === items.length);
+      drawButton(g, backRect(), ctx.backLabel || 'BACK', s.sel === items.length);
     },
   };
   return s;
@@ -74,6 +74,9 @@ export const shopScreen = makeList({
     if (id === 'gear' || id === 'more') {
       drawText(g, id === 'gear' ? 'SNEAKING GEAR  >' : 'OUTFITS + DECOR  >', r.x + r.w / 2, r.y + 8, C.white, { align: 'center' });
       drawText(g, id === 'gear' ? 'MEDYAS, PANYO, HOLEN, BAON, BULSA' : 'LOOKS ONLY: THEY NEVER CHANGE THE GAME', r.x + r.w / 2, r.y + 20, C.gray, { align: 'center' });
+      if (id === 'gear' && UPGRADE_ORDER.some((u) => { const c = upgradeCost(save, u); return c !== null && save.bank >= c; })) {
+        drawText(g, 'YOU CAN BUY ONE!', r.x + r.w / 2, r.y + 29, C.green, { align: 'center' });
+      }
       return;
     }
     const n = NEEDS[id], own = hasNeed(save, id), cost = needCost(save, id);

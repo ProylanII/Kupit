@@ -24,19 +24,20 @@ test('L1 SALA: quota 3 from a bag of 4 (SAPAT NA), Mama on the sofa, the ad brea
   assert.ok(tv > 60 * 15 && ad > 60 * 3, `tv ${tv} ad ${ad}`);
 });
 
-test('L1 SALA: after the first coin she hears something, checks the kids room, shrugs and goes back', () => {
+test('L1 SALA: after the first coin she hears something, checks the hall, shrugs and goes back', () => {
   const w = new World(load('01-sala')), m = w.adults[0];
   w.player.hidden = { kind: 'box', x: 0, y: 0 };
+  w.toggleSwitch(w.switches[0], true); // (you came in through the hall gate)
   w.coins = 1;
   const said = new Set();
   let far = false;
   for (let i = 0; i < 60 * 40; i++) {
     w.update(1 / 60, idle);
     if (m.say) said.add(m.say.text);
-    if (tile(m)[1] >= 13) far = true;
+    if (tile(m)[1] >= 10) far = true;
   }
   assert.ok(said.has('ANO YUN?') && said.has('WALA NAMAN...'), [...said].join(','));
-  assert.ok(far, 'she went to the kids room');
+  assert.ok(far, 'she went through the gate to the hall');
   assert.deepEqual(tile(m), [7, 5], 'and back to the sofa');
 });
 

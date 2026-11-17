@@ -20,43 +20,37 @@
   "phases": [
    {
     "at": 2,
-    "banner": "TATAY IS OUT LOOKING TOO!",
-    "spawn": [
-     {
-      "type": "tatay",
-      "route": [
-       [
-        8,
-        13,
-        1
-       ],
-       [
-        12,
-        16,
-        2
-       ],
-       [
-        9,
-        19,
-        1
-       ]
+    "banner": "MAMA LOOKS UNDER THE HOUSE!",
+    "adult": {
+     "index": 0,
+     "route": [
+      [
+       3,
+       7,
+       2
       ],
-      "cfg": {
-       "shout": "JUN?! IKAW BA YAN?",
-       "scold": "ANAK! PASOK SA BAHAY!",
-       "scan": {
-        "amp": 0.85,
-        "speed": 1.4
-       },
-       "range": 70
-      }
-     }
-    ]
+      [
+       11,
+       7,
+       2
+      ],
+      [
+       11,
+       14,
+       2
+      ],
+      [
+       3,
+       15,
+       2
+      ]
+     ]
+    }
    },
    {
     "at": 4,
     "banner": "THE WATER IS RISING! TAKBO!",
-    "escape": 45,
+    "escape": 25,
     "adult": {
      "index": 0,
      "speed": 30
@@ -224,6 +218,35 @@
      "amp": 0.8,
      "speed": 1.2
     }
+   }
+  },
+  {
+   "type": "tatay",
+   "route": [
+    [
+     8,
+     13,
+     1
+    ],
+    [
+     12,
+     16,
+     2
+    ],
+    [
+     9,
+     19,
+     1
+    ]
+   ],
+   "cfg": {
+    "shout": "JUN?! IKAW BA YAN?",
+    "scold": "ANAK! PASOK SA BAHAY!",
+    "scan": {
+     "amp": 0.85,
+     "speed": 1.4
+    },
+    "range": 70
    }
   }
  ]

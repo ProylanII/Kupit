@@ -8,9 +8,9 @@
  ],
  "tiles": [
   "####################",
-  "#BB..BB.P#.BB..K...#",
+  "#BB..BB.P#.BB..K.#.#",
   "#BB..BB..#.BB....#.#",
-  "#........#.....##G##",
+  "#........#.....###G#",
   "#.K......#.........#",
   "#........D....A....#",
   "#........#.....TT..#",
@@ -252,20 +252,10 @@
    ]
   },
   {
-   "type": "lola",
-   "at": [
-    4,
-    5
-   ],
-   "face": 0,
-   "sweep": 0.6,
-   "phase": 5
-  },
-  {
    "type": "tita",
    "at": [
-    5,
-    17
+    13,
+    6
    ],
    "face": 0,
    "sweep": 0.5
@@ -336,7 +326,7 @@
    ],
    "gates": [
     [
-     17,
+     18,
      3
     ]
    ],
@@ -348,7 +338,7 @@
    "news": "TATAY CHECKS HIS WALLET NOW",
    "do": [
     {
-     "stop": 4,
+     "stop": 3,
      "at": [
       12,
       20,
@@ -383,5 +373,5 @@
    ]
   }
  },
- "notes": "Near-miss: Jomar on his phone at the hall door; when the call ends his eyes are on the hall. The payday wallet is safest while Tatay showers (10 s, deaf). Timed lever: pull it, then 6 s to reach the gate to the exit nook."
+ "notes": "Near-miss: Jomar on his phone at the hall door; when the call ends his eyes are on the hall. The payday wallet is safest while Tatay showers (10 s, deaf). Timed lever: pull it, then 6 s to reach the gate to the exit nook (the nook is only reached through that gate). Lola is not in this one: the new things are the scrolling map, Jomar and the shower. Tita sits in the top room facing the gate and the piggy: pull the lever and run for the gate while she is on the phone."
 }

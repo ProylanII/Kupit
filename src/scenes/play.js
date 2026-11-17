@@ -15,6 +15,7 @@ import { settings } from '../core/settings.js';
 import { GHOST_EVERY, ghostAt } from '../game/ghost.js';
 import { VIEW_W, VIEW_H, MAP_H, BUTTON, BUTTON2, PAUSE_BTN, ABILITY_BTN, ITEM_BTN, SWAP_BTN, layout } from '../core/input.js';
 import { CHARACTERS } from '../game/progression.js';
+import { Coach, COACHED_TIPS } from '../game/tutorial.js';
 
 const YELLOW = hexToRgb(C.yellow), RED = hexToRgb(C.red);
 const SUSPICIOUS = new Set(['investigate', 'inspect', 'search']);
@@ -70,6 +71,7 @@ const TIPS = {
   cycle: (p) => (p.input.touchUsed ? 'TWO KINDS OF ITEMS: TAP THE SMALL DOT TO SWITCH' : 'TWO KINDS OF ITEMS: R SWITCHES WHICH ONE'),
   skill: (p) => `SKILL READY: ${p.world.mods.skill.label}! ${p.input.touchUsed ? 'GREEN BUTTON' : 'PRESS F'}`,
   door: 'DOORS BLOCK SIGHT. ACT OPENS AND CLOSES THEM',
+  creaky: 'CREAKY DOOR! HOLD ACT TO OPEN IT SLOWLY AND QUIETLY',
   locked: 'LOCKED! FIND THE KEY OF THE SAME COLOR',
   switch: 'LEVERS OPEN GATES. SOME SHUT AGAIN SOON',
   device: 'TV OR RADIO: TURN IT ON TO PULL ADULTS AWAY',
@@ -96,6 +98,9 @@ const TIPS = {
   team: 'TWO OF YOU: Z (OR THE PURPLE BUTTON) SWITCHES KIDS',
   dark: 'IN THE DARK THEY ONLY SEE YOU UP CLOSE. AVOID LIGHT',
 };
+
+// Tips about a button ring that button while they show: [button, hold?]
+const TIP_BUTTONS = { hide: ['act'], door: ['act'], creaky: ['act', true], switch: ['act'], device: ['act'], throw: ['throw', true], pandesal: ['throw', true], skill: ['skill'] };
 
 export class Play {
   // opts: { tips: { seen, mark(id) }, ghost: samples | null, outfit: 'pula', record: true }
@@ -133,6 +138,9 @@ export class Play {
     // kittens trotting after you (the epilogue, and Tigre once the story is over): they follow your footsteps
     this.crumbs = [];
     this.kittens = Array.from({ length: opts.kitten | 0 }, (_, i) => ({ x: this.world.player.x, y: this.world.player.y, look: ['tigre', 'puti', 'muning'][i % 3], dir: 0, stepT: 0, moving: false }));
+    // the tutorial coach (L1): one step at a time, an arrow on the thing to use, a ring on the button to press
+    this.coach = level.tutorial ? new Coach(this.world) : null;
+    this.coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches; // a phone, before the first touch
     this.cardT = level.tutorial || level.hingi || opts.noCard ? 0 : 5; // the mission card (campaign: shown before the level instead)
     // cats that simply live in this room (the epilogue: Mingming asleep on the rug)
     this.cats = (level.cats || []).map((c) => ({ look: c.kind || 'pusa', x: c.at[0] * TILE + TILE / 2, y: c.at[1] * TILE + TILE / 2, dir: c.dir ?? 2, pose: c.pose || 'sit' }));
@@ -166,6 +174,7 @@ export class Play {
   showTip(id) {
     const seen = this.opts.tips?.seen;
     if (!seen || seen[id] || this.tipQ.includes(id) || this.tip?.id === id) return;
+    if (this.coach) { if (COACHED_TIPS.has(id)) this.opts.tips.mark(id); return; } // the coach teaches these itself; the rest wait for later levels
     this.tipQ.push(id);
   }
 
@@ -174,7 +183,7 @@ export class Play {
     if (this.opts.tips) {
       if (pr) {
         if (pr.kind === 'hide') this.showTip('hide');
-        else if (pr.kind === 'door') this.showTip('door');
+        else if (pr.kind === 'door') this.showTip(w.creaky.has(pr.obj.tx + ',' + pr.obj.ty) && w.map.ch(pr.obj.tx, pr.obj.ty) === 'D' ? 'creaky' : 'door');
         else if (pr.kind === 'locked') this.showTip('locked');
         else if (pr.kind === 'switch') this.showTip('switch');
         else if (pr.kind === 'device') this.showTip('device');
@@ -206,6 +215,7 @@ export class Play {
     this.input.swapEnabled = !!w.kids && w.kids.every((k) => !k.out); // KASABWAT
     this.input.itemEnabled = new Set(w.player.items).size > 1;
     w.update(dt, this.input.poll());
+    if (this.coach?.update(dt)) sfx.pickup(); // a tutorial step done
     this.steps++;
     this.cardT = Math.max(0, this.cardT - dt);
     this.updateKittens(dt);
@@ -506,6 +516,19 @@ export class Play {
     drawText(g, w.open ? 'EXIT' : 'LOCKED', w.exit.x, y - 7, w.open ? C.green : C.gray, { align: 'center', shadow: C.ink });
   }
 
+  // A stash that still has what you came for twinkles gold for a moment every 1.2 s (out of step with the others, so
+  // the room doesn't blink at once): small enough to stay out of the way, enough to find it among the furniture.
+  drawTwinkle(g, t, now) {
+    const k = ((now + (t.x * 7 + t.y * 13) * 3) % 1200) / 1200;
+    if (k > 0.3) return;
+    const x = Math.round(t.x) + 5, y = Math.round(t.y) - 7, big = k > 0.08 && k < 0.22;
+    g.fillStyle = C.gold;
+    if (big) { g.fillRect(x - 2, y, 5, 1); g.fillRect(x, y - 2, 1, 5); g.fillStyle = C.white; g.fillRect(x, y, 1, 1); }
+    else g.fillRect(x, y, 1, 1);
+  }
+  // TATAY's fish is not on offer until the finale (world.js context): no twinkle before then
+  fishLater(t) { return t.scent && this.level.boss?.finale === 'carryOut' && this.world.finale?.type !== 'carryOut'; }
+
   // Hold-to-aim: a dotted ring shows how far you can throw (Ramil's is bigger), an X where it lands.
   drawAim(g) {
     const a = this.world.aim, p = this.world.player;
@@ -567,6 +590,7 @@ export class Play {
     for (const t of w.targets) {
       drawTarget(g, t.kind, t.x, t.y, t.done);
       if (t.bonus && !t.done && Math.floor(now / 400) % 3 === 0) { g.fillStyle = C.white; g.fillRect(Math.round(t.x) + 3, Math.round(t.y) - 5, 1, 1); } // glint
+      else if (!t.bonus && !t.done && !this.fishLater(t)) this.drawTwinkle(g, t, now); // what you came for: a gold twinkle
     }
     for (const it of w.items) drawObj(g, it.kind, it.x, it.y + (it.kind === 'key' ? Math.floor(performance.now() / 300) % 2 : 0), it.color);
     for (const f of w.foods) drawObj(g, 'pandesal', f.x, f.y);
@@ -675,6 +699,7 @@ export class Play {
     g.globalAlpha = 1;
     if (w.say) bubble(g, w.say.text, p.x, Math.round(p.y) - 30, this.cx);
     for (const a of w.adults) if (a.say) bubble(g, a.say.text, a.x, Math.round(a.y) - 34, this.cx, C.ink, w.scold?.who === a ? C.orange : a.state === 'chase' ? C.red : C.white);
+    if (this.coach) this.drawCoachFocus(g);
     g.restore();
     if (p.carry) drawTarget(g, 'gatas', p.x - this.cx + sx, p.y - this.cy + sy - 21, false);
     if (this.level.storm) this.drawStorm(g, fd);
@@ -759,7 +784,6 @@ export class Play {
     }
   }
 
-  // Step-by-step coaching for the tutorial level, driven by what the player is doing.
   // Typhoon: slanting rain, a white flash for lightning, and a cue while the thunder covers your noise.
   drawStorm(g, fd) {
     const t = performance.now() / 1000;
@@ -792,18 +816,52 @@ export class Play {
     });
   }
 
-  tutorialHint() {
-    if (!this.level.tutorial) return null;
-    const w = this.world, p = w.player;
-    if (w.scold) return 'MUNTIK NA! YOU DROPPED SOME COINS';
-    if (w.open) return 'EXIT IS OPEN! WALK TO THE GREEN DOOR';
-    if (p.hidden) return w.adults.some((a) => a.staged) ? 'SAFE! WAIT TILL SHE GOES BACK' : 'SAFE! WAIT, THEN MOVE TO COME OUT';
-    if (w.adults.some((a) => a.staged) || (w.stagedT > 0 && !w.stagedDone)) return 'TAGO! SHE HEARD SOMETHING. HIDE IN THE BOX!';
-    if (w.targets.some((t) => t.progress > 0 && !t.done && !t.bonus)) return 'KEEP HOLDING THE BUTTON... WATCH THE CONE';
-    if (w.adults.some((a) => a.awake && a.alert > 0.3)) return 'SHE SEES YOU! BACK OFF OUT OF THE YELLOW';
-    if (w.coins === 0 && w.time < 5) return 'DRAG OR WASD TO MOVE. FAR DRAG / SHIFT RUNS';
-    if (w.coins === 0) return 'WALK TO THE PURSE, HOLD KUPIT. AVOID YELLOW';
-    return 'GOOD! NOW FIND THE EXIT';
+  get touch() { return this.input.touchUsed || this.coarse; }
+  coachView() { return this.coach && this.world.status === 'play' ? this.coach.view({ touch: this.touch }) : null; }
+
+  // Tutorial: a bouncing arrow and a pulsing ring on the thing the current step is about (world coordinates).
+  drawCoachFocus(g) {
+    const v = this.coachView(), f = v?.focus;
+    if (!f) return;
+    const now = performance.now(), b = Math.round(Math.abs(Math.sin(now / 220)) * 3);
+    const a = v.aim && this.world.aim, onMark = a && Math.hypot(a.x - f.x, a.y - f.y) < 14; // throw lesson: aiming at the mark
+    const x = Math.round(f.x), y = Math.round(f.y), col = onMark ? C.green : v.col === 'orange' ? C.orange : C.gold;
+    g.globalAlpha = 0.6 + 0.4 * Math.abs(Math.sin(now / 300)); ring(g, x, y, 10 + (Math.floor(now / 300) % 2), C.ink, 1); ring(g, x, y, 9 + (Math.floor(now / 300) % 2), col, 1); g.globalAlpha = 1;
+    const ay = y - 19 - b; // a down arrow just above it
+    g.fillStyle = C.ink; g.fillRect(x - 5, ay - 1, 11, 4); for (let i = 0; i < 5; i++) g.fillRect(x - 4 + i, ay + 3 + i, 9 - i * 2, 1);
+    g.fillStyle = col; g.fillRect(x - 1, ay - 4, 3, 5); g.fillRect(x - 4, ay, 9, 2); for (let i = 0; i < 4; i++) g.fillRect(x - 3 + i, ay + 2 + i, 7 - i * 2, 1);
+  }
+
+  // Tutorial: the coach panel at the top, and a ring on the button to press (or a ghost finger for walking).
+  drawCoachHud(g) {
+    const v = this.coachView();
+    if (!v) return;
+    const c = this.coach, now = performance.now();
+    const col = { white: C.white, green: C.green, orange: C.orange, red: C.red }[v.col] || C.white;
+    // The panel sits at the top, and moves to the bottom of the room while you (or what it points at) are up there,
+    // so it never covers the thing it is talking about (the sala's exit is on the top wall). A gap stops it flickering.
+    const py = this.world.player.y - this.cy, fy = v.focus ? v.focus.y - this.cy : MAP_H;
+    if (py < 150 || fy < 70) this.coachLow = true; else if (py > 200 && fy > 90) this.coachLow = false;
+    const y0 = this.coachLow ? MAP_H - 30 : 17;
+    g.globalAlpha = 0.85; g.fillStyle = C.ink; g.fillRect(0, y0, VIEW_W, 28); g.globalAlpha = 1;
+    g.fillStyle = c.okT > 0 ? C.green : v.reactive ? col : C.gold; g.fillRect(0, this.coachLow ? y0 : y0 + 27, VIEW_W, 1);
+    drawText(g, v.lines[0], VIEW_W / 2, y0 + 3, v.reactive ? col : C.yellow, { align: 'center' });
+    if (v.lines[1]) drawText(g, v.lines[1], VIEW_W / 2, y0 + 13, C.white, { align: 'center' });
+    for (let i = 0; i < c.total; i++) { // how far through the lesson you are
+      g.fillStyle = i < c.i ? C.green : i === c.i ? C.gold : C.dgray;
+      g.fillRect(VIEW_W / 2 - c.total * 3 + i * 6, y0 + 22, 4, 2);
+    }
+    const pulse = Math.floor(now / 250) % 2, hold = v.btn === 'throw' || ['kupit', 'more'].includes(c.step?.id);
+    const btn = v.btn === 'act' ? BUTTON : v.btn === 'throw' && this.world.player.items.length ? BUTTON2 : null;
+    if (btn) this.drawButtonHint(g, btn, hold, v.btn);
+    else if (v.btn === 'move' && this.touch && !this.input.stick()) { // a ghost finger dragging toward where to go
+      const f = v.focus, p = this.world.player, k = (now / 1200) % 1;
+      const dx = f ? f.x - p.x : 0, dy = f ? f.y - p.y : -1, m = Math.hypot(dx, dy) || 1;
+      const ox = VIEW_W / 2, oy = this.coachLow ? MAP_H - 70 : MAP_H - 64;
+      g.globalAlpha = 0.25; disc(g, ox, oy, 20, C.white);
+      g.globalAlpha = 0.7 * (1 - k * 0.5); disc(g, Math.round(ox + (dx / m) * 14 * k), Math.round(oy + (dy / m) * 14 * k), 7, C.white);
+      g.globalAlpha = 1;
+    }
   }
 
   drawAdult(g, a) {
@@ -959,7 +1017,7 @@ export class Play {
     if (dev.on) this.drawDev(g);
 
     // tips / tutorial coach / level hint: one line at the top, away from your thumbs
-    const th = this.tutorialHint();
+    const th = this.coach ? 'coach' : null; // the tutorial draws its own panel (drawCoachHud)
     // HINALA: what changed in the house since last time comes first, then the level's own hint
     // (it waits for a tip or the coach to finish, then stays up for 4 seconds)
     const news = this.level.news?.[0];
@@ -967,10 +1025,11 @@ export class Play {
     if (showNews) { if (this.newsLast !== undefined) this.newsT = (this.newsT || 0) + Math.min(0.1, Math.max(0, w.time - this.newsLast)); this.newsLast = w.time; if (this.newsT >= 4) this.newsDone = w.time; }
     else this.newsLast = undefined;
     const line = this.tip ? this.tip.text : th || (showNews ? `NEW IN THE HOUSE: ${news}` : this.level.hint && (news ? this.newsDone !== undefined && w.time - this.newsDone < 6 : w.time < 8) ? this.level.hint : null);
-    if (line && !(w.patience && w.time / w.patience > 0.75 && !this.tip)) {
+    if (line && !this.coach && !(w.patience && w.time / w.patience > 0.75 && !this.tip)) {
       g.globalAlpha = 0.75; g.fillStyle = C.ink; g.fillRect(0, 18, VIEW_W, 11); g.globalAlpha = 1;
       drawText(g, line, VIEW_W / 2, 21, this.tip ? C.green : th ? C.white : showNews ? C.orange : C.yellow, { align: 'center' });
     }
+    this.tipButton = this.tip && !this.coach ? TIP_BUTTONS[this.tip.id] || null : null; // drawn after the buttons
     if (this.toast) {
       const tw = Math.max(140, textWidth(this.toast.text) + 12);
       g.globalAlpha = 0.8; g.fillStyle = C.ink; g.fillRect(VIEW_W / 2 - tw / 2, 140, tw, 15); g.globalAlpha = 1;
@@ -1047,5 +1106,18 @@ export class Play {
       g.globalAlpha = 0.35; disc(g, Math.round(s.sx), Math.round(s.sy), 22, C.white);
       g.globalAlpha = 0.7; disc(g, Math.round(s.x), Math.round(s.y), 8, C.white); g.globalAlpha = 1;
     }
+    if (this.coach) this.drawCoachHud(g);
+    else if (this.tipButton) { const [b, hold] = this.tipButton; this.drawButtonHint(g, b === 'throw' ? (this.world.player.items.length ? BUTTON2 : null) : b === 'skill' ? ABILITY_BTN : BUTTON, hold, b); }
+  }
+
+  // A pulsing ring on an on-screen button, with TAP / HOLD (or the key) above it.
+  drawButtonHint(g, btn, hold, kind = 'act') {
+    if (!btn) return;
+    const pulse = Math.floor(performance.now() / 250) % 2;
+    ring(g, btn.x, btn.y, btn.r + 3 + pulse, C.gold, 1); ring(g, btn.x, btn.y, btn.r + 5 + pulse, C.ink, 2);
+    const keyName = kind === 'throw' ? 'Q' : kind === 'skill' ? 'F' : 'E';
+    const label = this.touch ? (hold ? 'HOLD' : 'TAP') : `${hold ? 'HOLD ' : ''}${keyName}`;
+    const lw = textWidth(label) + 4, lx = Math.max(1, Math.min(VIEW_W - lw - 1, btn.x - lw / 2)), ly = btn.y - btn.r - 16 - pulse;
+    g.fillStyle = C.gold; g.fillRect(lx, ly, lw, 9); drawText(g, label, lx + 2, ly + 2, C.ink);
   }
 }

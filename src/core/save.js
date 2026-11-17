@@ -104,6 +104,16 @@ export function migrate(raw) {
   return out;
 }
 
+// NEW GAME (Options): everything earned goes (story, coins, stars, crew, looks, tips); the player's own settings stay
+// (volume, mute, vibration, left-handed buttons...). DOM-free: tests/newgame.test.mjs.
+export function newGameSave(old = {}) {
+  const s = fresh();
+  if (old.opts && typeof old.opts === 'object') s.opts = { ...s.opts, ...old.opts };
+  if (typeof old.muted === 'boolean') s.muted = old.muted;
+  if (typeof old.haptics === 'boolean') s.haptics = old.haptics;
+  return s;
+}
+
 export function loadSave() {
   try { return migrate(JSON.parse(localStorage.getItem(KEY))); } catch { return fresh(); }
 }

@@ -445,6 +445,7 @@ export class World {
   // A5: a door Jun opened and left open, close enough to this adult to notice. Returns where to look (the room on
   // the far side of the door) and counts it as evidence, or null.
   noticeOpenDoor(adult) {
+    if (this.level.tutorial) return null; // (the tutorial has enough to teach: an open door goes unnoticed there)
     for (const key of this.playerOpened) {
       const [tx, ty] = key.split(',').map(Number);
       if (this.map.ch(tx, ty) !== 'd') { this.playerOpened.delete(key); continue; }
@@ -476,8 +477,10 @@ export class World {
       this.items.splice(this.items.indexOf(it), 1);
       adult.talk("KANINONG TSINELAS 'TO?", 1.8);
       adult.wary = 15;
-      this.stats.evidence++;
-      this.emit({ type: 'evidence', x: it.x, y: it.y, what: 'tsinelas' });
+      if (!this.level.tutorial) { // (the tutorial asks you to throw it: no HINALA for doing as you are told)
+        this.stats.evidence++;
+        this.emit({ type: 'evidence', x: it.x, y: it.y, what: 'tsinelas' });
+      }
     }
   }
   eatFood(food) {
@@ -498,7 +501,9 @@ export class World {
       for (const o of list) { const d = dist(o, p); if (d <= bd && f(o)) { best = o; bd = d; } }
       return best;
     };
-    let o = near(this.targets, (t) => !t.done);
+    // TATAY's fish waits on the table until the finale ("NOW THE FISH!"): it is the last thing you take, not the first
+    const fishLater = (t) => t.scent && this.level.boss?.finale === 'carryOut' && f?.type !== 'carryOut';
+    let o = near(this.targets, (t) => !t.done && !fishLater(t));
     if (o) return { kind: 'steal', obj: o, label: o.profile.verb || 'KUPIT', detail: o.profile.tip };
     o = p.carry?.scent ? null : near(this.hides); // (carrying the fish you cannot hide: you smell of it)
     if (this.breadBag && this.breadBag.cd <= 0 && !p.items.includes('pandesal') && dist(this.breadBag, p) <= REACH) return { kind: 'bread', obj: this.breadBag, label: 'PANDESAL' };
@@ -843,10 +848,12 @@ export class World {
     if (p.carry && !p.carry.noSpill && (p.running || p.dashT > 0 || p.stunT > 0)) this.spill();
 
     // --- scent trail
-    if (!p.hidden && (this.trailT -= dt) <= 0 && (!this.scentOnly || p.carry?.scent)) {
+    // (TATAY's boss: before the finale the dog follows Jun himself; once the fish is in his hands, only the fish)
+    const fishTrail = this.scentOnly && p.carry?.scent;
+    if (!p.hidden && (this.trailT -= dt) <= 0 && (!this.scentOnly || fishTrail || this.finale?.type !== 'carryOut')) {
       this.trail.push({ x: p.x, y: p.y, t: this.time });
       if (this.trail.length > 40) this.trail.shift();
-      this.trailT = this.scentOnly ? (p.running ? 0.25 : 0.5) : 0.4; // (the fish: running leaves twice the scent)
+      this.trailT = fishTrail ? (p.running ? 0.25 : 0.5) : 0.4; // (the fish: running leaves twice the scent)
     }
     if (this.breadBag && this.breadBag.cd > 0) this.breadBag.cd -= dt;
 
@@ -1100,6 +1107,8 @@ export class World {
     for (let i = this.checkpoints.length - 1; i >= 0 && !best; i--) if (threat(this.checkpoints[i]) > 56) best = this.checkpoints[i];
     if (!best) best = this.checkpoints.reduce((m, c) => (threat(c) > threat(m) ? c : m), this.checkpoints[0]);
     p.x = best.x; p.y = best.y;
+    // a doorway checkpoint whose door someone has shut since (A5): you come back standing in it, so it is open again
+    if (this.map.ch(p.tx, p.ty) === 'D') this.map.set(p.tx, p.ty, 'd');
     p.hidden = best.hide && this.hides.includes(best.hide) ? best.hide : null;
     p.hideT = 0; p.stunT = 0; p.dashT = 0; p.graceT = GRACE_TIME;
     for (const a of this.adults) a.reset();
