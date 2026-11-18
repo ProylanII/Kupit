@@ -116,7 +116,7 @@ Updated after each phase. See AUDIT.md for the findings and DECISIONS.md for the
 - Read the new ending in `src/data/story.js` (`ENDING`).
 - Play the rebuilt levels by hand, the fiesta and the palengke first: those changed the most.
 
-## Mini-games, first batch — done (2026-11-17, v0.3.0, uncommitted on design-overhaul)
+## Mini-games, first batch — done (2026-11-17, v0.3.0, released to main as af5beca)
 
 - Done: TUMBANG PRESO (bonus, level 6), SI MINGMING NAMAN (level 13), HABOL! (level 15, opens Chapter 4), BAGYO rebuilt with
   TULO (leaks over the kittens' box) and BAHA (flood + sandbags). Rewards per star (coins, photos, looks), the ALBUM screen,
@@ -125,3 +125,24 @@ Updated after each phase. See AUDIT.md for the findings and DECISIONS.md for the
   screenshots of every new moment by `tools/qa/minigame-shots.mjs`.
 - Needs the owner: a playtest on a phone (PRESO aim timing, HABOL! speed, TULO on touch, MINGMING difficulty), and the
   merge to main when happy (version 0.3.0 is already set).
+
+## Arcade pass — done (2026-11-18, on design-overhaul, not released)
+
+The owner asked for a concise arcade game after the v0.3.0 audit. Five commits:
+
+1. Cut: HINALA (suspicion score and every house change it made), Random House and Daily House, the star gifts
+   ("NEXT GIFT AT"; those looks are sold at Aling Nena's). Title menu 8 -> 5 buttons (HOW TO PLAY moved into Options,
+   THE CREW screen removed: the card picks the kid). Shorter clear screen. Every action, skill and setting in English.
+   Save v7.
+2. TUMBANG PRESO: your own slippers get a ring and an arrow; friends run for theirs after every TUMBA.
+3. Aimed throws: Q + mouse + click (hold Q still works), and on a phone drag from the throw button to the spot.
+4. The phone screen: a tall phone fills the screen with the buttons at the bottom; the top bar, tips and the tutorial
+   coach sit above the map instead of on it; the 5x7 font for the top bar, tips, toasts, coach and missions. Fixed the
+   keyboard hints shown on phones before the first touch.
+5. Cut-ins (ui/cutin.js) for close calls, bosses and their phases, every level's end, the first TUMBA and HABOL!'s
+   end, which is now a hug (a new `jun|0|hug` frame in the sheet).
+
+- Checks: `npm test` 288/288 (`tests/arcade.test.mjs` is new); smoke and ending QA pass in headless Chrome (run from
+  the files with request interception, since a local server was not allowed this session); the real mouse, keyboard
+  and touch throws checked in the browser at phone and desktop sizes.
+- Needs the owner: a playtest on a phone, and the release to main when happy (bump the version to 0.4.0 first).

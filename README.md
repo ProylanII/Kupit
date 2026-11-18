@@ -9,11 +9,11 @@ full of kittens, and only then do they see what every coin was for. All he ever 
 | | | |
 |---|---|---|
 | ![Title](docs/screenshots/01-title.png) | ![Sala, the first level](docs/screenshots/04-sala.png) | ![Gabi, a night level](docs/screenshots/05-gabi-night.png) |
-| Title | Sala: Mama and Lola's vision cones | Gabi: night lighting |
-| ![Boss: Mama sa Kusina](docs/screenshots/06-boss-mama.png) | ![Palengke, a big scrolling level](docs/screenshots/07-palengke.png) | ![Random House](docs/screenshots/08-random-house.png) |
-| Boss: Mama sa Kusina | Palengke (scrolling map) | Random House |
-| ![Choose your kid](docs/screenshots/03-characters.png) | ![Level select](docs/screenshots/02-levels.png) | ![Caught!](docs/screenshots/09-caught.png) |
-| Characters | Level select | Caught! |
+| The hideout (title) | Sala: the tutorial, Mama's vision cone | Gabi: night lighting |
+| ![Boss: Mama sa Kusina](docs/screenshots/06-boss-mama.png) | ![Palengke, a big scrolling level](docs/screenshots/07-palengke.png) | ![HABOL!](docs/screenshots/08-habol.png) |
+| Boss: Mama comes in on a cut-in | Palengke (scrolling map) | HABOL!: the hug at the end |
+| ![Who's going?](docs/screenshots/03-card.png) | ![The barangay map](docs/screenshots/02-levels.png) | ![Muntik na!](docs/screenshots/09-close-call.png) |
+| Who's going? | The barangay map | A close call |
 
 ## Play
 
@@ -24,14 +24,14 @@ npm start            # or: python -m http.server 8080
 ```
 
 Open http://localhost:8080 (phone on same LAN works too). If 8080 is taken, `serve` picks another port and prints
-it. `?level=2` jumps to a level, `?daily` to today's Daily House.
+it. `?level=2` jumps to a level. On a tall phone the game fills the whole screen, with the buttons at the bottom.
 
 | Action | Keyboard | Touch |
 |---|---|---|
 | Move (sneak) | WASD / arrows | drag anywhere |
 | Run (loud!) | Shift | drag far |
-| Act: kupit (hold), hide, open/close door, switch, turn on TV/radio | E / Space | big button (its icon shows what it will do) |
-| Throw tsinelas / pandesal: hold to aim, let go to throw | Q | blue button |
+| Act: take coins (hold), hide, open/close a door, a lever, turn on the TV/radio | E / Space | big button (it says what it will do: TAKE, HIDE, OPEN...) |
+| Throw a tsinelas / pandesal where you point | Q, point with the mouse, click (or hold Q and let go: straight ahead) | hold the blue button, slide to the spot, let go (a tap throws straight ahead) |
 | Switch which item you throw | R / Tab | small dot next to it |
 | Character skill | F / X | green button |
 | Pause | P / Esc | pause button |
@@ -42,6 +42,8 @@ Collect the coin quota, then reach the exit.
 - **Adults** have vision cones. Fill their meter and they **chase** you (A* pathing). Break line of sight or hide, and
   they search, then go back. `?` over an adult means suspicious, `!` means chase. On big maps, arrows on the screen
   edge show who is onto you, and pings show noises heard off screen.
+- **Cut-ins**: a character's portrait slides in with a line at the big moments: whoever finds you on a close call,
+  a boss's entrance and each phase, the end of every level, the first TUMBA, and HABOL!'s hug with Tigre.
 - **Muntik na! (close calls)** You get 3 chances per level. When someone reaches you, they find you somewhere you
   shouldn't be (never with the coins: the family only finds out in the story's ending, the one real "HULI KA!").
   Jun drops a third of his coins, which go back where they came from, and you start again at the last safe spot (a
@@ -54,12 +56,6 @@ Collect the coin quota, then reach the exit.
   the quota the game says SAPAT NA ("that's enough"); anything past it is SOBRA. It still pays, but every extra coin
   in one go clinks louder and emptying a stash makes a hollow klak. The "take only what you need" star asks for
   exactly the quota.
-- **Hinala (the house remembers)**: the family's suspicion, 0 to 100, carried across the campaign. Only a level's first
-  clear moves it: sobra, emptied stashes, alarms, close calls and tattles raise it, a clean run lowers it, and putting
-  coins back (IBALIK) lowers it a lot. Each chapter has a floor, so suspicion always grows toward the storm. At its four
-  tiers the house changes (a purse moves, Mama counts it, people search longer, sleepers sleep lightly); the level
-  starts with "NEW IN THE HOUSE", the hideout shows Mama's mood, and the clear screen says what was noticed. They
-  suspect something, never Jun: they only find out in the ending. Rules and level format: `src/game/hinala.js`.
 - **Hide** in boxes, curtains and laundry baskets. An eye over you means someone watched you hide, so they'll find you.
 - **Secret alkansya**: every level hides one bonus stash off the main route.
 - **Bosses** each have a signature rule and finale. Lola's Siesta: a sleep meter that noise drains, then a finale
@@ -67,11 +63,6 @@ Collect the coin quota, then reach the exit.
   pandesal splits them. Ninang's Christmas party: guests are moving cover. Bagyo: the storm.
 - **Late levels** add the tanod (sweeping flashlight, whistle), tinderas (shout MAGNANAKAW!, stay by their stall)
   and a tricycle on a timed route.
-- **Random House**: a seeded generator builds a new multi-room house at difficulty 1–5. Mutators (BROWNOUT, WALANG
-  TSINELAS, BISITA) make it harder and pay more, and clearing them at level 3+ unlocks outfits. Payouts shrink with
-  each house cleared the same day. The **Daily House** is the same for everyone (it rolls over at midnight Manila
-  time). It is easier early in the week and hardest on Sunday, keeps a streak, and has a COPY RESULT share card.
-  During Pasko season it's a Noche Buena house.
 - **The hideout** is the home screen: the space under the house, with Mingming, her kittens and whoever is in on
   the secret. One big button continues the story; MAP opens the barangay map (levels as houses along a road,
   grouped into five chapters).
@@ -81,7 +72,7 @@ Collect the coin quota, then reach the exit.
   Only then do they see what every coin was for, and nobody scolds him. The epilogue level swaps KUPIT for
   **HINGI**: nobody to hide from, you walk up and ask. Three kittens trot after you there, and Tigre follows you
   on every level afterwards.
-- **Who's going?** Before every story level a card shows its stars, what changed in the house, and the crew: pick who
+- **Who's going?** Before every story level a card shows its stars and the crew: pick who
   goes (a level can suggest someone; every level can be finished as Jun). **Bing** also crawls under tables and beds
   (only someone right next to it sees her). **Kuya Ramil** talks the family out of one close call a level ("Ma,
   tinutulungan ko lang siya!"). **KASABWAT** (the old SAMPAYAN) sends Bing and Ramil in together: Z switches kids,
@@ -95,7 +86,7 @@ Collect the coin quota, then reach the exit.
   new trick rather than a bigger number. MEDYAS (socks: creaky boards stay quiet), PANYO (a handkerchief muffles one
   clasp or zipper a level), HOLEN (two marbles a level that roll on and lure, and dogs ignore), BAON (start with a
   tsinelas and a pandesal), BULSA (carry one more). Saves from before the change get back every coin they spent on
-  the old upgrades. Looks-only outfits and decor are there too; star milestones at 10/20/30/48 unlock more.
+  the old upgrades. Looks-only outfits and title-screen decor are sold there too (some are mini-game prizes).
   `node tools/economy.mjs` checks the prices against a careful and a greedy player.
 - **New rules in the story levels**: GATAS: a full bowl of milk must be carried out, and running spills it.
   IBALIK: Jun took too much, so you sneak the coins *back*. BAGYO: lightning, then thunder, and while it rolls
@@ -159,7 +150,7 @@ node tools/place-alkansya.mjs   # suggest secret alkansya spots (--write to add 
 - `src/entities` player, adults (Mama/Lola/Tita), targets
 - `src/render` palette, tiles, sprites (`sprites.js` draws the sheet, with code-drawn placeholders as a fallback)
 - `src/render/atlas.js` the sprite sheet; `tools/blender/` builds, renders and packs it ([docs/ART_PIPELINE.md](docs/ART_PIPELINE.md), [docs/ART_SPEC.md](docs/ART_SPEC.md))
-- `src/game/house.js` seeded Random House generator; `src/game/validate.js` level validator (both tested)
+- `src/game/validate.js` level validator (tested); `src/ui/cutin.js` the portrait cut-ins
 - `src/game/progression.js` characters, upgrades, `computeMods` (tested)
 - `src/game/world.js` all level rules (DOM-free, tested); `src/scenes/play.js` draws it
 - `src/world/sound.js` path-based noise (walls block, doors muffle); `src/world/pathfind.js` heap A*
@@ -186,4 +177,7 @@ node tools/place-alkansya.mjs   # suggest secret alkansya spots (--write to add 
 - [x] Redesign pass (Nov 2026): the caught-then-forgiven ending, redrawn characters (big heads, readable faces,
       Mingming and the kittens, portraits with moods), per-level missions, the thirteen older maps rebuilt
       (cover, loops, routines), fiesta videoke and crowd blending, softer vision cones, a kitten that follows you
+- [x] Arcade pass (Nov 2026): HINALA, the Random/Daily House and the star gifts cut; a 5-button title; English
+      actions; aimed throws (mouse / finger); TUMBANG PRESO fixes; the phone screen (full height, bigger text,
+      buttons at the bottom); cut-ins and HABOL!'s hug
 - [ ] Silent playtest with new players ([docs/PLAYTEST.md](docs/PLAYTEST.md))

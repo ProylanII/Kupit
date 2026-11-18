@@ -4,7 +4,7 @@ One JSON file per level in `src/data/levels/`, listed in order in `index.json`.
 Coordinates are tile `[x, y]` (0,0 = top-left). Maps can be any size (all rows the same width). A 15×22 map fits the screen;
 anything bigger scrolls with a camera that follows the player, and an edge marker points at the next objective.
 `npm test` validates every level (`src/game/validate.js`): widths, placement, adult routes (A*), player solvability with keys/gates,
-and that standing still at the spawn for 4 s is safe. The same validator checks every generated Random House.
+and that standing still at the spawn for 4 s is safe.
 
 ## Tiles
 
@@ -45,10 +45,6 @@ and that standing still at the spawn for 4 s is safe. The same validator checks 
   "suggest": "bing", "suggestWhy": "SMALL IS GOOD HERE", // optional: the kid the pre-level card recommends
   "team": ["bing", "ramil"], "spawn2": [x, y], // optional: tag-team (KASABWAT): two kids, Z switches, both must exit
   "laundryDown": { "every": 25, "floor": ";" },  // optional: the washing is taken in one line at a time, top first
-  "hinala": { "1": { "news": "MAMA COUNTS HER PURSE NOW", "do": [op, op] }, "2": {...}, "3": {...} },
-                               // optional: how the house changes at each HINALA tier (cumulative, max 2 ops per tier,
-                               // news max 40 chars). op: { "move": targetIndex, "to": [x,y] } | { "stop": adultIndex,
-                               // "at": [x,y,wait,face,"bilang"] } | { "adult": adultIndex, "cfg": {...} }. See src/game/hinala.js
   "giveBack": true,            // optional: targets are filled, not emptied (kind "ibalik"); pays stars only
   "hingi": true, "epilogue": true, // optional: every adult is harmless; no stars are recorded
   "clearText": "KITTENS SAFE!", // optional: headline on the clear screen
@@ -76,8 +72,7 @@ and that standing still at the spawn for 4 s is safe. The same validator checks 
 
 ## Missions
 
-Stars are missions (`src/game/missions.js`). `missions` names two; without it a level gets `fast` and `silent`
-(Random Houses do). A star stays earned across runs (`save.missions[id]` is a bit mask, `save.stars[id]` its count).
+Stars are missions (`src/game/missions.js`). `missions` names two; without it a level gets `fast` and `silent`. A star stays earned across runs (`save.missions[id]` is a bit mask, `save.stars[id]` its count).
 
 | Id | Star for | Lost mid-run? |
 |---|---|---|
@@ -136,7 +131,7 @@ Stash noises are not lures: adults in earshot turn to look, and sleepers close b
 | `alkansya` | normal | Optional. Its coins go to the bank, not the quota, and it can be found once per level. |
 
 Letting go keeps your progress: it drains slowly (about 8 s from full), so you can duck out of sight and come back.
-Put the bigger coin values in the riskier spots (Random House does this automatically).
+Put the bigger coin values in the riskier spots.
 
 ## Sound
 
@@ -169,11 +164,12 @@ Add a `boss` block to make a level a boss fight (bosses are just levels; list th
 
 ```jsonc
 "boss": {
-  "title": "LOLA'S SIESTA",   // intro banner
+  "title": "LOLA'S SIESTA",   // the boss's name (the intro cut-in's tag, or a banner without an intro)
+  "intro": { "mood": "happy", "line": "IIDLIP LANG AKO, APO..." }, // the boss slides in on a cut-in (ui/cutin.js); <= 60 chars
   "bonus": 10,                // extra coins the first time it is cleared
   "index": 0,                 // which adult is the boss: her name, cycle/alert bar in the HUD; catches on escape timeout
   "phases": [                 // fire in order once coins >= "at" (must be reachable)
-    { "at": 2, "banner": "LOLA IS A LIGHT SLEEPER!",   // <= 30 chars
+    { "at": 2, "banner": "LOLA IS A LIGHT SLEEPER!",   // <= 30 chars; the boss says it on a cut-in
       "adult": { "index": 0, "cycle": { "on": 9, "off": 7 } },     // retune; null removes a stat; also speed/range/fov/rate/sweep/ranged/route
       "spawn": [ { "type": "mama", "route": [[2,15],[12,15]] } ],  // new adults join
       "open": [[x,y]], "close": [[x,y]],                         // gates (G closed / g open)
