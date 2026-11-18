@@ -97,7 +97,11 @@
     }
    }
   ],
-  "finale": "seat"
+  "finale": "seat",
+  "intro": {
+   "mood": "angry",
+   "line": "WALANG LALAPIT SA KUSINA!"
+  }
  },
  "tiles": [
   "###############",

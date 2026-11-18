@@ -57,3 +57,36 @@ test('the cut systems stay cut: no HINALA blocks, no NEW IN THE HOUSE, no Random
   assert.ok(!('hinala' in old) && !('houses' in old));
   assert.equal(old.outfit, 'jersey', 'a look earned the old way stays owned');
 });
+
+// ---- cut-ins (ui/cutin.js): a queue; a freezing one holds the game until it starts to slide out; a tap skips it
+test('cut-ins: queued one after another, freezing ones hold the game, skip cuts one short', async () => {
+  const { CutIns } = await import('../src/ui/cutin.js');
+  const c = new CutIns();
+  assert.equal(c.showing, false);
+  c.push({ who: 'mama', line: 'SINO YAN?!', dur: 1, freeze: true });
+  c.push({ who: 'cat', line: 'MEW!', dur: 0.5, freeze: false });
+  assert.ok(c.freezing, 'a freezing cut-in holds the game even before its first frame');
+  c.update(0.5); assert.ok(c.freezing && c.showing);
+  c.skip(); c.update(0.2);
+  assert.ok(c.showing && !c.freezing, 'the next one (not freezing) is up');
+  c.update(0.6); assert.equal(c.showing, false);
+});
+
+test('HABOL! ends on a hug long enough for both cut-ins, and never says HULI KA', async () => {
+  const { SCOOP_T } = await import('../src/game/runner.js');
+  assert.ok(SCOOP_T >= 2.5);
+  const src = readFileSync(new URL('../src/scenes/runner.js', import.meta.url), 'utf8');
+  assert.ok(!/HULI KA/.test(src), '"HULI KA" belongs to the ending');
+  const atlas = JSON.parse(readFileSync(new URL('../assets/sprites/atlas.json', import.meta.url), 'utf8'));
+  assert.ok((atlas.frames || atlas)['jun|0|hug'], 'the hug frame is in the sheet');
+});
+
+test('every boss has a cut-in to come in on', () => {
+  const dir = new URL('../src/data/levels/', import.meta.url);
+  for (const f of JSON.parse(readFileSync(new URL('index.json', dir), 'utf8'))) {
+    const L = JSON.parse(readFileSync(new URL(f, dir), 'utf8'));
+    if (!L.boss) continue;
+    assert.ok(L.boss.intro?.line && L.boss.intro.line.length <= 60, `${f} boss intro`);
+    assert.ok(L.adults[L.boss.index ?? 0], `${f} boss adult`);
+  }
+});

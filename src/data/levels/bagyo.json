@@ -14,6 +14,7 @@
  ],
  "boss": {
   "title": "BAGYO: SAVE THE KITTENS",
+  "intro": { "mood": "shock", "line": "ANG LAKAS NG ULAN! NASAAN SI JUN?" },
   "index": 0,
   "bonus": 30,
   "finale": "tulo",

@@ -35,7 +35,7 @@ for (const phone of [true, false]) {
   for (let i = 0; i < n; i++) {
     await page.evaluate((i) => window.__kupit.start(i), i); await sleep(3000);
     const s = await state(page);
-    check(s.mode === 'play' && s.status === 'play' && s.time > 2, `${tag}: level ${i + 1} ${s.level} runs`);
+    check(s.mode === 'play' && s.status === 'play' && s.time > 0.5, `${tag}: level ${i + 1} ${s.level} runs`); // (a boss comes in on a 2 s cut-in first)
     await shot(`level-${String(i + 1).padStart(2, '0')}`);
   }
   // pause, options from pause, resume
@@ -45,7 +45,7 @@ for (const phone of [true, false]) {
   // dev regression: hotkeys U (quota) O (exit) then walk in = clear, C = clear, G = god
   await key('u', 100); await key('o', 100);
   check((await page.evaluate(() => window.__kupit.play.world.open)) === true, `${tag}: dev U fills the quota`);
-  await page.evaluate(() => window.__kupit.start(2)); await sleep(300); await key('c', 900);
+  await page.evaluate(() => window.__kupit.start(2)); await sleep(300); await key('c', 2200); // (the winner's cut-in plays first)
   check((await state(page)).mode === 'clear', `${tag}: dev C clears the level`); await shot('clear');
   await sleep(1500); await shot('clear-stars');
   check(errors.length === 0, `${tag}: no console errors, page errors or failed requests${errors.length ? '\n  ' + errors.join('\n  ') : ''}`);

@@ -112,7 +112,11 @@ export class PresoScene extends ModeScene {
       case 'tumba':
         sfx.clank(); this.kick(e.who === s.jun ? 4 : 2); this.buzz(e.who === s.jun ? [30, 20, 50] : 20);
         this.burst(e.x, e.y - 4, e.who === s.jun ? 18 : 8, [C.gold, C.white, C.orange], { speed: 90, up: 50, g: 180 });
-        if (e.who === s.jun) { this.pop(e.score >= WIN ? 'PANALO!' : 'TUMBA!', C.gold, 150, 1.1, 5); sfx.cheer(); this.bingSay = { text: e.score >= WIN ? 'ANG GALING, KUYA!' : 'GALING, KUYA!', t: 1.6 }; }
+        if (e.who === s.jun) {
+          sfx.cheer(); this.bingSay = { text: e.score >= WIN ? 'ANG GALING, KUYA!' : 'GALING, KUYA!', t: 1.6 };
+          if (e.score === 1) this.cuts.push({ who: this.look, mood: 'happy', name: 'JUN', line: 'TUMBA! TAKBO, KUNIN ANG TSINELAS!', col: C.gold, dur: 1.5, freeze: false });
+          else this.pop(e.score >= WIN ? 'PANALO!' : 'TUMBA!', C.gold, 150, 1.1, 5);
+        }
         else this.pop('TUMBA!', C.white, 150, 0.7, 3);
         this.showTip('preso-run', 'TUMBA! GRAB YOUR TSINELAS AND GET BACK BEHIND THE LINE');
         break;

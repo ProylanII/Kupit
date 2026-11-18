@@ -595,7 +595,9 @@ def face_front(c, look, hy, pose):
     loud = pose in ('alert', 'caught')
     ey = hy + 5
     for i, ex in enumerate((X0 + 2, X0 + 8)):          # each eye is a 2x2 box at ex..ex+1, ey..ey+1
-        if shut:
+        if pose == 'hug':                               # eyes squeezed shut with joy: two little arches
+            c.px(ex - 1, ey + 1, INK); c.hline(ex, ex + 1, ey, INK); c.px(ex + 2, ey + 1, INK)
+        elif shut:
             c.hline(ex, ex + 1, ey + 1, INK)
         elif kid or pose == 'alert':                    # big shiny eyes
             c.rect(ex, ey, 2, 2, INK); c.px(ex, ey, WHITE)
@@ -1009,6 +1011,8 @@ def humanoid(name, d, f):
             arm_front(c, ax[0], ty, n, sleeve)
             c.px(ax[1], ty, sl); c.px(ax[1] + 1, ty, sl)
             c.vline(up[1], hy + 1, ty - 1, 'S'); c.px(up[1], hy + 1, 's')
+        elif pose == 'hug':    # (drawn over the kitten, after the head)
+            pass
         elif pose == 'phone':  # hand up to the ear, holding a phone
             arm_front(c, ax[0], ty, n, sleeve)
             c.px(ax[1], ty, sl); c.px(ax[1] + 1, ty, sl)
@@ -1018,6 +1022,16 @@ def humanoid(name, d, f):
                 short = (fr == 1 and i == 1) or (fr == 3 and i == 0)
                 arm_front(c, x, ty, n - (1 if short and n > 2 else 0), sleeve)
     head(c, name, look, hy, view, pose)
+    if pose == 'hug':  # HABOL!'s end: Tigre held up against his chest, both arms around him
+        cx = L['cx']
+        for j, r in enumerate(KIT_SIT[:5]):
+            for i, ch in enumerate(r):
+                if ch != '.':
+                    c.px(cx - 3 + i, ty - 1 + j, KIT.get(ch, ch))
+        a0, a1 = tx0 - 1, tx0 + tw
+        c.px(a0, ty, sl); c.px(a1, ty, sl)                          # sleeves at the shoulders
+        c.px(a0, ty + 1, 'S'); c.px(a1, ty + 1, 's')                # elbows
+        c.hline(a0 + 1, cx - 1, ty + 2, 'S'); c.hline(cx, a1 - 1, ty + 2, 's')  # forearms across his tummy
     if pose == 'phone' and view != 'side':
         x = X0 + HEAD_W
         c.rect(x - 1, hy + 3, 2, 3, INK); c.px(x - 1, hy + 4, '#7fd7ff')
@@ -1422,6 +1436,9 @@ def build_all():
             for pose in RUN_POSES:
                 c, look = runner(name, pose)
                 out[f'{name}|2|{pose}'] = c.image(look)
+        if name == 'jun':  # HABOL!'s end: the hug (front only)
+            c, look = humanoid(name, 0, 'hug')
+            out['jun|0|hug'] = c.image(look)
         if name == 'kuting':  # HABOL!: Tigre leaping over things
             c, look = cat(name, 2, 'leap')
             out['kuting|2|leap'] = c.image(look)

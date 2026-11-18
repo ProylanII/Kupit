@@ -8,6 +8,7 @@ import { C } from '../render/palette.js';
 import { sfx } from '../core/audio.js';
 import { vibrate } from '../core/haptics.js';
 import { settings } from '../core/settings.js';
+import { CutIns } from '../ui/cutin.js';
 // Mini-games are drawn at the design size (240x392). On a tall phone the whole scene is shifted down by EXTRA, so the
 // field sits right on the control strip at the bottom of the screen (beginField / endField), and the buttons, whose
 // screen positions moved down with it, are drawn EXTRA higher inside that shift.
@@ -51,6 +52,7 @@ export class ModeScene {
     this.lastDraw = 0;
     this.cardT = opts.noCard ? 0 : 4.5; // the missions, shown for the first seconds (the campaign shows them on the card before)
     this.coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+    this.cuts = new CutIns(); // the big moments: a portrait slides in with a line (ui/cutin.js)
   }
 
   get status() { return this.sim.status; }
@@ -82,6 +84,7 @@ export class ModeScene {
     if (!this.tip && this.tipQ.length) { const q = this.tipQ.shift(); this.tip = { ...q, t: 4.2 }; this.opts.tips?.mark(q.id); }
     if (this.toast && (this.toast.t -= dt) <= 0) this.toast = null;
     if (this.big && (this.big.t -= dt) <= 0) this.big = null;
+    this.cuts.update(dt);
     this.cardT = Math.max(0, this.cardT - dt);
     for (const p of this.parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += p.g * dt; p.l -= dt; }
     this.parts = this.parts.filter((p) => p.l > 0);
@@ -128,7 +131,7 @@ export class ModeScene {
     if (EXTRA > 0) { g.fillStyle = band; g.fillRect(0, 0, VIEW_W, EXTRA); }
     g.save(); g.translate(0, EXTRA);
   }
-  endField(g) { g.restore(); }
+  endField(g) { this.cuts.draw(g, 112); g.restore(); }
 
   drawTopTip(g, y = 26) {
     const line = this.tip?.text;

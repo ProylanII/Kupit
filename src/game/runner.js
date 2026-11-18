@@ -16,6 +16,7 @@ export const SLIDE_T = 0.5, SLIDE_MAX = 1.0, DIVE_V = 440;
 export const STAND_H = 18, SLIDE_H = 8, HALF_W = 4;
 export const SPEED0 = 96, SPEED1 = 122, ACCEL = 120, STUN_SPEED = 34, STUN_T = 0.45, INV_T = 1.3;
 export const GAP0 = 96, GAP_HIT = 42, GAP_MIN = 66, GAP_MAX = 222, GAP_HEAL = 6;
+export const SCOOP_T = 2.8; // the end: Jun scoops Tigre up and hugs him (the scene plays the hug and the cut-ins)
 const FALL_DEPTH = 18;
 
 // what each kind of thing on the street is: w/h = body (h above the street); top = can be stood on;
@@ -211,7 +212,7 @@ export class Runner extends MiniSim {
     // --- Tigre: stumbles let him get away, clean running closes the gap
     if (this.stunT <= 0 && !this.fell) this.gap = Math.max(GAP_MIN, this.gap - GAP_HEAL * dt);
     if (this.gap >= GAP_MAX && !this.god) { this.beat = { kind: 'gone', t: 1.3 }; this.emit({ type: 'gone' }); return; }
-    if (this.x >= this.end - 16) { this.beat = { kind: 'scoop', t: 1.6 }; this.speed = 0; this.emit({ type: 'scoop', x: this.x }); }
+    if (this.x >= this.end - 16) { this.beat = { kind: 'scoop', t: SCOOP_T }; this.speed = 0; this.emit({ type: 'scoop', x: this.x }); }
     this.checkMissions();
   }
 

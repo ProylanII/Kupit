@@ -38,7 +38,7 @@ await sleep(1800);
 await page.screenshot({ path: `${out}/ending-results.png` });
 await page.evaluate((i) => window.__kupit.start(i), storm);
 await sleep(600);
-await key('c', 900);
+await key('c', 2200); // (the winner's cut-in plays first)
 check((await state(page)).mode === 'clear', 'a replay of the storm ends on the results, not the scene again');
 check(errors.length === 0, `no console errors${errors.length ? '\n  ' + errors.join('\n  ') : ''}`);
 await browser.close();

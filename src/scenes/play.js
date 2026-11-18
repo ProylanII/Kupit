@@ -16,6 +16,15 @@ import { GHOST_EVERY, ghostAt } from '../game/ghost.js';
 import { VIEW_W, VIEW_H, MAP_H as STRIP_Y, EXTRA, BASE_H, MAX_EXTRA, BUTTON, BUTTON2, PAUSE_BTN, ABILITY_BTN, ITEM_BTN, SWAP_BTN, layout } from '../core/input.js';
 import { CHARACTERS } from '../game/progression.js';
 import { Coach, COACHED_TIPS } from '../game/tutorial.js';
+import { CutIns } from '../ui/cutin.js';
+
+// The end of a level: the kid who went says something happy (a cut-in) before the results.
+const WIN_LINES = {
+  jun: ['PARA KAY MINGMING!', 'SAPAT NA. TARA NA!', 'WALANG NAKAPANSIN!', 'GATAS NA NAMAN BUKAS!'],
+  bing: ['HEHE! ANG GALING KO, KUYA!'], ramil: ['EASY LANG, BUNSO.'], nene: ['ANG CUTE KO KASI!'],
+  cat: ['MRRROW!'],
+};
+const PHASE_MOOD = { lola: 'shock', mama: 'angry', tatay: 'angry', ninang: 'happy' };
 
 // The map window: the play area above the control strip (which starts at STRIP_Y). MAP_H is the window's height and
 // TOP its distance from the top of the screen; both follow the screen and the level (Play.syncView). A map that fits
@@ -131,7 +140,14 @@ export class Play {
     this.pings = [];   // off-screen noises
     this.windups = []; // tattle shouts charging up
     this.tickT = 0;
-    this.banner = level.boss ? { kind: 'boss', text: level.boss.title || level.name, t: 3 } : null;
+    this.cuts = new CutIns(); // portraits that slide in with a line (ui/cutin.js)
+    this.scoldSeen = new Set(); // adults who have already found you this level (their next close call is a short one)
+    this.outro = false;         // the level is clear and the winner's cut-in is playing
+    const bossAdult = level.boss && level.adults?.[level.boss.index ?? 0];
+    if (level.boss?.intro && bossAdult) {
+      this.cuts.push({ who: bossAdult.type, mood: level.boss.intro.mood || '', name: level.boss.title || level.name, line: level.boss.intro.line, col: C.red, dur: 2, freeze: true });
+      this.banner = null;
+    } else this.banner = level.boss ? { kind: 'boss', text: level.boss.title || level.name, t: 3 } : null;
     this.coneData = new ImageData(VIEW_W, BASE_H + MAX_EXTRA);
     this.coneCv = document.createElement('canvas');
     this.coneCv.width = VIEW_W; this.coneCv.height = BASE_H + MAX_EXTRA;
@@ -182,7 +198,11 @@ export class Play {
 
   get scrolls() { const m = this.world.map; return m.w * TILE > VIEW_W || m.h * TILE > MAP_H; }
 
-  get status() { return this.world.status; }
+  get status() {
+    const w = this.world;
+    if (w.status !== 'play' && w.events.length) { for (const e of w.events) this.onEvent(e, 0); w.events.length = 0; } // (a finish from outside an update: dev tools)
+    return this.outro && this.cuts.showing ? 'play' : w.status;
+  }
   get result() { return this.world.result; }
   get catcher() { return this.world.catcher; }
   get reason() { return this.world.reason; }
@@ -240,6 +260,13 @@ export class Play {
   update(dt) {
     const w = this.world;
     this.syncView();
+    this.cuts.update(dt);
+    if (this.cuts.freezing || w.status !== 'play') {
+      const inp = this.input;
+      if (inp.tapPos || inp.pressed(' ') || inp.pressed('Enter') || inp.pressed('e')) this.cuts.skip();
+      inp.poll(); // (presses during it don't carry over into the level)
+      return;
+    }
     this.input.button2Enabled = w.player.items.length > 0 && !w.noThrow;
     this.input.abilityEnabled = true;
     this.input.swapEnabled = !!w.kids && w.kids.every((k) => !k.out); // KASABWAT
@@ -335,7 +362,13 @@ export class Play {
         if (e.final) { sfx.sentBack(); this.buzz([80, 40, 140]); this.kick(6); if (settings.flash) this.flash = 0.6; }
         else {
           sfx.muntik(); this.buzz([60, 30, 60]); this.kick(4); if (settings.flash) this.flash = 0.45;
-          this.toast = { text: e.lost ? `YOU DROPPED ${e.lost} ${e.lost === 1 ? 'COIN' : 'COINS'}` : 'NOTHING DROPPED', col: C.orange, t: 2.4 };
+          const a = w.scold?.who, left = w.livesLeft, first = a && !this.scoldSeen.has(a);
+          if (a) {
+            this.scoldSeen.add(a);
+            this.cuts.clear();
+            this.cuts.push({ who: a.type, mood: 'angry', name: a.cfg.name, line: first ? a.cfg.scold || a.cfg.shout : 'MUNTIK NA!', col: C.orange, dur: first ? 1.65 : 1, freeze: false,
+              sub: `MUNTIK NA! ${left} ${left === 1 ? 'CHANCE' : 'CHANCES'} LEFT${e.lost ? `  -${e.lost} ${e.lost === 1 ? 'COIN' : 'COINS'}` : ''}` });
+          } else this.toast = { text: e.lost ? `YOU DROPPED ${e.lost} ${e.lost === 1 ? 'COIN' : 'COINS'}` : 'NOTHING DROPPED', col: C.orange, t: 2.4 };
           this.showTip('caught');
         }
         break;
@@ -351,9 +384,13 @@ export class Play {
         sfx.pickup(); this.toast = { text: `${out} IS OUT! NOW ${next}`, col: C.green, t: 2.6 }; break;
       }
       case 'laundry': sfx.whoosh(); this.toast = { text: e.left ? 'TITA TAKES IN A LINE OF WASHING' : 'THE LAST OF THE WASHING IS IN', col: C.orange, t: 2.2 }; break;
-      case 'palusot': sfx.skill(); this.toast = { text: 'PALUSOT! KUYA RAMIL TALKED YOU OUT', col: C.green, t: 2.4 }; this.showTip('palusot'); break;
+      case 'palusot': sfx.skill(); this.cuts.clear(); this.cuts.push({ who: 'ramil', mood: 'happy', name: 'KUYA RAMIL', line: 'MA, TINUTULUNGAN KO LANG PO SIYA!', col: C.green, dur: 1.6, freeze: false, sub: 'PALUSOT! NO CHANCE LOST', subCol: C.green }); this.showTip('palusot'); break;
       case 'medyas': this.showTip('medyas'); break;
-      case 'clear': if (!this.opts.quietClear) sfx.clear(); this.buzz([30, 30, 30], C.green); break;
+      case 'clear':
+        if (!this.opts.quietClear) sfx.clear();
+        this.buzz([30, 30, 30], C.green);
+        if (!this.opts.quietClear && !this.level.hingi && !this.level.epilogue) { this.outro = true; this.cuts.clear(); this.cuts.push(this.winCut()); }
+        break;
       case 'door': case 'switch': sfx.click(); break;
       case 'tune': if (this.onScreen(e.who.x, e.who.y, 60)) sfx.tune(); break;
       case 'jingle': sfx.jingle(); break;
@@ -390,7 +427,13 @@ export class Play {
         this.rings.push({ x: p.x + 4, y: p.y - 14, r: 12, age: 0, lure: false, tattle: false });
         break;
       }
-      case 'phase': sfx.phase(); this.buzz([40, 30, 40]); this.kick(3); this.banner = { kind: 'phase', text: e.text, t: 3 }; break;
+      case 'phase': {
+        sfx.phase(); this.buzz([40, 30, 40]); this.kick(3);
+        const b = this.level.boss, a = b && w.adults[b.index ?? 0];
+        if (a && e.text) this.cuts.push({ who: a.type, mood: this.level.storm ? 'shock' : PHASE_MOOD[a.type] || 'shock', name: a.cfg.name, line: e.text, col: C.red, dur: 1.5, freeze: true });
+        else this.banner = { kind: 'phase', text: e.text, t: 3 };
+        break;
+      }
       case 'land': sfx.thud(); break;
       case 'hide': case 'unhide': sfx.hide(); if (e.seen) this.showTip('seenHide'); break;
       case 'device': sfx.music(); break;
@@ -417,6 +460,14 @@ export class Play {
       case 'wade': if (this.onScreen(e.x, e.y)) { sfx.splash(); for (let i = 0; i < (e.deep ? 6 : 3); i++) this.drops.push({ x: e.x + Math.random() * 8 - 4, y: e.y + 4, vx: Math.random() * 40 - 20, vy: -30 - Math.random() * 30, l: 0.35, splash: true }); } break;
     }
     this.opts.log?.(e, w);
+  }
+
+  // The winner's cut-in at the end of a level: whoever went, happy, with a line (the same one each time per level).
+  winCut() {
+    const w = this.world, id = w.mods.cat ? 'cat' : w.mods.charId || 'jun', lines = WIN_LINES[id] || WIN_LINES.jun;
+    let h = 0; for (const ch of String(this.level.id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const who = id === 'jun' && this.opts.outfit && this.opts.outfit !== 'basic' ? `jun~${this.opts.outfit}` : id;
+    return { who, mood: 'happy', name: id === 'cat' ? 'MINGMING' : CHARACTERS[id]?.name || 'JUN', line: lines[h % lines.length], col: C.green, dur: 1.5, freeze: true, sub: 'CLEAR!', subCol: C.gold };
   }
 
   // ---------------------------------------------------------------- drawing
@@ -807,6 +858,7 @@ export class Play {
     this.drawThreats(g);
     this.drawCompass(g);
     this.drawHud(g);
+    this.cuts.draw(g, Math.round(MAP_H * 0.28));
   }
 
   // ---- SI MINGMING: the cat walks, sits, crouches to bite, and hops up onto the furniture
@@ -1236,14 +1288,6 @@ export class Play {
       drawBigBand(g, null, 140, this.toast.col, { w: tw, x: Math.round((VIEW_W - tw) / 2), lines: L, alpha: 0.85 });
     }
     if (this.cardT > 0 && !this.banner && !w.scold && w.status === "play") { g.globalAlpha = Math.min(1, this.cardT * 2); this.drawMissions(g, 160, this.opts.earned | 0); g.globalAlpha = 1; }
-    if (w.scold) { // the close-call beat: who found you, and what's left (amber: the red "HULI KA!" is the ending's)
-      const a = w.scold.who;
-      g.globalAlpha = 0.8; g.fillStyle = C.ink; g.fillRect(0, 96, VIEW_W, 38); g.globalAlpha = 1;
-      g.fillStyle = C.orange; g.fillRect(5, 99, 32, 32);
-      if (!drawPortrait(g, a.type, 7, 101)) drawActor(g, a.type, 21, 124, 0, 'alert');
-      drawText(g, 'MUNTIK NA!', 44, 100, C.orange, { scale: 3, shadow: C.ink });
-      drawText(g, `${w.livesLeft} ${w.livesLeft === 1 ? 'CHANCE' : 'CHANCES'} LEFT`, 44, 122, C.white);
-    }
 
     // control strip (left-handed: buttons on the left, text on the right)
     const L = layout.left, tx = L ? VIEW_W - 6 : 6, al = { align: L ? 'right' : 'left' };

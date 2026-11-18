@@ -1,6 +1,6 @@
 // HABOL!, drawn: a side view of the eskinita at the end of the afternoon, in layers that slide past at their own
 // speed (sky, rooftops, house fronts, posts and wires, the street, plants in front). All rules live in game/runner.js.
-import { Runner, KINDS, GAP_MIN, GAP_MAX, STAND_H } from '../game/runner.js';
+import { Runner, KINDS, GAP_MIN, GAP_MAX, STAND_H, SCOOP_T } from '../game/runner.js';
 import { ModeScene, disc, ring, bubble } from './mode.js';
 import { getSprite, drawCoin, drawObj } from '../render/sprites.js';
 import { drawText } from '../ui/font.js';
@@ -109,7 +109,12 @@ export class RunnerScene extends ModeScene {
         break;
       }
       case 'gone': sfx.meow(); this.pop('NAWALA!', C.orange, 150, 1.3, 5); break;
-      case 'scoop': sfx.meow(); sfx.cheer(); this.pop('AYAN KA, TIGRE!', C.gold, 140, 1.6, 3); this.burst(s.end - 4, -14, 14, [C.pink, C.white, C.gold], { speed: 40, up: 60, g: 30, l: 1.4, s: 2 }); break;
+      case 'scoop':
+        sfx.meow(); sfx.cheer(); this.hearts = []; this.heartT = 0.35;
+        this.burst(s.end - 4, -14, 14, [C.pink, C.white, C.gold], { speed: 40, up: 60, g: 30, l: 1.4, s: 2 });
+        this.cuts.push({ who: this.look, mood: 'happy', name: 'JUN', line: 'AYAN KA, TIGRE! DITO KA LANG SA AKIN.', col: C.gold, dur: 1.4, freeze: false });
+        this.cuts.push({ who: 'cat', name: 'TIGRE', line: 'MEW! PRRR...', side: 'right', col: C.orange, dur: 1.1, freeze: false });
+        break;
     }
   }
 
@@ -397,14 +402,17 @@ export class RunnerScene extends ModeScene {
     if (s.beat?.kind === 'gone') { x += (1.3 - s.beat.t) * 120; }
     const spr = getSprite('tigre', 2, leap ? 'leap' : pose === 'sit' ? 'sit' : pose);
     g.globalAlpha = 0.3; r(g, C.ink, x - 4, GY - 1, 9, 2); g.globalAlpha = 1;
-    if (s.beat?.kind === 'scoop') return; // (Jun has him in his arms)
+    if (s.beat?.kind === 'scoop' && this.hugging) return; // (Jun has him in his arms)
     g.drawImage(spr, Math.round(x - spr.width / 2), Math.round(GY + y + 1 - spr.height));
   }
 
   drawJun(g, x, now) {
     const s = this.sim;
     let pose, sxk = 1, syk = 1;
-    if (s.beat?.kind === 'scoop') pose = 'reach';
+    const scoop = s.beat?.kind === 'scoop' ? SCOOP_T - s.beat.t : -1; // seconds into the end
+    this.hugging = scoop >= 0.3;
+    if (this.hugging) { this.drawHug(g, x, scoop, now); return; }
+    if (scoop >= 0) pose = 'reach';
     else if (s.stunT > 0 || s.fell) pose = 'caught';
     else if (s.sliding) pose = 'slide';
     else if (!s.onGround) pose = s.vy < -40 ? 'jump' : 'fall';
@@ -421,11 +429,31 @@ export class RunnerScene extends ModeScene {
     g.drawImage(spr, Math.round(x - w / 2 + (pose === 'slide' ? 3 : 0)), feet - h, w, h);
     if (s.fell) g.restore();
     g.globalAlpha = 1;
-    if (s.beat?.kind === 'scoop') { // Tigre in his arms
-      const k = getSprite('tigre', 0, 'sit');
-      g.drawImage(k, Math.round(x + 2), feet - 16);
-      if (Math.floor(now * 3) % 2) { r(g, C.pink, x + 1, feet - 30, 2, 1); r(g, C.pink, x + 4, feet - 30, 2, 1); r(g, C.pink, x + 1, feet - 29, 5, 1); r(g, C.pink, x + 2, feet - 28, 3, 1); r(g, C.pink, x + 3, feet - 27, 1, 1); }
+  }
+
+  // The end of the chase: Jun turns to us with Tigre held tight, eyes shut, rocking a little and squeezing, while
+  // hearts float up and Tigre purrs.
+  drawHug(g, x, t, now) {
+    const s = this.sim, feet = GY + Math.round(s.y) + 1;
+    const spr = getSprite(this.look, 0, 'hug');
+    const squeeze = (t % 0.6) < 0.12, sway = Math.floor(t / 0.45) % 2 ? 1 : -1;
+    const w = Math.round(spr.width * (squeeze ? 1.08 : 1)), h = Math.round(spr.height * (squeeze ? 0.92 : 1));
+    g.globalAlpha = 0.3; r(g, C.ink, x - 6, GY - 1, 13, 2); g.globalAlpha = 1;
+    g.drawImage(spr, Math.round(x - w / 2) + sway, feet - h, w, h);
+    // hearts: one every so often from over his head, drifting up and fading
+    this.hearts ||= [];
+    if ((this.heartT -= 1 / 60) <= 0) { this.heartT = 0.28; this.hearts.push({ x: x + (Math.random() * 14 - 7), y: feet - h - 2, l: 1 }); }
+    for (const p of this.hearts) {
+      p.y -= 0.45; p.x += Math.sin((1 - p.l) * 9) * 0.25; p.l -= 1 / 70;
+      if (p.l <= 0) continue;
+      g.globalAlpha = Math.min(1, p.l * 2);
+      const hx = Math.round(p.x), hy = Math.round(p.y);
+      r(g, C.ink, hx - 1, hy - 1, 7, 6);
+      r(g, C.pink, hx, hy, 2, 1); r(g, C.pink, hx + 3, hy, 2, 1); r(g, C.pink, hx, hy + 1, 5, 1); r(g, C.pink, hx + 1, hy + 2, 3, 1); r(g, C.pink, hx + 2, hy + 3, 1, 1);
     }
+    this.hearts = this.hearts.filter((p) => p.l > 0);
+    g.globalAlpha = 1;
+    if (t > 0.9) bubble(g, 'PRRR...', x + 14, feet - h - 12);
   }
 
   drawHud(g, now) {
@@ -459,7 +487,7 @@ export class RunnerScene extends ModeScene {
     const arrow = (up) => (gg, x, y) => { gg.fillStyle = C.ink; for (let i = 0; i < 4; i++) gg.fillRect(x - i, up ? y - 2 + i : y + 1 - i, 1 + i * 2, 1); };
     const hintJump = this.tip?.id === 'habol-jump' || this.signs.some((t) => t.icon !== 'down' && t.x - s.x < 90);
     const hintSlide = this.signs.some((t) => t.icon === 'down' && t.x - s.x < 90);
-    this.drawRoundButton(g, SLIDE_BTN, 'SLIDE', { down: this.prevSlide, col: '#2f5fbf', colDown: '#4f8fff', icon: arrow(false), hint: hintSlide });
+    this.drawRoundButton(g, { ...SLIDE_BTN, y: SLIDE_BTN.y + EXTRA }, 'SLIDE', { down: this.prevSlide, col: '#2f5fbf', colDown: '#4f8fff', icon: arrow(false), hint: hintSlide });
     this.drawRoundButton(g, BUTTON, 'JUMP', { down: this.prevJump, icon: arrow(true), hint: hintJump });
   }
 

@@ -62,7 +62,11 @@
     }
    }
   ],
-  "finale": "photo"
+  "finale": "photo",
+  "intro": {
+   "mood": "happy",
+   "line": "PICTURE TAYO MAMAYA, HA!"
+  }
  },
  "tiles": [
   "###############",

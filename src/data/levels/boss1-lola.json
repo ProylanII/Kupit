@@ -58,7 +58,11 @@
     }
    }
   ],
-  "finale": "silentExit"
+  "finale": "silentExit",
+  "intro": {
+   "mood": "happy",
+   "line": "IIDLIP LANG AKO, APO..."
+  }
  },
  "tiles": [
   "###############",

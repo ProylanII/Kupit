@@ -42,7 +42,11 @@
     }
    }
   ],
-  "finale": "carryOut"
+  "finale": "carryOut",
+  "intro": {
+   "mood": "",
+   "line": "ASO, BANTAYAN MO ANG ISDA!"
+  }
  },
  "tiles": [
   "###############",
