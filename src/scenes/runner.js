@@ -6,7 +6,7 @@ import { getSprite, drawCoin, drawObj } from '../render/sprites.js';
 import { drawText } from '../ui/font.js';
 import { C } from '../render/palette.js';
 import { sfx } from '../core/audio.js';
-import { VIEW_W, VIEW_H, MAP_H, BUTTON } from '../core/input.js';
+import { VIEW_W, BASE_H as VIEW_H, BASE_MAP_H as MAP_H, EXTRA, BUTTON } from '../core/input.js';
 import { tileHash as hash } from '../world/light.js';
 
 export const GY = 286;           // the street line on screen (feet)
@@ -42,8 +42,8 @@ export class RunnerScene extends ModeScene {
     let slide = k.has('s') || k.has('ArrowDown') || k.has('k');
     for (const q of inp.pointers.values()) {
       if (q.role === 'btn') { jump = true; continue; }
-      const inStrip = q.sy >= MAP_H;
-      if (inStrip && Math.hypot(q.sx - SLIDE_BTN.x, q.sy - SLIDE_BTN.y) <= SLIDE_BTN.r + 8) { slide = true; continue; }
+      const qy = q.sy - EXTRA, inStrip = qy >= MAP_H; // (the scene is shifted down by EXTRA on a tall phone)
+      if (inStrip && Math.hypot(q.sx - SLIDE_BTN.x, qy - SLIDE_BTN.y) <= SLIDE_BTN.r + 8) { slide = true; continue; }
       if (inStrip) continue;
       if (!this.seen.has(q)) { this.seen.add(q); q.kind = 'tap'; }
       if (q.kind === 'tap' && q.y - q.sy > 14) q.kind = 'swipe';
@@ -115,6 +115,12 @@ export class RunnerScene extends ModeScene {
 
   // ---------------------------------------------------------------- drawing
   draw(g) {
+    this.beginField(g, '#6fa3d8'); // (the sky goes on up)
+    this.drawField(g);
+    this.endField(g);
+  }
+
+  drawField(g) {
     const s = this.sim;
     this.frameDt();
     const now = performance.now() / 1000, [ox, oy] = this.shakeOffset();

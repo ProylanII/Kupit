@@ -7,15 +7,23 @@ import { buildBackground, drawLaundry, drawTallTop } from '../render/tiles.js';
 import { drawActor, drawTarget, drawCoin, drawObj, drawPortrait, getSprite, drawStar, KEY_COLORS } from '../render/sprites.js';
 import { MISSIONS, missionLabel } from '../game/missions.js';
 import { C, hexToRgb } from '../render/palette.js';
-import { drawText, textWidth } from '../ui/font.js';
+import { drawText, textWidth, drawBig, bigWidth, wrapBig, drawBigBand } from '../ui/font.js';
 import { sfx } from '../core/audio.js';
 import { dev } from '../core/dev.js';
 import { vibrate, canVibrate, hapticsOn } from '../core/haptics.js';
 import { settings } from '../core/settings.js';
 import { GHOST_EVERY, ghostAt } from '../game/ghost.js';
-import { VIEW_W, VIEW_H, MAP_H, BUTTON, BUTTON2, PAUSE_BTN, ABILITY_BTN, ITEM_BTN, SWAP_BTN, layout } from '../core/input.js';
+import { VIEW_W, VIEW_H, MAP_H as STRIP_Y, EXTRA, BASE_H, MAX_EXTRA, BUTTON, BUTTON2, PAUSE_BTN, ABILITY_BTN, ITEM_BTN, SWAP_BTN, layout } from '../core/input.js';
 import { CHARACTERS } from '../game/progression.js';
 import { Coach, COACHED_TIPS } from '../game/tutorial.js';
+
+// The map window: the play area above the control strip (which starts at STRIP_Y). MAP_H is the window's height and
+// TOP its distance from the top of the screen; both follow the screen and the level (Play.syncView). A map that fits
+// sits right on the control strip, and the room above it (a tall phone) holds the top bar, so nothing covers the
+// map; a scrolling map gets everything below the top bar's band. On a desktop TOP is 0 and MAP_H 352, as designed.
+let MAP_H = 352, TOP = 0;
+const HUD_BAND = 30;  // the top bar, the KAIN NA / boss bars and a one-line tip
+const HUD_FULL = 44;  // ...and a two-line tip
 
 const YELLOW = hexToRgb(C.yellow), RED = hexToRgb(C.red);
 const SUSPICIOUS = new Set(['investigate', 'inspect', 'search']);
@@ -68,8 +76,8 @@ const TIPS = {
   hide: 'A HIDING SPOT! PRESS ACT TO HIDE. MOVE TO COME OUT',
   throw: (p) => (p.touch ? 'TSINELAS! HOLD THE BLUE BUTTON, SLIDE TO A SPOT, LET GO' : 'TSINELAS! PRESS Q, POINT WITH THE MOUSE, CLICK'),
   pandesal: 'PANDESAL! THROW IT NEAR ASO TO KEEP HIM BUSY',
-  cycle: (p) => (p.input.touchUsed ? 'TWO KINDS OF ITEMS: TAP THE SMALL DOT TO SWITCH' : 'TWO KINDS OF ITEMS: R SWITCHES WHICH ONE'),
-  skill: (p) => `SKILL READY: ${p.world.mods.skill.label}! ${p.input.touchUsed ? 'GREEN BUTTON' : 'PRESS F'}`,
+  cycle: (p) => (p.touch ? 'TWO KINDS OF ITEMS: TAP THE SMALL DOT TO SWITCH' : 'TWO KINDS OF ITEMS: R SWITCHES WHICH ONE'),
+  skill: (p) => `SKILL READY: ${p.world.mods.skill.label}! ${p.touch ? 'GREEN BUTTON' : 'PRESS F'}`,
   door: 'DOORS BLOCK SIGHT. ACT OPENS AND CLOSES THEM',
   creaky: 'CREAKY DOOR! HOLD ACT TO OPEN IT SLOWLY AND QUIETLY',
   locked: 'LOCKED! FIND THE KEY OF THE SAME COLOR',
@@ -98,7 +106,7 @@ const TIPS = {
   team: 'TWO OF YOU: Z (OR THE PURPLE BUTTON) SWITCHES KIDS',
   dark: 'IN THE DARK THEY ONLY SEE YOU UP CLOSE. AVOID LIGHT',
   cat: 'UP ON A TABLE OR SOFA THEY SEE YOU FROM HALF AS FAR',
-  tabig: (p) => (p.input.touchUsed ? 'SWAT: THE GREEN BUTTON KNOCKS A CUP OFF. IT PULLS THEM AWAY' : 'SWAT: F KNOCKS A CUP OFF. IT PULLS THEM AWAY'),
+  tabig: (p) => (p.touch ? 'SWAT: THE GREEN BUTTON KNOCKS A CUP OFF. IT PULLS THEM AWAY' : 'SWAT: F KNOCKS A CUP OFF. IT PULLS THEM AWAY'),
   tulo: 'LIFT A CONTAINER, CATCH A DRIP WITH IT, DUMP IT WHEN FULL',
   tapon: 'EMPTY IT DOWN THE DRAIN. DO IT IN THE THUNDER: NOBODY HEARS',
   baha: 'WALK INTO A SANDBAG TO PUSH IT. PUSH IT INTO THE BROKEN KANAL',
@@ -124,9 +132,9 @@ export class Play {
     this.windups = []; // tattle shouts charging up
     this.tickT = 0;
     this.banner = level.boss ? { kind: 'boss', text: level.boss.title || level.name, t: 3 } : null;
-    this.coneData = new ImageData(VIEW_W, VIEW_H);
+    this.coneData = new ImageData(VIEW_W, BASE_H + MAX_EXTRA);
     this.coneCv = document.createElement('canvas');
-    this.coneCv.width = VIEW_W; this.coneCv.height = VIEW_H;
+    this.coneCv.width = VIEW_W; this.coneCv.height = BASE_H + MAX_EXTRA;
     this.coneG = this.coneCv.getContext('2d');
     input.buttonEnabled = true;
     this.cam = { x: 0, y: 0 };
@@ -151,7 +159,16 @@ export class Play {
     this.cardT = level.tutorial || level.hingi || opts.noCard ? 0 : 5; // the mission card (campaign: shown before the level instead)
     // cats that simply live in this room (the epilogue: Mingming asleep on the rug)
     this.cats = (level.cats || []).map((c) => ({ look: c.kind || 'pusa', x: c.at[0] * TILE + TILE / 2, y: c.at[1] * TILE + TILE / 2, dir: c.dir ?? 2, pose: c.pose || 'sit' }));
+    this.syncView();
     this.updateCamera(1);
+  }
+
+  // Where the map window sits this frame (see MAP_H / TOP at the top of this file), and the top bar (hudY, screen y).
+  syncView() {
+    const mh = this.world.map.h * TILE;
+    if (mh + HUD_BAND <= STRIP_Y) { TOP = STRIP_Y - mh; MAP_H = mh; }
+    else { TOP = Math.min(EXTRA, HUD_BAND); MAP_H = STRIP_Y - TOP; }
+    this.hudY = TOP >= HUD_FULL ? TOP - HUD_FULL : TOP >= HUD_BAND ? TOP - HUD_BAND : 0;
   }
 
   // Follow the player; maps bigger than the 240x352 view scroll, smaller ones stay put.
@@ -222,12 +239,13 @@ export class Play {
 
   update(dt) {
     const w = this.world;
+    this.syncView();
     this.input.button2Enabled = w.player.items.length > 0 && !w.noThrow;
     this.input.abilityEnabled = true;
     this.input.swapEnabled = !!w.kids && w.kids.every((k) => !k.out); // KASABWAT
     this.input.itemEnabled = new Set(w.player.items).size > 1;
     const inp = this.input.poll();
-    if (inp.aimAt) inp.aimAt = { x: inp.aimAt.x + this.cam.x, y: inp.aimAt.y + this.cam.y }; // (the aim is a point on screen)
+    if (inp.aimAt) inp.aimAt = { x: inp.aimAt.x + this.cam.x, y: inp.aimAt.y - TOP + this.cam.y }; // (the aim is a point on screen)
     w.update(dt, inp);
     if (this.coach?.update(dt)) sfx.pickup(); // a tutorial step done
     this.steps++;
@@ -488,7 +506,7 @@ export class Play {
   drawNight(g) {
     if (!this.nightCv) {
       this.nightCv = document.createElement('canvas');
-      this.nightCv.width = VIEW_W; this.nightCv.height = VIEW_H;
+      this.nightCv.width = VIEW_W; this.nightCv.height = BASE_H + MAX_EXTRA;
       this.nightG = this.nightCv.getContext('2d');
     }
     const n = this.nightG, cx = this.cx, cy = this.cy, w = this.world, now = performance.now() / 1000;
@@ -603,6 +621,14 @@ export class Play {
   }
 
   draw(g) {
+    this.syncView();
+    if (TOP > 0) { g.fillStyle = C.ink; g.fillRect(0, 0, VIEW_W, TOP); }
+    g.save(); g.translate(0, TOP); // everything below is drawn in the map window's coordinates
+    this.drawWindow(g);
+    g.restore();
+  }
+
+  drawWindow(g) {
     const w = this.world, p = w.player;
     const now = performance.now(), fd = Math.min(0.05, (now - (this.lastDraw || now)) / 1000);
     this.lastDraw = now;
@@ -904,8 +930,8 @@ export class Play {
     if (!b) return;
     const total = (b.phases || []).length + 1;
     for (let i = 0; i < total; i++) {
-      g.fillStyle = C.ink; g.fillRect(4 + i * 8, 12, 7, 5);
-      g.fillStyle = i <= w.phase ? C.red : C.dgray; g.fillRect(5 + i * 8, 13, 5, 3);
+      g.fillStyle = C.ink; g.fillRect(4 + i * 8, 13, 7, 5);
+      g.fillStyle = i <= w.phase ? C.red : C.dgray; g.fillRect(5 + i * 8, 14, 5, 3);
     }
     // the boss: name + sleep/cooking cycle bar, sleep depth, or her alert level
     const a = w.adults[b.index ?? 0];
@@ -925,9 +951,9 @@ export class Play {
         if (a.state === 'inspect') label += ' ?';
         if (a.cfg.hairTrigger) label += ' SHH';
       }
-      drawText(g, label, VIEW_W - 62, 12, col, { align: 'right', shadow: C.ink });
-      g.fillStyle = C.ink; g.fillRect(VIEW_W - 60, 12, 56, 5);
-      g.fillStyle = col; g.fillRect(VIEW_W - 59, 13, Math.round(54 * Math.max(0, Math.min(1, fill))), 3);
+      drawText(g, label, VIEW_W - 62, 13, col, { align: 'right', shadow: C.ink });
+      g.fillStyle = C.ink; g.fillRect(VIEW_W - 60, 13, 56, 5);
+      g.fillStyle = col; g.fillRect(VIEW_W - 59, 14, Math.round(54 * Math.max(0, Math.min(1, fill))), 3);
     }
     if (w.escapeT > 0) { // escape countdown
       const blink = w.escapeT < 6 && Math.floor(performance.now() / 200) % 2;
@@ -980,12 +1006,12 @@ export class Play {
   // The level's three missions, shown for the first seconds of a run (and on the pause screen).
   drawMissions(g, y, earned = 0) {
     const w = this.world, st = w.missionState();
-    g.globalAlpha = 0.82; g.fillStyle = C.ink; g.fillRect(VIEW_W / 2 - 84, y, 168, 36); g.globalAlpha = 1;
+    g.globalAlpha = 0.82; g.fillStyle = C.ink; g.fillRect(VIEW_W / 2 - 100, y, 200, 8 + st.length * 11); g.globalAlpha = 1;
     st.forEach((m, i) => {
-      const had = (earned >> i) & 1;
-      drawStar(g, VIEW_W / 2 - 78, y + 4 + i * 10, !!had);
-      drawText(g, missionLabel(this.level, m.id), VIEW_W / 2 - 68, y + 5 + i * 10, m.lost ? C.dgray : had ? C.gold : C.white);
-      if (m.lost) { g.fillStyle = C.red; g.fillRect(VIEW_W / 2 - 69, y + 7 + i * 10, textWidth(missionLabel(this.level, m.id)) + 2, 1); }
+      const had = (earned >> i) & 1, yy = y + 5 + i * 11, label = missionLabel(this.level, m.id);
+      drawStar(g, VIEW_W / 2 - 94, yy, !!had);
+      drawBig(g, label, VIEW_W / 2 - 84, yy, m.lost ? C.dgray : had ? C.gold : C.white);
+      if (m.lost) { g.fillStyle = C.red; g.fillRect(VIEW_W / 2 - 85, yy + 3, bigWidth(label) + 2, 1); }
     });
   }
 
@@ -1015,14 +1041,17 @@ export class Play {
     // so it never covers the thing it is talking about (the sala's exit is on the top wall). A gap stops it flickering.
     const py = this.world.player.y - this.cy, fy = v.focus ? v.focus.y - this.cy : MAP_H;
     if (py < 150 || fy < 70) this.coachLow = true; else if (py > 200 && fy > 90) this.coachLow = false;
-    const y0 = this.coachLow ? MAP_H - 30 : 17;
-    g.globalAlpha = 0.85; g.fillStyle = C.ink; g.fillRect(0, y0, VIEW_W, 28); g.globalAlpha = 1;
-    g.fillStyle = c.okT > 0 ? C.green : v.reactive ? col : C.gold; g.fillRect(0, this.coachLow ? y0 : y0 + 27, VIEW_W, 1);
-    drawText(g, v.lines[0], VIEW_W / 2, y0 + 3, v.reactive ? col : C.yellow, { align: 'center' });
-    if (v.lines[1]) drawText(g, v.lines[1], VIEW_W / 2, y0 + 13, C.white, { align: 'center' });
+    const L0 = wrapBig(v.lines[0], 230), L1 = v.lines[1] ? wrapBig(v.lines[1], 230) : [], h = 9 + (L0.length + L1.length) * 10;
+    const band = this.hudY - h - 2 >= 0; // a tall phone: the panel waits above the map, so it never covers it
+    const low = !band && this.coachLow;
+    const y0 = band ? this.hudY - TOP - h - 2 : low ? MAP_H - h - 2 : 17;
+    g.globalAlpha = 0.85; g.fillStyle = C.ink; g.fillRect(0, y0, VIEW_W, h); g.globalAlpha = 1;
+    g.fillStyle = c.okT > 0 ? C.green : v.reactive ? col : C.gold; g.fillRect(0, low ? y0 : y0 + h - 1, VIEW_W, 1);
+    L0.forEach((l, i) => drawBig(g, l, VIEW_W / 2, y0 + 3 + i * 10, v.reactive ? col : C.yellow, { align: 'center' }));
+    L1.forEach((l, i) => drawBig(g, l, VIEW_W / 2, y0 + 3 + (L0.length + i) * 10, C.white, { align: 'center' }));
     for (let i = 0; i < c.total; i++) { // how far through the lesson you are
       g.fillStyle = i < c.i ? C.green : i === c.i ? C.gold : C.dgray;
-      g.fillRect(VIEW_W / 2 - c.total * 3 + i * 6, y0 + 22, 4, 2);
+      g.fillRect(VIEW_W / 2 - c.total * 3 + i * 6, y0 + h - 5, 4, 2);
     }
     const pulse = Math.floor(now / 250) % 2, hold = v.btn === 'throw' || ['kupit', 'more'].includes(c.step?.id);
     const btn = v.btn === 'act' ? BUTTON : v.btn === 'throw' && this.world.player.items.length ? BUTTON2 : null;
@@ -1153,34 +1182,36 @@ export class Play {
 
   drawHud(g) {
     const w = this.world, sh = { shadow: C.ink }, now = performance.now();
-    if (w.mods.cat) { // the cat has one job
-      drawObj(g, 'isdaBit', 9, 8);
-      drawText(g, w.player.carry ? 'GOT IT!' : w.open ? 'HOME!' : '0/1', 16, 6, w.player.carry || w.open ? C.green : C.white, sh);
-    } else drawCoin(g, 5, 5);
+    g.save(); g.translate(0, this.hudY - TOP); // the top bar: above the map when there is room, else over its top edge
+    g.globalAlpha = 0.85; g.fillStyle = C.ink; g.fillRect(0, 0, VIEW_W, 12); g.globalAlpha = 1;
     const sob = w.sobra, q = this.level.quota;
-    const base = `${sob ? q : w.coins}/${q}`, coinTxt = w.mods.cat ? `   ${w.player.carry ? 'GOT IT!' : w.open ? 'HOME!' : '0/1'}` : sob ? `${base} +${sob}` : base; // SOBRA in orange
-    if (!w.mods.cat) drawText(g, base, 13, 6, w.coins >= q && q > 0 && !sob ? C.green : C.white, sh);
-    if (sob) drawText(g, ` +${sob}`, 13 + textWidth(base), 6, C.orange, sh);
+    const base = `${sob ? q : w.coins}/${q}`, catTxt = w.player.carry ? 'GOT IT!' : w.open ? 'HOME!' : '0/1';
+    let x = 13;
+    if (w.mods.cat) { // the cat has one job
+      drawObj(g, 'isdaBit', 7, 6);
+      drawBig(g, catTxt, x, 2, w.player.carry || w.open ? C.green : C.white); x += bigWidth(catTxt);
+    } else {
+      drawCoin(g, 3, 3);
+      drawBig(g, base, x, 2, w.coins >= q && q > 0 && !sob ? C.green : C.white); x += bigWidth(base);
+      if (sob) { drawBig(g, `+${sob}`, x + 4, 2, C.orange); x += 4 + bigWidth(`+${sob}`); } // SOBRA in orange
+    }
     // chances left: little tsinelas, crossed out once used
     if (w.lives > 1 && !this.level.hingi) { // (nobody is counting chances in the epilogue)
-      let x = 16 + textWidth(coinTxt);
+      x += 6;
       for (let i = 0; i < w.lives; i++) {
         const used = i >= w.livesLeft;
-        g.fillStyle = C.ink; g.fillRect(x, 5, 7, 6);
-        g.fillStyle = used ? C.dgray : C.pink; g.fillRect(x + 1, 6, 2, 4); g.fillRect(x + 4, 6, 2, 4);
-        if (used) { g.fillStyle = C.red; g.fillRect(x, 8, 7, 1); }
-        x += 8;
+        g.fillStyle = used ? C.dgray : C.pink; g.fillRect(x + 1, 3, 2, 6); g.fillRect(x + 4, 3, 2, 6);
+        if (used) { g.fillStyle = C.red; g.fillRect(x, 6, 7, 1); }
+        x += 9;
       }
       // PALUSOT: Kuya Ramil's one excuse this level (a little speech bubble: gold while he still has it)
       if (w.mods.palusot) {
         const col = w.palusot > 0 && !w.finalPhase ? C.gold : C.dgray;
-        g.fillStyle = C.ink; g.fillRect(x + 1, 4, 8, 7);
-        g.fillStyle = col; g.fillRect(x + 2, 5, 6, 4); g.fillRect(x + 3, 9, 1, 1);
+        g.fillStyle = col; g.fillRect(x + 2, 3, 7, 5); g.fillRect(x + 3, 8, 1, 1);
       }
     }
-    if (w.bonus) { drawObj(g, 'alkansya', VIEW_W - 30, 26); drawText(g, `+${w.bonus}`, VIEW_W - 25, 23, C.green, sh); }
-    drawText(g, this.level.name, VIEW_W / 2, 6, C.white, { ...sh, align: 'center' });
-    drawText(g, `${Math.floor(w.time)}S`, VIEW_W - 5, 6, w.time > this.level.par ? C.orange : C.white, { ...sh, align: 'right' });
+    if (w.bonus) { drawObj(g, 'alkansya', VIEW_W - 52, 6); drawBig(g, `+${w.bonus}`, VIEW_W - 46, 2, C.green); }
+    drawBig(g, `${Math.floor(w.time)}S`, VIEW_W - 4, 2, w.time > this.level.par ? C.orange : C.white, { align: 'right' });
     if (w.patience) { // "KAIN NA!" meter: Mama calls you for dinner when it runs out. The notch is par time.
       const left = Math.max(0, 1 - w.time / w.patience), bw = VIEW_W - 8;
       g.fillStyle = C.ink; g.fillRect(4, 13, bw, 3);
@@ -1196,14 +1227,13 @@ export class Play {
     const th = this.coach ? 'coach' : null; // the tutorial draws its own panel (drawCoachHud)
     const line = this.tip ? this.tip.text : th || (this.level.hint && w.time < 8 ? this.level.hint : null);
     if (line && !this.coach && !(w.patience && w.time / w.patience > 0.75 && !this.tip)) {
-      g.globalAlpha = 0.75; g.fillStyle = C.ink; g.fillRect(0, 18, VIEW_W, 11); g.globalAlpha = 1;
-      drawText(g, line, VIEW_W / 2, 21, this.tip ? C.green : th ? C.white : C.yellow, { align: 'center' });
+      drawBigBand(g, line, 19, this.tip ? C.green : th ? C.white : C.yellow, { alpha: 0.8 });
     }
+    g.restore();
     this.tipButton = this.tip && !this.coach ? TIP_BUTTONS[this.tip.id] || null : null; // drawn after the buttons
     if (this.toast) {
-      const tw = Math.max(140, textWidth(this.toast.text) + 12);
-      g.globalAlpha = 0.8; g.fillStyle = C.ink; g.fillRect(VIEW_W / 2 - tw / 2, 140, tw, 15); g.globalAlpha = 1;
-      drawText(g, this.toast.text, VIEW_W / 2, 145, this.toast.col, { align: 'center' });
+      const L = wrapBig(this.toast.text, 220), tw = Math.min(236, Math.max(140, ...L.map(bigWidth)) + 12);
+      drawBigBand(g, null, 140, this.toast.col, { w: tw, x: Math.round((VIEW_W - tw) / 2), lines: L, alpha: 0.85 });
     }
     if (this.cardT > 0 && !this.banner && !w.scold && w.status === "play") { g.globalAlpha = Math.min(1, this.cardT * 2); this.drawMissions(g, 160, this.opts.earned | 0); g.globalAlpha = 1; }
     if (w.scold) { // the close-call beat: who found you, and what's left (amber: the red "HULI KA!" is the ending's)
@@ -1228,9 +1258,10 @@ export class Play {
     for (const k of w.player.keys) { drawObj(g, 'key', kx, MAP_H + 24, k); kx += L ? -10 : 10; }
     const hints = this.level.tutorial || w.time < 12; // control reminders: the first level, and the first seconds of the rest
     if (!hints) { /* a clean strip */ }
-    else if (!L) drawText(g, this.input.touchUsed ? 'DRAG: MOVE   DRAG FAR: RUN' : w.mods.cat ? 'SHIFT RUN  E BITE / HIDE  F SWAT' : 'SHIFT RUN  E ACT  Q THROW  F SKILL', 6, MAP_H + 32, C.dgray);
-    else drawText(g, this.input.touchUsed ? 'DRAG: MOVE' : 'E ACT Q THROW', tx, MAP_H + 32, C.dgray, al);
+    else if (!L) drawText(g, this.touch ? 'DRAG: MOVE   DRAG FAR: RUN' : w.mods.cat ? 'SHIFT RUN  E BITE / HIDE  F SWAT' : 'SHIFT RUN  E ACT  Q THROW  F SKILL', 6, MAP_H + 32, C.dgray);
+    else drawText(g, this.touch ? 'DRAG: MOVE' : 'E ACT Q THROW', tx, MAP_H + 32, C.dgray, al);
 
+    g.save(); g.translate(0, -TOP); // (buttons and the stick: screen coordinates, where the input finds them)
     // KASABWAT: switch to the other kid (their initial; grey while it cools down or once they are out)
     if (w.kids) {
       const other = w.kids.find((k) => k !== w.player), ok = other && !other.out && !(w.swapT > 0);
@@ -1277,6 +1308,7 @@ export class Play {
       g.globalAlpha = 0.35; disc(g, Math.round(s.sx), Math.round(s.sy), 22, C.white);
       g.globalAlpha = 0.7; disc(g, Math.round(s.x), Math.round(s.y), 8, C.white); g.globalAlpha = 1;
     }
+    g.restore();
     if (this.coach) this.drawCoachHud(g);
     else if (this.tipButton) { const [b, hold] = this.tipButton; this.drawButtonHint(g, b === 'throw' ? (this.world.player.items.length ? BUTTON2 : null) : b === 'skill' ? ABILITY_BTN : BUTTON, hold, b); }
   }
@@ -1284,11 +1316,13 @@ export class Play {
   // A pulsing ring on an on-screen button, with TAP / HOLD (or the key) above it.
   drawButtonHint(g, btn, hold, kind = 'act') {
     if (!btn) return;
+    g.save(); g.translate(0, -TOP); // (a button: screen coordinates)
     const pulse = Math.floor(performance.now() / 250) % 2;
     ring(g, btn.x, btn.y, btn.r + 3 + pulse, C.gold, 1); ring(g, btn.x, btn.y, btn.r + 5 + pulse, C.ink, 2);
     const keyName = kind === 'throw' ? 'Q' : kind === 'skill' ? 'F' : 'E';
     const label = this.touch ? (kind === 'throw' ? 'HOLD + SLIDE' : hold ? 'HOLD' : 'TAP') : kind === 'throw' ? 'Q + CLICK' : `${hold ? 'HOLD ' : ''}${keyName}`;
     const lw = textWidth(label) + 4, lx = Math.max(1, Math.min(VIEW_W - lw - 1, btn.x - lw / 2)), ly = btn.y - btn.r - 16 - pulse;
     g.fillStyle = C.gold; g.fillRect(lx, ly, lw, 9); drawText(g, label, lx + 2, ly + 2, C.ink);
+    g.restore();
   }
 }

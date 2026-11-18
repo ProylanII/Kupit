@@ -87,6 +87,9 @@ const B = {
   '"': U('.#.#./.#.#./...../...../...../...../.....'), '-': U('...../...../...../.###./...../...../.....'),
   ':': U('...../..#../...../...../..#../...../.....'), '(': U('...#./..#../.#.../.#.../.#.../..#../...#.'),
   ')': U('.#.../..#../...#./...#./...#./..#../.#...'), '/': U('....#/....#/...#./..#../.#.../#..../#....'),
+  '+': U('...../..#../..#../#####/..#../..#../.....'), '=': U('...../...../#####/...../#####/...../.....'),
+  '>': U('.#.../..#../...#./....#/...#./..#../.#...'), '<': U('...#./..#../.#.../#..../.#.../..#../...#.'),
+  '%': U('##..#/##..#/...#./..#../.#.../#..##/#..##'), '*': U('...../#.#.#/.###./#####/.###./#.#.#/.....'),
 };
 export const hasBigGlyph = (ch) => ch in B;
 export const bigWidth = (str) => Math.max(0, String(str).length * 6 - 1);
@@ -102,4 +105,24 @@ export function drawBig(g, str, x, y, color, { align = 'left' } = {}) {
     for (let r = 0; r < rows.length; r++) for (let c = 0; c < 5; c++) if (rows[r][c] === '#') g.fillRect(cx + c, y + r, 1, 1);
     cx += 6;
   }
+}
+
+// Word-wraps text into lines that fit `w` px in the big font (6 px a character).
+export function wrapBig(str, w = 228) {
+  const max = Math.max(1, Math.floor((w + 1) / 6)), out = [];
+  let line = '';
+  for (const word of String(str).split(' ')) {
+    const next = line ? `${line} ${word}` : word;
+    if (next.length > max && line) { out.push(line); line = word; } else line = next;
+  }
+  if (line) out.push(line);
+  return out;
+}
+
+// Big text on a dark band, wrapped to the band's width; returns the band's height. (HUD tips, toasts, the coach.)
+export function drawBigBand(g, str, y, color, { w = 240, x = 0, pad = 3, alpha = 0.82, bg = '#1b1424', lines = null } = {}) {
+  const L = lines || wrapBig(str, w - 8), h = pad * 2 + L.length * 10 - 2;
+  g.globalAlpha = alpha; g.fillStyle = bg; g.fillRect(x, y, w, h); g.globalAlpha = 1;
+  L.forEach((l, i) => drawBig(g, l, x + w / 2, y + pad + i * 10, color, { align: 'center' }));
+  return h;
 }

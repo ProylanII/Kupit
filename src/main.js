@@ -1,4 +1,4 @@
-import { Input, VIEW_W, VIEW_H } from './core/input.js';
+import { Input, VIEW_W, VIEW_H, BASE_H, EXTRA, MAX_EXTRA, setExtra } from './core/input.js';
 import { VERSION } from './core/version.js';
 import { loadSave, writeSave, requestPersist, saveCode, readSaveCode, newGameSave } from './core/save.js';
 import { sfx, setMuted, isMuted, suspendAudio } from './core/audio.js';
@@ -40,10 +40,14 @@ let unlocked = grantUnlocks(save, { pasko: isPasko() }); // e.g. the Pasko outfi
 if (unlocked.length) persist();
 
 // ---- integer-ish pixel scaling, inside the safe area (notches, home bar) --------------
+// A tall phone (narrower than the game's 240x392 shape, below 2x) gets extra rows so the game fills the screen: the
+// play scenes use them (input.js setExtra), menus are centred in them (OFF).
 function resize() {
   const de = document.documentElement, cs = getComputedStyle(document.body);
   const px = (k) => parseFloat(cs[k]) || 0;
   const w = de.clientWidth - px('paddingLeft') - px('paddingRight'), h = de.clientHeight - px('paddingTop') - px('paddingBottom');
+  setExtra(w > 0 && w / VIEW_W < 2 ? Math.min(MAX_EXTRA, Math.floor((VIEW_W * h) / w) - BASE_H) : 0);
+  if (canvas.height !== VIEW_H) { canvas.height = VIEW_H; g.imageSmoothingEnabled = false; }
   const s0 = Math.min(w / VIEW_W, h / VIEW_H);
   const s = s0 >= 2 ? Math.floor(s0) : s0;
   canvas.style.width = `${VIEW_W * s}px`;
@@ -82,6 +86,9 @@ const sceneFor = (L) => SCENES[L.mode] || Play;
 const special = (L) => !!(L.mode || L.cat); // no crew to pick
 
 const FADE = 0.25;
+// Menus and story panels are designed at 240x392: on a tall phone they sit in the middle of the screen.
+const OFF = () => Math.round(EXTRA / 2);
+const OVERLAY = new Set(['paused', 'caught', 'clear', 'dev']); // drawn over the level (which fills the whole screen)
 const STEP = 1 / 60; // the simulation always advances in fixed 60 Hz steps (same game on 60/120/144 Hz screens)
 let acc = 0;
 let fadeT = 0, chaseHold = 0, chaseT = 0, audioReady = false;
@@ -358,7 +365,7 @@ function drawStory() {
   if (p.flag === 'nena' && shown >= used) drawText(g, "CAT THINGS COST LESS AT ALING NENA'S NOW", cx, 322, C.yellow, { align: 'center' });
   for (let i = 0; i < story.panels.length; i++) { g.fillStyle = i === story.i ? C.gold : C.dgray; g.fillRect(cx - story.panels.length * 4 + i * 8, 340, 5, 5); }
   if (Math.floor(age * 2) % 2) drawText(g, 'TAP TO CONTINUE', cx, 358, C.gray, { align: 'center' });
-  if (story.flash > 0) { g.globalAlpha = Math.min(0.6, story.flash); g.fillStyle = C.red; g.fillRect(0, 0, VIEW_W, VIEW_H); g.globalAlpha = 1; story.flash -= 1 / 40; }
+  if (story.flash > 0) { g.globalAlpha = Math.min(0.6, story.flash); g.fillStyle = C.red; g.fillRect(0, -OFF(), VIEW_W, VIEW_H); g.globalAlpha = 1; story.flash -= 1 / 40; }
 }
 
 // ---- title: the hideout under the house -------------------------------------------------
@@ -491,7 +498,7 @@ function drawTitle() {
   }
   const newPhoto = PHOTOS.some((p) => photoUnlocked(save, p.id) && !save.seen[`photo:${p.id}`]);
   if (newPhoto && Math.floor(t * 2) % 2) { const r = TITLE_RECTS[T_ALBUM]; g.fillStyle = C.ink; g.fillRect(r.x + r.w - 9, r.y - 3, 8, 8); g.fillStyle = C.green; g.fillRect(r.x + r.w - 8, r.y - 2, 6, 6); drawText(g, '!', r.x + r.w - 6, r.y - 1, C.ink); }
-  drawText(g, `V${VERSION}`, VIEW_W - 4, VIEW_H - 9, C.dgray, { align: 'right' }); // which build this is
+  drawText(g, `V${VERSION}`, VIEW_W - 4, BASE_H - 9, C.dgray, { align: 'right' }); // which build this is
   drawMsg(374);
 }
 const updateRect = () => ({ x: 30, y: 112, w: VIEW_W - 60, h: 13 });
@@ -653,7 +660,7 @@ const OPT_HELP = [
 ];
 
 function drawOptions() {
-  if (prevMode === 'paused' && play) { play.draw(g); dim(0.85); } else { g.fillStyle = C.ink; g.fillRect(0, 0, VIEW_W, VIEW_H); }
+  if (prevMode === 'paused' && play) { play.draw(g); dim(0.85); g.translate(0, OFF()); } else { g.fillStyle = C.ink; g.fillRect(0, 0, VIEW_W, VIEW_H); }
   drawText(g, 'OPTIONS', VIEW_W / 2, 14, C.gold, { scale: 3, align: 'center', shadow: C.gold2 });
   const items = optionItems();
   items.forEach((l, i) => drawButton(g, { ...buttonRect(i, OPT_Y, OPT_GAP, 200) }, l, i === sel));
@@ -730,6 +737,7 @@ const devItems = () => [
 function drawDevMenu() {
   play.draw(g);
   dim(0.82);
+  g.translate(0, OFF());
   drawText(g, 'DEV TOOLS', VIEW_W / 2, 18, C.red, { scale: 3, align: 'center', shadow: C.ink });
   drawText(g, `${cur.name}  (${idx + 1}/${levels.length})`, VIEW_W / 2, 46, C.white, { align: 'center' });
   drawMenu(g, devItems(), sel, DEV_Y, DEV_GAP);
@@ -776,6 +784,7 @@ const pauseItems = () => ['RESUME', 'RESTART', 'HOW TO PLAY', 'OPTIONS', 'MAP', 
 function drawPaused() {
   play.draw(g);
   dim(0.75);
+  g.translate(0, OFF());
   drawText(g, 'PAUSED', VIEW_W / 2, 40, C.gold, { scale: 5, align: 'center', shadow: C.gold2 });
   if (!cur.hingi) play.drawMissions(g, 88, save.missions[cur.id] | 0);
   drawMenu(g, pauseItems(), sel, PAUSE_Y);
@@ -800,6 +809,7 @@ const caughtItems = () => (skippable() ? ['TRY AGAIN', 'SKIP FOR NOW', 'MAP'] : 
 function drawCaught() {
   play.draw(g);
   dim();
+  g.translate(0, OFF());
   panel(30, 186);
   if (play.drawFail) { // a mini-game says it its own way
     play.drawFail(g);
@@ -856,6 +866,7 @@ function shopBack() {
 function drawClear() {
   play.draw(g);
   dim(0.75);
+  g.translate(0, OFF());
   panel(50, 230);
   const r = play.result;
   const head = cur.clearText || (cur.boss ? 'BOSS BEATEN!' : 'NICE KUPIT!');
@@ -1004,6 +1015,7 @@ function frame(now) {
     }
     if (mode === 'play') play.draw(g);
   }
+  if (m !== 'play' && input.tapPos) input.tapPos = { x: input.tapPos.x, y: input.tapPos.y - OFF() }; // (menus sit OFF lower)
   const screens = { title: [updateTitle, drawTitle], levels: [updateLevels, drawLevels], help: [updateHelp, drawHelp],
     options: [updateOptions, drawOptions], story: [updateStory, drawStory],
     store: [() => shopScreen.update(input, shopCtx, dt), () => shopScreen.draw(g, shopCtx)],
@@ -1013,7 +1025,18 @@ function frame(now) {
     dev: [updateDevMenu, drawDevMenu],
     paused: [updatePaused, drawPaused], caught: [updateCaught, drawCaught], clear: [updateClear, drawClear],
     card: [updateCard, drawCard] };
-  if (screens[m]) { screens[m][0](); if (mode === m) screens[m][1](); } // skip the draw if the screen just changed
+  if (screens[m]) { // (skip the draw if the screen just changed)
+    screens[m][0]();
+    if (mode === m) {
+      g.save();
+      if (!OVERLAY.has(m) && !(m === 'options' && prevMode === 'paused' && play)) { // a menu: clear the screen, centre it
+        g.fillStyle = m === 'title' ? '#0c1230' : C.ink; g.fillRect(0, 0, VIEW_W, VIEW_H);
+        g.translate(0, OFF());
+      }
+      screens[m][1]();
+      g.restore();
+    }
+  }
   else if (m === 'loading') {
     g.fillStyle = C.ink; g.fillRect(0, 0, VIEW_W, VIEW_H);
     if (!loadError) drawText(g, 'LOADING...', VIEW_W / 2, 170, C.white, { align: 'center' });

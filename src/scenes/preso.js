@@ -6,7 +6,7 @@ import { drawActor, drawObj, objSprite } from '../render/sprites.js';
 import { drawText } from '../ui/font.js';
 import { C } from '../render/palette.js';
 import { sfx } from '../core/audio.js';
-import { VIEW_W, VIEW_H, MAP_H, BUTTON } from '../core/input.js';
+import { VIEW_W, BASE_H as VIEW_H, BASE_MAP_H as MAP_H, EXTRA, BUTTON } from '../core/input.js';
 import { tileHash as hash } from '../world/light.js';
 
 const SLIP_COL = { jun: 'blue', toto: 'green', lina: 'pink', buboy: 'red' };
@@ -133,6 +133,12 @@ export class PresoScene extends ModeScene {
 
   // ---- drawing
   draw(g) {
+    this.beginField(g); // (a dark band, like the other levels)
+    this.drawField(g);
+    this.endField(g);
+  }
+
+  drawField(g) {
     const s = this.sim;
     this.frameDt();
     const [ox, oy] = this.shakeOffset(), now = performance.now() / 1000;
@@ -312,7 +318,7 @@ export class PresoScene extends ModeScene {
     const label = aiming ? 'THROW!' : ctx?.kind ? ctx.label : ctx?.label || 'THROW';
     this.drawRoundButton(g, BUTTON, label.slice(0, 7), { on: !!ctx?.kind || aiming, down: this.input.action(), icon: (gg, x, y) => drawObj(gg, ctx?.kind === 'pulot' ? 'hand' : 'tsinela', x, y, 'blue'), hint: ctx?.kind === 'aim' && j.throws === 0 && !aiming });
     const st = this.input.stick();
-    if (st) { g.globalAlpha = 0.35; disc(g, st.sx, st.sy, 22, C.white); g.globalAlpha = 0.7; disc(g, st.x, st.y, 8, C.white); g.globalAlpha = 1; }
+    if (st) { g.globalAlpha = 0.35; disc(g, st.sx, st.sy - EXTRA, 22, C.white); g.globalAlpha = 0.7; disc(g, st.x, st.y - EXTRA, 8, C.white); g.globalAlpha = 1; }
   }
 
   // the caught screen: tagged out

@@ -1,14 +1,17 @@
 // The shared half of a mini-game scene (TUMBANG PRESO, HABOL!): main.js treats it exactly like scenes/play.js
 // (update, draw, status, result, world, drawMissions). This holds what every mini-game draws the same way: toasts,
 // big banners, one-time tips, particles, screen shake, the mission card, the pause button and the control strip.
-import { drawText, textWidth } from '../ui/font.js';
+import { drawText, textWidth, drawBig, bigWidth, wrapBig, drawBigBand } from '../ui/font.js';
 import { drawStar, drawCoin } from '../render/sprites.js';
 import { missionLabel } from '../game/missions.js';
 import { C } from '../render/palette.js';
 import { sfx } from '../core/audio.js';
 import { vibrate } from '../core/haptics.js';
 import { settings } from '../core/settings.js';
-import { VIEW_W, VIEW_H, MAP_H, PAUSE_BTN } from '../core/input.js';
+// Mini-games are drawn at the design size (240x392). On a tall phone the whole scene is shifted down by EXTRA, so the
+// field sits right on the control strip at the bottom of the screen (beginField / endField), and the buttons, whose
+// screen positions moved down with it, are drawn EXTRA higher inside that shift.
+import { VIEW_W, BASE_H as VIEW_H, BASE_MAP_H as MAP_H, EXTRA, PAUSE_BTN } from '../core/input.js';
 
 export function disc(g, cx, cy, r, color) {
   g.fillStyle = color;
@@ -120,28 +123,32 @@ export class ModeScene {
     g.globalAlpha = 1;
   }
 
+  // the field shifted down onto the control strip (a tall phone), with the band above it filled
+  beginField(g, band = C.ink) {
+    if (EXTRA > 0) { g.fillStyle = band; g.fillRect(0, 0, VIEW_W, EXTRA); }
+    g.save(); g.translate(0, EXTRA);
+  }
+  endField(g) { g.restore(); }
+
   drawTopTip(g, y = 26) {
     const line = this.tip?.text;
     if (!line) return;
-    g.globalAlpha = 0.8; g.fillStyle = C.ink; g.fillRect(0, y, VIEW_W, 11); g.globalAlpha = 1;
-    drawText(g, line, VIEW_W / 2, y + 3, C.green, { align: 'center' });
+    drawBigBand(g, line, y, C.green, { alpha: 0.82 });
   }
   drawToast(g, y = 136) {
     if (!this.toast) return;
-    const tw = Math.max(140, textWidth(this.toast.text) + 12);
-    g.globalAlpha = 0.82; g.fillStyle = C.ink; g.fillRect(VIEW_W / 2 - tw / 2, y, tw, 15); g.globalAlpha = 1;
-    drawText(g, this.toast.text, VIEW_W / 2, y + 5, this.toast.col, { align: 'center' });
+    const L = wrapBig(this.toast.text, 220), tw = Math.min(236, Math.max(140, ...L.map(bigWidth)) + 12);
+    drawBigBand(g, null, y, this.toast.col, { w: tw, x: Math.round((VIEW_W - tw) / 2), lines: L, alpha: 0.85 });
   }
 
   drawMissions(g, y, earned = 0) {
     const st = this.sim.missionState();
-    g.globalAlpha = 0.84; g.fillStyle = C.ink; g.fillRect(VIEW_W / 2 - 84, y, 168, 36); g.globalAlpha = 1;
+    g.globalAlpha = 0.84; g.fillStyle = C.ink; g.fillRect(VIEW_W / 2 - 100, y, 200, 8 + st.length * 11); g.globalAlpha = 1;
     st.forEach((m, i) => {
-      const had = (earned >> i) & 1;
-      drawStar(g, VIEW_W / 2 - 78, y + 4 + i * 10, !!had);
-      const label = missionLabel(this.level, m.id);
-      drawText(g, label, VIEW_W / 2 - 68, y + 5 + i * 10, m.lost ? C.dgray : had ? C.gold : C.white);
-      if (m.lost) { g.fillStyle = C.red; g.fillRect(VIEW_W / 2 - 69, y + 7 + i * 10, textWidth(label) + 2, 1); }
+      const had = (earned >> i) & 1, yy = y + 5 + i * 11, label = missionLabel(this.level, m.id);
+      drawStar(g, VIEW_W / 2 - 94, yy, !!had);
+      drawBig(g, label, VIEW_W / 2 - 84, yy, m.lost ? C.dgray : had ? C.gold : C.white);
+      if (m.lost) { g.fillStyle = C.red; g.fillRect(VIEW_W / 2 - 85, yy + 3, bigWidth(label) + 2, 1); }
     });
   }
   drawCard(g, y = 168) {
@@ -153,14 +160,16 @@ export class ModeScene {
   drawStrip(g, line, col = C.gray, sub = null) {
     g.fillStyle = C.ink; g.fillRect(0, MAP_H, VIEW_W, VIEW_H - MAP_H);
     g.fillStyle = C.wallD; g.fillRect(0, MAP_H, VIEW_W, 1);
-    disc(g, PAUSE_BTN.x, PAUSE_BTN.y, PAUSE_BTN.r, C.ink);
-    disc(g, PAUSE_BTN.x, PAUSE_BTN.y, PAUSE_BTN.r - 2, C.wallD);
-    g.fillStyle = C.white; g.fillRect(PAUSE_BTN.x - 3, PAUSE_BTN.y - 4, 2, 8); g.fillRect(PAUSE_BTN.x + 1, PAUSE_BTN.y - 4, 2, 8);
+    const py = PAUSE_BTN.y - EXTRA; // (inside the field's shift)
+    disc(g, PAUSE_BTN.x, py, PAUSE_BTN.r, C.ink);
+    disc(g, PAUSE_BTN.x, py, PAUSE_BTN.r - 2, C.wallD);
+    g.fillStyle = C.white; g.fillRect(PAUSE_BTN.x - 3, py - 4, 2, 8); g.fillRect(PAUSE_BTN.x + 1, py - 4, 2, 8);
     if (line) drawText(g, line, 6, MAP_H + 8, col);
     if (sub) drawText(g, sub, 6, MAP_H + 32, C.dgray);
   }
   // a big round button: label, pressed look, optional ring hint
-  drawRoundButton(g, b, label, { on = true, down = false, col = C.gold2, colDown = C.gold, icon = null, hint = false } = {}) {
+  drawRoundButton(g, b0, label, { on = true, down = false, col = C.gold2, colDown = C.gold, icon = null, hint = false } = {}) {
+    const b = { x: b0.x, y: b0.y - EXTRA, r: b0.r }; // (inside the field's shift)
     disc(g, b.x, b.y, b.r, C.ink);
     disc(g, b.x, b.y + (down ? 1 : 0), b.r - 2, on ? (down ? colDown : col) : C.dgray);
     if (!down && on) { g.globalAlpha = 0.35; disc(g, b.x - 3, b.y - 4, Math.max(2, Math.round(b.r / 3)), C.white); g.globalAlpha = 1; }

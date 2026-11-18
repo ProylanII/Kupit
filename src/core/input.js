@@ -1,7 +1,12 @@
 // Keyboard + touch/mouse. Pointer positions are converted to game pixels.
 export const VIEW_W = 240;
-export const MAP_H = 352;  // 22 tiles; below it is the control strip
-export const VIEW_H = 392;
+// The game is designed at 240x392: a 352-px play area (22 tiles) over a 40-px control strip. A tall phone gets EXTRA
+// rows (setExtra, from main.js resize) so the game fills the screen: VIEW_H and MAP_H grow with it, and the control
+// strip and its buttons stay at the very bottom, under the thumbs. (Live bindings: importers always see the current.)
+export const BASE_H = 392, BASE_MAP_H = 352, MAX_EXTRA = 170;
+export let VIEW_H = BASE_H;    // the canvas height
+export let MAP_H = BASE_MAP_H; // where the control strip starts
+export let EXTRA = 0;          // VIEW_H - BASE_H
 // On-screen buttons. Right-handed positions; setLeftHanded() mirrors them (the objects are mutated in place,
 // so every module that imported them sees the new layout).
 export const BUTTON = { x: 214, y: 372, r: 18 };  // action
@@ -11,6 +16,13 @@ export const PAUSE_BTN = { x: 138, y: 372, r: 10 }; // pause
 export const ITEM_BTN = { x: 156, y: 357, r: 8 };  // cycle which item you throw next
 export const SWAP_BTN = { x: 70, y: 374, r: 10 };   // KASABWAT: switch kids (tag-team levels only)
 const RIGHT = { BUTTON: 214, BUTTON2: 176, ABILITY_BTN: 100, PAUSE_BTN: 138, ITEM_BTN: 156, SWAP_BTN: 70 };
+const BASE_Y = { BUTTON: 372, BUTTON2: 372, ABILITY_BTN: 372, PAUSE_BTN: 372, ITEM_BTN: 357, SWAP_BTN: 374 };
+export function setExtra(n) {
+  EXTRA = Math.max(0, Math.min(MAX_EXTRA, Math.round(n) || 0));
+  VIEW_H = BASE_H + EXTRA; MAP_H = BASE_MAP_H + EXTRA;
+  BUTTON.y = BASE_Y.BUTTON + EXTRA; BUTTON2.y = BASE_Y.BUTTON2 + EXTRA; ABILITY_BTN.y = BASE_Y.ABILITY_BTN + EXTRA;
+  PAUSE_BTN.y = BASE_Y.PAUSE_BTN + EXTRA; ITEM_BTN.y = BASE_Y.ITEM_BTN + EXTRA; SWAP_BTN.y = BASE_Y.SWAP_BTN + EXTRA;
+}
 export const layout = { left: false };
 export function setLeftHanded(on) {
   layout.left = !!on;
