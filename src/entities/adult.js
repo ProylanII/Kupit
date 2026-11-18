@@ -84,7 +84,7 @@ export class Adult {
     if (def.cycle) this.cfg.cycle = def.cycle;
     if (def.sleepy) this.cfg.sleepy = true;
     Object.assign(this.cfg, def.cfg || {}); // per-adult overrides: range, ranged, cook, ...
-    if (this.cfg.speedMul) this.cfg.speed *= this.cfg.speedMul; // (HINALA: Mama hurries as the house grows suspicious)
+    if (this.cfg.speedMul) this.cfg.speed *= this.cfg.speedMul;
     this.uid = ++Adult.n; // (who yields when two meet in a doorway)
     this.yieldT = 0;
     // route points: [x, y, waitSeconds?, faceRadians?]
@@ -144,7 +144,7 @@ export class Adult {
   get fov() { return this.cfg.fov * (this.busy ? this.busy.fov : 1); }
 
   get home() { return this.pts[0]; }
-  // how long a search lasts (HINALA: a suspicious house looks longer before giving up)
+  // how long a search lasts (cfg.searchMul stretches it)
   get searchTime() { return SEARCH_TIME * (this.cfg.searchMul || 1); }
   // where the eyes point: walking direction plus the flashlight sweep
   get va() { return this.a + this.lookOff; }

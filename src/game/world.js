@@ -56,11 +56,8 @@ const BOX_R = 22;       // drips this close to the kittens' box soak it
 const DUMP_R = 52;      // TAPON: the splash of a container emptied into the drain
 const PUSH_T = 0.22;    // BAHA: lean on a sandbag this long and it slides one tile
 const PUSH_R = 36;      // ... with a scrape this loud
-const CHAT = [ // by HINALA tier: [first line, the reply]
-  [['KUMAIN KA NA?', 'MAMAYA NA.'], ['ANG INIT NGAYON!', 'OO NGA...'], ['NAKITA MO ANG REMOTE?', 'WALA DITO.']],
-  [['PARANG KULANG ANG BARYA KO.', 'BAKA NAIWAN MO?'], ['MAY DAGA YATA DITO.', 'BAKA PUSA.']],
-  [['MAY NAWAWALA NA NAMAN!', 'SINO KAYA?'], ['BANTAYAN NATIN ANG PITAKA.', 'SIGE.']],
-  [['MAY KUMUKUHA TALAGA!', 'HUHULIHIN NATIN.'], ['BILANGIN MO ULIT.', 'KULANG PA RIN!']],
+const CHAT = [ // [first line, the reply]
+  ['KUMAIN KA NA?', 'MAMAYA NA.'], ['ANG INIT NGAYON!', 'OO NGA...'], ['NAKITA MO ANG REMOTE?', 'WALA DITO.'],
 ];
 
 export class World {
@@ -119,7 +116,7 @@ export class World {
     this.checkpoints = [{ x: this.player.x, y: this.player.y, hide: null }];
     this.stolen = [];   // [{ t, n }] coins taken, newest last (caught -> some go back)
     this.locks = new Map((level.locks || []).map((l) => [l.at.join(), l.key]));
-    // a door the family locked themselves (HINALA): they have the key, so it only stops the kids
+    // a door the family locked themselves ("family": true): they have the key, so it only stops the kids
     const family = new Set((level.locks || []).filter((l) => l.family).map((l) => l.at.join()));
     this.adultLocks = { has: (k) => this.locks.has(k) && !family.has(k) };
     this.pendingGates = new Map(); // gates that should close but someone is standing in them ("x,y" -> [x, y])
@@ -473,18 +470,16 @@ export class World {
     this.emit({ type: 'staged', who: a });
   }
 
-  // A8: two of the family passing each other on a calm walk swap a line now and then. What they say follows the
-  // house's mood (HINALA): small talk in a calm house, missing coins in a suspicious one (never Jun's name).
+  // A8: two of the family passing each other on a calm walk swap a line of small talk now and then.
   chatter(dt) {
     if ((this.chatT = (this.chatT ?? 8) - dt) > 0) return;
     const fam = this.adults.filter((a) => FAMILY.has(a.type) && a.awake && a.state === 'patrol' && a.alert < 0.3 && !a.say);
     for (let i = 0; i < fam.length; i++) for (let j = i + 1; j < fam.length; j++) {
       const a = fam[i], b = fam[j];
       if (dist(a, b) > 22) continue;
-      const tier = this.level.hinalaTier | 0, lines = CHAT[Math.min(tier, CHAT.length - 1)];
-      const k = Math.floor(this.rng() * lines.length);
-      a.talk(lines[k][0], 1.8);
-      b.say = { text: lines[k][1], t: 1.8 };
+      const k = Math.floor(this.rng() * CHAT.length);
+      a.talk(CHAT[k][0], 1.8);
+      b.say = { text: CHAT[k][1], t: 1.8 };
       this.chatT = 25;
       this.emit({ type: 'chat', a, b });
       return;
@@ -519,14 +514,14 @@ export class World {
     for (const d of this.devices) {
       if (d.on && dist(d, adult) < 24) { d.on = false; d.caught = (d.caught || 0) + 1; adult.talk('SINO NAGBUKAS?', 1.6); this.emit({ type: 'deviceOff' }); }
     }
-    // A1: a thrown slipper is picked up and taken away (and somebody wonders whose it is: HINALA evidence)
+    // A1: a thrown slipper is picked up and taken away
     if (adult.cfg.dog) return;
     const it = this.items.find((i) => i.thrown && dist(i, adult) < 24);
     if (it) {
       this.items.splice(this.items.indexOf(it), 1);
       adult.talk("KANINONG TSINELAS 'TO?", 1.8);
       adult.wary = 15;
-      if (!this.level.tutorial) { // (the tutorial asks you to throw it: no HINALA for doing as you are told)
+      if (!this.level.tutorial) { // (the tutorial asks you to throw it: it stays where it landed)
         this.stats.evidence++;
         this.emit({ type: 'evidence', x: it.x, y: it.y, what: 'tsinelas' });
       }
@@ -542,9 +537,9 @@ export class World {
   // ---- what the action button would do right now (see ACT_PRIORITY) ----
   context() {
     const p = this.player;
-    if (p.hidden) return { kind: 'unhide', label: 'LABAS' };
+    if (p.hidden) return { kind: 'unhide', label: 'OUT' };
     const f = this.finale; // MAMA's finale: your place at the table
-    if (f?.type === 'seat' && this.open && !this.sitting && Math.hypot(f.seatPt.x - p.x, f.seatPt.y - p.y) <= REACH) return { kind: 'seat', obj: f.seatPt, label: 'UPO' };
+    if (f?.type === 'seat' && this.open && !this.sitting && Math.hypot(f.seatPt.x - p.x, f.seatPt.y - p.y) <= REACH) return { kind: 'seat', obj: f.seatPt, label: 'SIT' };
     const near = (list, f = () => true) => {
       let best = null, bd = REACH;
       for (const o of list) { const d = dist(o, p); if (d <= bd && f(o)) { best = o; bd = d; } }
@@ -553,23 +548,23 @@ export class World {
     // TATAY's fish waits on the table until the finale ("NOW THE FISH!"): it is the last thing you take, not the first
     const fishLater = (t) => t.scent && this.level.boss?.finale === 'carryOut' && f?.type !== 'carryOut';
     let o = near(this.targets, (t) => !t.done && !fishLater(t));
-    if (o) return { kind: 'steal', obj: o, label: o.verb || o.profile.verb || 'KUPIT', detail: o.profile.tip };
+    if (o) return { kind: 'steal', obj: o, label: o.verb || o.profile.verb || 'TAKE', detail: o.profile.tip };
     // BAGYO, TULO: lift a container, set it under a drip, empty it down the drain, or put it down
     const T = this.tulo;
     if (T && T.stage === 'leak') {
       const h = p.holding;
-      if (!h) { const c = near(T.conts, (k) => !k.held); if (c) return { kind: 'buhat', obj: c, label: 'BUHAT' }; }
+      if (!h) { const c = near(T.conts, (k) => !k.held); if (c) return { kind: 'buhat', obj: c, label: 'LIFT' }; }
       else {
         let d = null, bd = REACH + 2;
         for (const dd of T.drips) { const e = dist(dd, p); if (e <= bd && !T.conts.some((k) => k.drip === dd)) { d = dd; bd = e; } }
-        if (d) return { kind: 'sahod', obj: d, label: 'SAHOD' };
-        if (h.fill > 0 && dist(T.drain, p) <= REACH + 4) return { kind: 'tapon', obj: T.drain, label: 'TAPON' };
-        return { kind: 'baba', obj: null, label: 'BABA' };
+        if (d) return { kind: 'sahod', obj: d, label: 'CATCH' };
+        if (h.fill > 0 && dist(T.drain, p) <= REACH + 4) return { kind: 'tapon', obj: T.drain, label: 'DUMP' };
+        return { kind: 'baba', obj: null, label: 'DROP' };
       }
     }
     o = p.carry?.scent || p.holding ? null : near(this.hides); // (carrying the fish you cannot hide: you smell of it)
-    if (this.breadBag && this.breadBag.cd <= 0 && !p.items.includes('pandesal') && dist(this.breadBag, p) <= REACH) return { kind: 'bread', obj: this.breadBag, label: 'PANDESAL' };
-    if (o) return { kind: 'hide', obj: o, label: 'TAGO' };
+    if (this.breadBag && this.breadBag.cd <= 0 && !p.items.includes('pandesal') && dist(this.breadBag, p) <= REACH) return { kind: 'bread', obj: this.breadBag, label: 'BREAD' };
+    if (o) return { kind: 'hide', obj: o, label: 'HIDE' };
     if (this.mods.cat) return null; // a cat has no hands: no doors, levers or TVs
     const doors = [];
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
@@ -579,14 +574,14 @@ export class World {
     o = near(doors, (d) => d.c === 'D' || !this.occupied(d.tx, d.ty));
     if (o) {
       const lock = this.locks.get(o.tx + ',' + o.ty);
-      if (o.c === 'd') return { kind: 'door', obj: o, label: 'SARA' };
+      if (o.c === 'd') return { kind: 'door', obj: o, label: 'CLOSE' };
       if (lock && !p.keys.has(lock)) return { kind: 'locked', obj: o, label: 'LOCKED', lock };
-      return { kind: 'door', obj: o, label: 'BUKAS' };
+      return { kind: 'door', obj: o, label: 'OPEN' };
     }
     o = near(this.switches);
-    if (o) return { kind: 'switch', obj: o, label: 'PINDOT' };
+    if (o) return { kind: 'switch', obj: o, label: 'PRESS' };
     o = near(this.devices, (d) => !d.on);
-    if (o) return { kind: 'device', obj: o, label: 'BUKSAN' };
+    if (o) return { kind: 'device', obj: o, label: 'TURN ON' };
     return null;
   }
 
@@ -1420,7 +1415,7 @@ export class World {
     return true;
   }
 
-  // What was taken, for the clear screen, the ledger (IBALIK, the case file) and HINALA.
+  // What was taken, for the clear screen and the ledger (IBALIK).
   get sobra() { return this.level.giveBack || this.level.hingi ? 0 : Math.max(0, this.coins - this.level.quota); }
   takenBy() {
     const by = {};

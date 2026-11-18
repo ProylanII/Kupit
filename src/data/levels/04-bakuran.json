@@ -191,31 +191,5 @@
    }
   }
  ],
- "hinala": {
-  "2": {
-   "news": "TATAY DOES NOT DOZE OFF ANYMORE",
-   "do": [
-    {
-     "adult": 1,
-     "cfg": {
-      "skipActs": [
-       "idlip"
-      ]
-     }
-    }
-   ]
-  },
-  "3": {
-   "news": "ASO STAYS AWAKE ALL DAY NOW",
-   "do": [
-    {
-     "adult": 0,
-     "cfg": {
-      "cycle": null
-     }
-    }
-   ]
-  }
- },
  "notes": "Near-miss: the dog loop runs right past the laundry line you are standing in. The spawn yard is open lawn on purpose (Bing crawls under the mango-tree table). When the dog barks, Tatay comes out to look (followsDog), so running past the dog costs a visit."
 }

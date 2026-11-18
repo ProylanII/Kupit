@@ -19,8 +19,8 @@ for (const phone of [true, false]) {
   await sleep(1000);
   check((await state(page)).mode === 'title', `${tag}: title screen`);
   await shot('title');
-  // menus by keyboard: LEVELS, RANDOM HOUSE, STORE, CHARACTERS, ALBUM, HOW TO PLAY (3 pages), OPTIONS
-  const menus = [['levels', 1], ['house', 2], ['store', 3], ['chars', 4], ['album', 5], ['help', 6], ['options', 7]];
+  // menus by keyboard: MAP, ALING NENA'S, ALBUM, OPTIONS (HOW TO PLAY opens from Options and the pause menu)
+  const menus = [['levels', 1], ['store', 2], ['album', 3], ['options', 4]];
   for (const [name, n] of menus) {
     for (let i = 0; i < n; i++) await key('ArrowDown');
     await key('Enter', 300);
@@ -30,7 +30,7 @@ for (const phone of [true, false]) {
     await key('Escape', 300);
     check((await state(page)).mode === 'title', `${tag}: back to title from ${name}`);
   }
-  // every level, a house and the daily: 3 s each
+  // every level: 3 s each
   const n = await page.evaluate(async () => (await (await fetch('src/data/levels/index.json')).json()).length);
   for (let i = 0; i < n; i++) {
     await page.evaluate((i) => window.__kupit.start(i), i); await sleep(3000);
@@ -38,10 +38,6 @@ for (const phone of [true, false]) {
     check(s.mode === 'play' && s.status === 'play' && s.time > 2, `${tag}: level ${i + 1} ${s.level} runs`);
     await shot(`level-${String(i + 1).padStart(2, '0')}`);
   }
-  await page.evaluate(() => window.__kupit.startHouse(4242, 3)); await sleep(2000);
-  check((await state(page)).status === 'play', `${tag}: random house runs`); await shot('house');
-  await page.evaluate(() => window.__kupit.startDaily()); await sleep(2000);
-  check((await state(page)).status === 'play', `${tag}: daily house runs`); await shot('daily');
   // pause, options from pause, resume
   await page.evaluate(() => window.__kupit.start(1)); await sleep(500);
   await key('Escape', 300); check((await state(page)).mode === 'paused', `${tag}: pause`); await shot('paused');

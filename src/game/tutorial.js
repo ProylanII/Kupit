@@ -46,7 +46,7 @@ export const SALA_STEPS = [
   },
   {
     id: 'door',
-    say: (k) => [keyOr(k, 'TAP THE BIG BUTTON: BUKAS OPENS THE DOOR', 'PRESS E (ACT): BUKAS OPENS THE DOOR'), 'DOORS ALSO HIDE YOU FROM VIEW'],
+    say: (k) => [keyOr(k, 'TAP THE BIG BUTTON TO OPEN THE DOOR', 'PRESS E (ACT) TO OPEN THE DOOR'), 'DOORS ALSO HIDE YOU FROM VIEW'],
     focus: (w, m) => m.door,
     btn: () => 'act',
     done: (w, m) => !m.door || w.map.ch(m.door.tx, m.door.ty) === 'd' || w.player.ty < m.door.ty,
@@ -73,14 +73,14 @@ export const SALA_STEPS = [
   },
   {
     id: 'kupit',
-    say: (k) => [keyOr(k, 'HOLD THE BIG BUTTON TO KUPIT', 'HOLD E TO KUPIT'), 'KEEP HOLDING... A COIN COMES OUT'],
+    say: (k) => [keyOr(k, 'HOLD THE BIG BUTTON TO TAKE COINS', 'HOLD E TO TAKE COINS'), 'KEEP HOLDING... A COIN COMES OUT'],
     focus: (w, m) => m.stash,
     btn: (w, m) => (w.prompt?.kind === 'steal' ? 'act' : null),
     done: (w) => w.coins >= 1,
   },
   {
     id: 'more',
-    say: (k, w) => [`GOOD! ${Math.max(0, w.level.quota - w.coins)} MORE. KEEP HOLDING KUPIT`, 'AT THE AD BREAK SHE LOOKS THIS WAY: BACK OFF'],
+    say: (k, w) => [`GOOD! ${Math.max(0, w.level.quota - w.coins)} MORE. KEEP HOLDING TAKE`, 'AT THE AD BREAK SHE LOOKS THIS WAY: BACK OFF'],
     focus: (w, m) => m.stash,
     btn: (w) => (w.prompt?.kind === 'steal' ? 'act' : null),
     done: (w) => w.coins >= w.level.quota,
@@ -155,7 +155,7 @@ export class Coach {
     }
     if ((mama && mama.staged) || (w.stagedT > 0 && !w.stagedDone)) {
       const box = nearestHide(w);
-      return { lines: ['TAGO! SHE HEARD SOMETHING', keyOr(k, 'GO TO A HIDING BOX AND TAP THE BIG BUTTON', 'GO TO A HIDING BOX AND PRESS E')], col: 'orange', focus: box, btn: w.prompt?.kind === 'hide' ? 'act' : null, reactive: true };
+      return { lines: ['HIDE! SHE HEARD SOMETHING', keyOr(k, 'GO TO A HIDING BOX AND TAP THE BIG BUTTON', 'GO TO A HIDING BOX AND PRESS E')], col: 'orange', focus: box, btn: w.prompt?.kind === 'hide' ? 'act' : null, reactive: true };
     }
     if (w.adults.some((a) => a.awake && a.alert > 0.3)) return { lines: ['SHE SEES YOU!', 'BACK OFF, OUT OF THE YELLOW CONE'], col: 'red', focus: null, btn: null, reactive: true };
     const s = this.step;

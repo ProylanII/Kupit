@@ -323,36 +323,5 @@
   }
  ],
  "clearText": "TO ALING NENA'S!",
- "hinala": {
-  "2": {
-   "news": "MAMA SHOPS AT THE FISH STALL NOW",
-   "do": [
-    {
-     "stop": 2,
-     "at": [
-      9,
-      4,
-      5,
-      -1.5708,
-      "kwento"
-     ]
-    }
-   ]
-  },
-  "3": {
-   "news": "TATAY WAITS BY THE EXIT AISLE NOW",
-   "do": [
-    {
-     "stop": 4,
-     "at": [
-      23,
-      3,
-      6,
-      0
-     ]
-    }
-   ]
-  }
- },
  "notes": "An errand: three free things (no coins, nothing taken from the stalls). The family is shopping here; tinderas gossip (HINALA +2, and a mission if it reaches Mama). Near-miss: the two tinderas chatting turn as you pass behind their stall. Nene's \"Oops\" plays after the level, at the stall."
 }

@@ -6,30 +6,23 @@ import { hashStr } from './rng.js';
 import { maskFromStars, starsOf } from '../game/missions.js';
 
 const KEY = 'kupit.save.v1'; // the storage key never changes; the schema version is inside the save
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 export const DEFAULT_OPTS = { music: 0.75, sfx: 1, shake: 1, flash: true, pulse: true, left: false, ghost: true };
 
 export const fresh = () => ({
   v: SAVE_VERSION,
-  unlocked: 0, stars: {}, best: {}, bank: 0, muted: false, upgrades: {}, chars: ['jun'], char: 'jun',
-  houses: 0, houseDiff: 2, daily: null, haptics: true,
+  unlocked: 0, stars: {}, best: {}, bank: 0, muted: false, upgrades: {}, chars: ['jun'], char: 'jun', haptics: true,
   // v2
   opts: { ...DEFAULT_OPTS },
   seen: {},                 // one-time tips already shown
   alkansya: {},             // level id -> true once its secret alkansya was emptied
   outfits: ['basic'], outfit: 'basic', decor: [], decorOff: [],
-  mutators: [], mutatorClears: {},
-  streak: { last: null, n: 0, best: 0 },
-  houseDay: { id: null, n: 0 }, // Random Houses cleared today (diminishing payouts)
   story: { intro: false, ending: false, epilogue: false, nena: false, seen: {}, after: {} }, // seen / after: level id -> its scene (before / after the level) has played
   // v3
   needs: {},                // what has been bought for Mingming and the kittens (progression.js NEEDS)
   missions: {},             // level id -> bit mask of its missions done so far (stars[id] = how many bits are set)
-  // design overhaul (fields with defaults: no schema bump until v4 also remaps the chapter order)
-  hinala: 0,                // the household's suspicion, 0..100 (game/hinala.js); moves on first clears only
-  hinalaAt: {},             // level id -> HINALA tier it was first cleared at (replays use it)
-  hinalaPlay: 0,            // the part of it Jun's own play caused (no chapter floors): flavours the ending
+  // design overhaul
   ledger: {},               // level id -> what the first clear took { by: {owner: n}, sobra, emptied, catches, spills }
   pick: {},                 // level id -> the kid who went last time (the pre-level card remembers)
   // v6
@@ -75,6 +68,11 @@ const MIGRATIONS = {
     s.v = 6;
     return s;
   },
+  6: (s) => { // v7 (the arcade pass): HINALA, the Random House, the Daily House and the star gifts are gone. Their
+    // fields simply drop out (migrate keeps only what fresh() has); looks already earned with them stay owned.
+    s.v = 7;
+    return s;
+  },
 };
 
 const isObj = (o) => !!o && typeof o === 'object' && !Array.isArray(o);
@@ -94,8 +92,6 @@ export function migrate(raw) {
   }
   out.v = SAVE_VERSION;
   out.opts = { ...DEFAULT_OPTS, ...(isObj(s.opts) ? s.opts : {}) };
-  out.streak = { ...def.streak, ...(isObj(s.streak) ? s.streak : {}) };
-  out.houseDay = { ...def.houseDay, ...(isObj(s.houseDay) ? s.houseDay : {}) };
   out.story = { ...def.story, ...(isObj(s.story) ? s.story : {}) };
   if (!isObj(out.story.seen)) out.story.seen = {};
   if (!isObj(out.story.after)) out.story.after = {};
@@ -110,7 +106,6 @@ export function migrate(raw) {
   }
   out.bank = Math.max(0, Math.floor(Number(out.bank) || 0));
   out.unlocked = Math.max(0, Math.floor(Number(out.unlocked) || 0));
-  for (const k of ['hinala', 'hinalaPlay']) out[k] = Math.max(0, Math.min(100, Number(out[k]) || 0));
   return out;
 }
 

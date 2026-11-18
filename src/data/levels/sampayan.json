@@ -316,30 +316,5 @@
    "sleepy": true
   }
  ],
- "hinala": {
-  "2": {
-   "news": "TITA TAKES THE WASHING IN SOONER",
-   "do": [
-    {
-     "set": {
-      "laundryDown": {
-       "every": 18
-      }
-     }
-    }
-   ]
-  },
-  "3": {
-   "news": "ASO IS LOOSE ALL DAY NOW",
-   "do": [
-    {
-     "adult": 3,
-     "cfg": {
-      "cycle": null
-     }
-    }
-   ]
-  }
- },
  "notes": "Near-miss: the last line of washing comes down beside whichever kid you left waiting. Bing crawls under the bench tables on the left; Ramil yells the dog away from the gate."
 }

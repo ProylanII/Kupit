@@ -9,15 +9,15 @@ export const TARGET_KINDS = {
   wallet:   { name: 'WALLET', hold: 1.0,  start: { r: 60, say: 'ZZZIP!' },             tip: 'WALLET: LOUD ZIPPER FIRST. WAIT FOR PHONE TIME' },
   piggy:    { name: 'PIGGY',  hold: 1.1,  tick: { every: 0.5, r: 34 },                 tip: 'PIGGY BANK: EVERY SHAKE JINGLES' },
   candy:    { name: 'GARAPON', hold: 1.0, tick: { every: 0.8, r: 40 },                 tip: 'GARAPON: THE BIG PRIZE. LID RATTLES' },
-  // story stashes. verb: what the action button says instead of KUPIT.
-  gatas:    { name: 'GATAS',  hold: 1.0, verb: 'KUNIN',  tip: 'MILK! WALK IT OUT SLOWLY. RUNNING SPILLS IT' },
-  kuting:   { name: 'KUTING', hold: 1.0, verb: 'SAGIP',  tick: { every: 0.9, r: 30 }, end: { r: 0, say: 'MEOW!' }, tip: 'A KITTEN! IT MEOWS AS YOU PICK IT UP' },
-  ibalik:   { name: 'PITAKA', hold: 1.0, verb: 'IBALIK', end: { r: 36, say: 'KLIK!' }, tip: 'PUT THE COINS BACK. QUIETLY' },
+  // story stashes. verb: what the action button says instead of TAKE.
+  gatas:    { name: 'GATAS',  hold: 1.0, verb: 'TAKE',  tip: 'MILK! WALK IT OUT SLOWLY. RUNNING SPILLS IT' },
+  kuting:   { name: 'KUTING', hold: 1.0, verb: 'SAVE',  tick: { every: 0.9, r: 30 }, end: { r: 0, say: 'MEOW!' }, tip: 'A KITTEN! IT MEOWS AS YOU PICK IT UP' },
+  ibalik:   { name: 'PITAKA', hold: 1.0, verb: 'RETURN', end: { r: 36, say: 'KLIK!' }, tip: 'PUT THE COINS BACK. QUIETLY' },
   // BAGYO: Mingming, scared by the storm. calm = she only comes while it is quiet (thunder makes her flinch away)
-  mingming: { name: 'MINGMING', hold: 1.5, verb: 'TAWAG', calm: true, tick: { every: 1.2, r: 22 }, end: { r: 0, say: 'MRRROW...' }, tip: 'MINGMING IS SCARED OF THE THUNDER: CALL HER IN THE QUIET' },
-  isda:     { name: 'PRITONG ISDA', hold: 1.0, verb: 'KUNIN', tip: 'THE FISH! ASO WILL SMELL IT. PANDESAL KEEPS HIM BUSY' }, // TATAY's boss
-  bilin:    { name: 'BILIN',  hold: 0.8, verb: 'KUNIN',  tip: 'AN ERRAND: JUST PICK IT UP. BUT NOT WHERE MAMA SEES' }, // PALENGKE: free things, an errand
-  regalo:   { name: 'HINGI',  hold: 0.6, verb: 'HINGI',  tip: 'NO SNEAKING. JUST ASK!' },
+  mingming: { name: 'MINGMING', hold: 1.5, verb: 'CALL', calm: true, tick: { every: 1.2, r: 22 }, end: { r: 0, say: 'MRRROW...' }, tip: 'MINGMING IS SCARED OF THE THUNDER: CALL HER IN THE QUIET' },
+  isda:     { name: 'PRITONG ISDA', hold: 1.0, verb: 'TAKE', tip: 'THE FISH! ASO WILL SMELL IT. PANDESAL KEEPS HIM BUSY' }, // TATAY's boss
+  bilin:    { name: 'BILIN',  hold: 0.8, verb: 'TAKE',  tip: 'AN ERRAND: JUST PICK IT UP. BUT NOT WHERE MAMA SEES' }, // PALENGKE: free things, an errand
+  regalo:   { name: 'HINGI',  hold: 0.6, verb: 'ASK',  tip: 'NO SNEAKING. JUST ASK!' },
   alkansya: { name: 'ALKANSYA', hold: 1.0, tick: { every: 0.6, r: 30 }, end: { r: 50, say: 'KLING!' }, tip: 'SECRET ALKANSYA! BONUS COINS' },
 };
 

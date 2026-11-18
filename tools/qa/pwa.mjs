@@ -1,6 +1,6 @@
 // Offline + install check in headless Chrome: register the service worker (?sw=1 makes it run on localhost),
 // wait for the whole version to download, navigate again through the worker, go OFFLINE, reload, boot the
-// game and play a level and the Daily House from the cache. Then check the manifest for installability.
+// game and play a level from the cache. Then check the manifest for installability.
 //   node tools/qa/pwa.mjs http://localhost:8080
 import { launch, openPage, sleep, state } from './browser.mjs';
 
@@ -37,8 +37,6 @@ const off = await state(page);
 check(off.mode === 'title', `offline: title screen boots from the cache (${JSON.stringify(off)})`);
 await page.evaluate(() => window.__kupit.start(4)); await sleep(1500);
 check((await state(page)).status === 'play', 'offline: a level plays');
-await page.evaluate(() => window.__kupit.startDaily()); await sleep(1500);
-check((await state(page)).status === 'play', 'offline: the Daily House plays');
 await page.setOfflineMode(false);
 
 const man = await page.evaluate(async () => {

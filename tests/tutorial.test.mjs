@@ -54,7 +54,7 @@ test('tutorial: reactive lines (hiding, the staged beat, being seen, a close cal
   mama.staged = true;
   assert.match(c.view().lines[0], /^SAFE/);
   w.player.hidden = null;
-  assert.match(c.view().lines[0], /^TAGO/);
+  assert.match(c.view().lines[0], /^HIDE/);
   assert.ok(c.view().focus, 'points at a hiding spot');
   mama.staged = false; mama.alert = 0.5;
   assert.match(c.view().lines[0], /SEES YOU/);
@@ -74,7 +74,7 @@ test('tutorial: SALA is still finishable by the walkthrough bot, sneaking and ru
   assert.ok(playBot(L, { run: true }).ok);
 });
 
-test('tutorial: an open door and a found tsinelas are not HINALA evidence on the tutorial', () => {
+test('tutorial: an open door and a found tsinelas are not evidence on the tutorial', () => {
   const w = new World(L), mama = w.adults[0];
   w.items.push({ x: mama.x, y: mama.y, kind: 'tsinelas', noPickT: 1, thrown: true });
   w.arrived(mama);

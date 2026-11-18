@@ -10,14 +10,11 @@ import { drawText, drawBig } from './ui/font.js';
 import { drawActor, drawStar, drawTarget, drawCoin, drawPortrait, drawObj, getSprite } from './render/sprites.js';
 import { parol } from './render/tiles.js';
 import {
-  CHARACTERS, CHAR_ORDER, STAR_MILESTONES, MAX_STARS, totalStars, grantUnlocks, campaignPayout, housePayout,
+  CHARACTERS, CHAR_ORDER, MAX_STARS, totalStars, grantUnlocks, campaignPayout, isPasko,
   grantSiblings, NEED_ORDER, hasNeed, needCost, needOpen, UPGRADE_ORDER, upgradeCost, grantRewards,
 } from './game/progression.js';
-import {
-  generateHouse, dailySeed, dailyId, dailyDiff, isPasko, prevDailyId, MUTATORS, MUTATOR_ORDER, mutatorMult,
-} from './game/house.js';
 import { C } from './render/palette.js';
-import { shopScreen, upgradesScreen, charScreen, cosmeticsScreen } from './scenes/shop.js';
+import { shopScreen, upgradesScreen, cosmeticsScreen } from './scenes/shop.js';
 import { drawHideout, drawCat, drawMap, mapLayout, mapScrollFor, mapNodeRect, mapVisible } from './scenes/hub.js';
 import { dev, initDev, setDev, SPEEDS } from './core/dev.js';
 import { music } from './core/music.js';
@@ -27,7 +24,6 @@ import { settings, applySettings, SHAKE_LEVELS, shakeLabel, VOLUME_STEPS } from 
 import { loadGhost, storeGhost, clearGhosts } from './game/ghost.js';
 import { INTRO, BEFORE, AFTER, ENDING, EPILOGUE, NAMES, CHAPTERS } from './data/story.js';
 import { missionIds, missionLabel, maskOf, starsOf } from './game/missions.js';
-import { applyHinala, tierOf, effective, delta as hinalaDelta, next as hinalaNext, TIERS } from './game/hinala.js';
 import { returnPlan, applyReturn } from './game/ibalik.js';
 import { drawMenu, drawButton, buttonRect, menuHit, hit } from './ui/menu.js';
 
@@ -65,9 +61,8 @@ async function loadLevels() {
 
 let levels = [];
 let idx = 0;
-let cur = null;   // the level being played (handmade or generated)
-let run = null;   // null for campaign, { seed, diff, daily, mutators } for Random House
-let mode = 'loading'; // loading | title | levels | help | options | story | house | dev | store | upgrades | cosmetics | chars | play | paused | caught | clear
+let cur = null;   // the level being played
+let mode = 'loading'; // loading | title | levels | help | options | story | card | dev | store | upgrades | cosmetics | album | play | paused | caught | clear
 let play = null;
 let age = 0;
 let sel = 0;       // highlighted menu item
@@ -76,9 +71,7 @@ let prevMode = 'title'; // where BACK goes from levels/help/options
 let newBest = false;
 let earned = 0;
 let bossBonus = 0;
-let hinalaShown = null; // clear screen: { d, from, to } when this first clear moved the household's suspicion
 let msg = null;    // { text, color, t } short message on menus
-let shareText = null;
 let starShown = [false, false, false]; // clear screen: which stars have popped in
 let starsBefore = 0;                   // clear screen: the missions already done before this run (bit mask)
 let rewardsShown = [];                 // clear screen: what this run's new stars paid (mini-game rewards)
@@ -86,7 +79,7 @@ const fails = {};                      // level id -> failed tries this session 
 // Mini-games (level "mode") have scenes of their own; everything else is the stealth game (scenes/play.js).
 const SCENES = { preso: PresoScene, habol: RunnerScene };
 const sceneFor = (L) => SCENES[L.mode] || Play;
-const special = (L) => !!(L.mode || L.cat); // no crew to pick, no HINALA
+const special = (L) => !!(L.mode || L.cat); // no crew to pick
 
 const FADE = 0.25;
 const STEP = 1 / 60; // the simulation always advances in fixed 60 Hz steps (same game on 60/120/144 Hz screens)
@@ -102,21 +95,21 @@ const say = (text, color = C.yellow, t = 2) => { msg = { text, color, t }; };
 const tips = { get seen() { return save.seen; }, mark(id) { save.seen[id] = true; persist(); } };
 
 function launch() {
-  const campaign = !run, Scene = sceneFor(cur);
-  const ghost = campaign && settings.ghost && Scene === Play ? loadGhost(cur.id) : null;
-  const L = campaign && !special(cur) ? prepare(applyHinala(cur, hinalaTierFor(cur, idx))) : cur;
+  const Scene = sceneFor(cur);
+  const ghost = settings.ghost && Scene === Play ? loadGhost(cur.id) : null;
+  const L = special(cur) ? cur : prepare(cur);
   play = new Scene(L, input, { char: save.char, upgrades: save.upgrades, lives: 3, alkansyaFound: !!save.alkansya[cur.id] },
-    { tips, ghost, outfit: save.outfit, record: campaign, log: playtest ? ptEvent : null,
-      earned: campaign ? save.missions[cur.id] | 0 : 0, noCard: campaign, // campaign: the card came before the level
-      quietClear: campaign && !!cur.ending && !save.story.ending, // the storm ends on "HULI KA!", not on a fanfare
-      kitten: !campaign || cur.storm ? 0 : cur.hingi ? 3 : save.story.epilogue ? 1 : 0 }); // the epilogue: all three trot after you; afterwards Tigre tags along
+    { tips, ghost, outfit: save.outfit, record: true, log: playtest ? ptEvent : null,
+      earned: save.missions[cur.id] | 0, noCard: true, // the card came before the level
+      quietClear: !!cur.ending && !save.story.ending, // the storm ends on "HULI KA!", not on a fanfare
+      kitten: cur.storm ? 0 : cur.hingi ? 3 : save.story.epilogue ? 1 : 0 }); // the epilogue: all three trot after you; afterwards Tigre tags along
   ptLog('start');
   input.reset();
   acc = 0;
   setMode('play');
 }
 
-function start(i) { idx = i; run = null; cur = levels[i]; launch(); }
+function start(i) { idx = i; cur = levels[i]; launch(); }
 
 // IBALIK (game/ibalik.js): how much goes back, and from where, comes from the ledger of earlier first clears.
 const ibalikPlan = () => {
@@ -126,21 +119,7 @@ const ibalikPlan = () => {
 const prepare = (L) => (L.giveBack ? applyReturn(L, ibalikPlan()) : L);
 const storyFlags = () => ({ brokeAlkansya: ibalikPlan().fromAlkansya > 0 });
 
-// HINALA (game/hinala.js): the household's suspicion, never below the chapter's floor. A replay uses the tier the
-// level was first cleared at; a first visit uses the house as it is now.
-const hinalaNow = (i = idx) => effective(save.hinala, chapterOf(Math.max(0, i)));
-const hinalaTierFor = (L, i = idx) => save.hinalaAt[L.id] ?? tierOf(hinalaNow(i));
-
-function startHouse(seed, diff, daily = false) {
-  const mutators = daily ? [] : save.mutators.slice();
-  run = { seed, diff, daily, mutators };
-  cur = generateHouse(seed, diff, { mutators, pasko: daily && isPasko() });
-  launch();
-}
-const startDaily = () => startHouse(dailySeed(), dailyDiff(), true);
-
 const restart = () => launch();
-const newSeed = () => 1000 + Math.floor(Math.random() * 9000);
 
 function toggleSound() {
   setMuted(!isMuted());
@@ -196,10 +175,9 @@ function drawMsg(y = 318) {
 
 // ---- story panels -------------------------------------------------------------
 let story = null; // { panels, i, then, flash }
-function startStory(panels, then, at = idx) {
-  const tier = tierOf(hinalaNow(at)), low = tierOf(save.hinalaPlay | 0) <= 1;
+function startStory(panels, then) {
   const flags = storyFlags();
-  panels = panels.filter((p) => (p.minTier === undefined || tier >= p.minTier) && (!p.when || flags[p.when])).map((p) => (p.low && low ? { ...p, lines: p.low } : p));
+  panels = panels.filter((p) => !p.when || flags[p.when]);
   story = { panels, i: 0, then, flash: 0 }; setMode('story'); enterPanel();
 }
 // A "caught" panel opens exactly like the game's own caught screen: the sting, a buzz and a red flash.
@@ -216,9 +194,9 @@ function begin(i) {
   const L = levels[i];
   if (!L) return;
   const go = () => begin(i);
-  if (i === 0 && !save.story.intro) { startStory(INTRO, () => { save.story.intro = true; persist(); go(); }, i); return; }
+  if (i === 0 && !save.story.intro) { startStory(INTRO, () => { save.story.intro = true; persist(); go(); }); return; }
   // (the ending normally plays the moment the storm is cleared; this covers saves that got past it another way)
-  if (L.epilogue && !save.story.ending) { startStory(ENDING, () => { save.story.ending = true; persist(); go(); }, i); return; }
+  if (L.epilogue && !save.story.ending) { startStory(ENDING, () => { save.story.ending = true; persist(); go(); }); return; }
   const scene = BEFORE[L.id];
   if (scene && !save.story.seen[L.id]) {
     startStory(scene, () => {
@@ -226,14 +204,14 @@ function begin(i) {
       for (const p of scene) if (p.flag) save.story[p.flag] = true; // e.g. Aling Nena's discount
       grantSiblings(save, levelIds());                               // a sibling who joined in this scene
       persist(); go();
-    }, i);
+    });
     return;
   }
   showCard(i);
 }
 
 // ---- before a level: SINO ANG PUPUNTA? (who's going?) -------------------------------------------------
-// The level, its three stars, what changed in the house (HINALA), and the crew: pick who goes. A level can
+// The level, its three stars and the crew: pick who goes. A level can
 // suggest a kid ("suggest": "bing", "suggestWhy": "..."), but every level can be finished as Jun.
 let card = null; // { i, sel: index into the crew row }
 const CARD_GO = { x: 20, y: 318, w: 200, h: 22 }, CARD_BACK = { x: 70, y: 346, w: 100, h: 15 };
@@ -278,17 +256,11 @@ function drawCard() {
     if (L.rewards?.[k]) { if (on) g.globalAlpha = 0.35; drawRewardIcon(g, L.rewards[k], cx + 80, 65 + k * 11); g.globalAlpha = 1; } // what this star pays
   });
   if (special(L)) { drawModeCard(L, cx); return; }
-  // what changed in the house since last time (HINALA)
-  const news = applyHinala(L, hinalaTierFor(L, card.i)).news || [];
   let y = 110;
-  if (news.length) {
-    drawText(g, 'NEW IN THE HOUSE', cx, y, C.orange, { align: 'center' }); y += 10;
-    for (const n of news.slice(0, 2)) { drawText(g, n, cx, y, C.white, { align: 'center' }); y += 9; }
-  } else if (L.howto) { for (const [, l] of L.howto.slice(0, 3)) { drawText(g, l, cx, y, C.gray, { align: 'center' }); y += 9; } }
+  if (L.howto) { for (const [, l] of L.howto.slice(0, 3)) { drawText(g, l, cx, y, C.gray, { align: 'center' }); y += 9; } }
   else if (L.hint) { for (const l of wrap(L.hint, 56).slice(0, 2)) { drawText(g, l, cx, y, C.gray, { align: 'center' }); y += 9; } }
   // the crew
-  drawText(g, 'SINO ANG PUPUNTA?', cx, 160, C.gold, { align: 'center' });
-  drawText(g, "WHO'S GOING?", cx, 170, C.gray, { align: 'center' });
+  drawText(g, "WHO'S GOING?", cx, 164, C.gold, { align: 'center' });
   CHAR_ORDER.forEach((id, k) => {
     const r = cardSlot(k), have = save.chars.includes(id), on = card.sel === k;
     g.fillStyle = on ? C.gold : C.wallD; g.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2);
@@ -307,10 +279,10 @@ function drawCard() {
 
 // The card of a mini-game or Mingming's night: no crew to pick, so the space shows how it plays.
 function drawModeCard(L, cx) {
-  drawText(g, L.bonus ? 'LARO! A BONUS GAME' : L.cat ? 'TONIGHT YOU ARE THE CAT' : 'SOMETHING DIFFERENT', cx, 108, C.orange, { align: 'center' });
+  drawText(g, L.bonus ? 'A BONUS GAME' : L.cat ? 'TONIGHT YOU ARE THE CAT' : 'SOMETHING DIFFERENT', cx, 108, C.orange, { align: 'center' });
   const n = (L.howto || []).length;
   g.globalAlpha = 0.85; g.fillStyle = '#2a2440'; g.fillRect(12, 120, VIEW_W - 24, 16 + n * 22); g.globalAlpha = 1;
-  drawText(g, 'PAANO? (HOW TO PLAY)', cx, 124, C.gold, { align: 'center' });
+  drawText(g, 'HOW TO PLAY', cx, 124, C.gold, { align: 'center' });
   (L.howto || []).forEach(([icon, text], k) => {
     const y = 138 + k * 22;
     drawHowIcon(icon, 26, y + 6);
@@ -390,19 +362,18 @@ function drawStory() {
 }
 
 // ---- title: the hideout under the house -------------------------------------------------
-// One big button for the story, six small ones for everything else. (Keyboard order = the list order.)
+// One big button for the story, four small ones for everything else. (Keyboard order = the list order.)
 const HUB_Y = 186;
 const TITLE_RECTS = [
-  { x: 20, y: 267, w: 200, h: 21 },
-  { x: 20, y: 292, w: 98, h: 16 }, { x: 122, y: 292, w: 98, h: 16 },
-  { x: 20, y: 312, w: 98, h: 16 }, { x: 122, y: 312, w: 98, h: 16 },
-  { x: 20, y: 332, w: 98, h: 16 }, { x: 122, y: 332, w: 98, h: 16 },
-  { x: 20, y: 352, w: 200, h: 14 },
+  { x: 20, y: 267, w: 200, h: 22 },
+  { x: 20, y: 295, w: 98, h: 19 }, { x: 122, y: 295, w: 98, h: 19 },
+  { x: 20, y: 319, w: 98, h: 19 }, { x: 122, y: 319, w: 98, h: 19 },
 ];
+const T_SHOP = 2, T_ALBUM = 3; // (the buttons that get a "!" badge)
 function titleItems() {
   const L = levels[unlockedMax()];
   const play = !save.story.intro && save.unlocked === 0 ? 'START THE STORY' : `${save.story.epilogue ? 'VISIT' : 'NEXT'}: ${L ? L.name : ''}`;
-  return [play, 'MAP', 'RANDOM HOUSE', "ALING NENA'S", 'THE CREW', 'ALBUM', 'HOW TO PLAY', 'OPTIONS'];
+  return [play, 'MAP', "ALING NENA'S", 'ALBUM', 'OPTIONS'];
 }
 const canAffordNeed = () => NEED_ORDER.some((id) => !hasNeed(save, id) && needOpen(save, id) && save.bank >= needCost(save, id));
 const chapterOf = (i) => { let c = 0; levels.slice(0, i + 1).forEach((L) => { const k = CHAPTERS.findIndex((x) => x.from === L.id); if (k >= 0) c = k; }); return c; };
@@ -505,14 +476,12 @@ function drawTitle() {
   }
   drawDecor(t);
   drawText(g, 'KUPIT', VIEW_W / 2, 44, C.gold, { scale: 8, align: 'center', shadow: C.gold2 });
-  drawHideout(g, save, t, HUB_Y, { tier: save.story.intro && !save.story.ending ? tierOf(hinalaNow(unlockedMax())) : -1 });
+  drawHideout(g, save, t, HUB_Y);
   const items = titleItems();
   TITLE_RECTS.forEach((r, i) => drawButton(g, r, items[i], i === sel));
-  if (canAffordNeed() && Math.floor(t * 2) % 2) { const r = TITLE_RECTS[3]; g.fillStyle = C.ink; g.fillRect(r.x + r.w - 9, r.y - 3, 8, 8); g.fillStyle = C.pink; g.fillRect(r.x + r.w - 8, r.y - 2, 6, 6); drawText(g, '!', r.x + r.w - 6, r.y - 1, C.ink); }
+  if (canAffordNeed() && Math.floor(t * 2) % 2) { const r = TITLE_RECTS[T_SHOP]; g.fillStyle = C.ink; g.fillRect(r.x + r.w - 9, r.y - 3, 8, 8); g.fillStyle = C.pink; g.fillRect(r.x + r.w - 8, r.y - 2, 6, 6); drawText(g, '!', r.x + r.w - 6, r.y - 1, C.ink); }
   drawCoin(g, 8, 8); drawText(g, String(save.bank), 16, 9, C.white);
-  const stars = totalStars(save), next = STAR_MILESTONES.find((m) => m.stars > stars);
-  drawStar(g, 7, 16, true); drawText(g, `${stars}/${MAX_STARS}`, 16, 17, C.white);
-  if (next) drawText(g, `NEXT GIFT AT ${next.stars}`, 8, 26, C.gray);
+  drawStar(g, 7, 16, true); drawText(g, `${totalStars(save)}/${MAX_STARS}`, 16, 17, C.white);
   if (levels.length) { const c = chapterOf(unlockedMax()); drawText(g, `CHAPTER ${c + 1}`, VIEW_W - 34, 9, C.gray, { align: 'right' }); }
   if (updateReady) {
     const r = updateRect();
@@ -521,7 +490,7 @@ function drawTitle() {
     drawText(g, 'UPDATE READY! TAP TO RESTART', VIEW_W / 2, r.y + 4, C.ink, { align: 'center' });
   }
   const newPhoto = PHOTOS.some((p) => photoUnlocked(save, p.id) && !save.seen[`photo:${p.id}`]);
-  if (newPhoto && Math.floor(t * 2) % 2) { const r = TITLE_RECTS[5]; g.fillStyle = C.ink; g.fillRect(r.x + r.w - 9, r.y - 3, 8, 8); g.fillStyle = C.green; g.fillRect(r.x + r.w - 8, r.y - 2, 6, 6); drawText(g, '!', r.x + r.w - 6, r.y - 1, C.ink); }
+  if (newPhoto && Math.floor(t * 2) % 2) { const r = TITLE_RECTS[T_ALBUM]; g.fillStyle = C.ink; g.fillRect(r.x + r.w - 9, r.y - 3, 8, 8); g.fillStyle = C.green; g.fillRect(r.x + r.w - 8, r.y - 2, 6, 6); drawText(g, '!', r.x + r.w - 6, r.y - 1, C.ink); }
   drawText(g, `V${VERSION}`, VIEW_W - 4, VIEW_H - 9, C.dgray, { align: 'right' }); // which build this is
   drawMsg(374);
 }
@@ -539,12 +508,9 @@ function updateTitle() {
   sfx.unlock();
   if (pick === 0) begin(unlockedMax());
   else if (pick === 1) { prevMode = 'title'; setMode('levels'); sel = unlockedMax(); }
-  else if (pick === 2) setMode('house');
-  else if (pick === 3) openShop(null);
-  else if (pick === 4) { charScreen.sel = CHAR_ORDER.indexOf(save.char); setMode('chars'); }
-  else if (pick === 5) { album.open = -1; for (const p of PHOTOS) if (photoUnlocked(save, p.id)) save.seen[`photo:${p.id}`] = true; persist(); setMode('album'); }
-  else if (pick === 6) { prevMode = 'title'; helpPage = 0; setMode('help'); }
-  else if (pick === 7) { prevMode = 'title'; setMode('options'); }
+  else if (pick === T_SHOP) openShop(null);
+  else if (pick === T_ALBUM) { album.open = -1; for (const p of PHOTOS) if (photoUnlocked(save, p.id)) save.seen[`photo:${p.id}`] = true; persist(); setMode('album'); }
+  else if (pick === 4) { prevMode = 'title'; setMode('options'); }
 }
 
 // ---- level select: the barangay map -----------------------------------------------------
@@ -592,9 +558,9 @@ function drawLevels() {
 const HELP = [[
   ['GOAL', 'TAKE THE COINS, THEN REACH THE EXIT.'],
   ['MOVE', 'DRAG ANYWHERE OR WASD. DRAG FAR / SHIFT RUNS, BUT RUNNING IS LOUD.'],
-  ['KUPIT', 'STAND AT A STASH AND HOLD THE BIG BUTTON: E OR SPACE. LET GO AND IT WAITS FOR YOU.'],
+  ['TAKE', 'STAND AT A STASH AND HOLD THE BIG BUTTON: E OR SPACE. LET GO AND IT WAITS FOR YOU.'],
   ['SEEN?', 'YELLOW CONE: THEY SEE YOU. ? MEANS SUSPICIOUS, ! MEANS CHASE. ARROWS ON THE EDGE SHOW WHO IS COMING.'],
-  ['HIDE', 'PRESS TAGO AT A BOX, CURTAIN OR BASKET. AN EYE ABOVE YOU MEANS THEY SAW YOU GO IN.'],
+  ['HIDE', 'PRESS ACT AT A BOX, CURTAIN OR BASKET. AN EYE ABOVE YOU MEANS THEY SAW YOU GO IN.'],
   ['THROW', 'HOLD Q OR THE BLUE BUTTON TO AIM, LET GO TO THROW. NOISE LURES ADULTS AWAY. R SWITCHES ITEMS.'],
   ['SKILL', 'EACH KID HAS A SKILL: TAP THE GREEN BUTTON OR PRESS F.'],
 ], [
@@ -611,24 +577,24 @@ const HELP = [[
   ['CROWD', 'AT A PARTY, WALK BESIDE A GUEST AND YOU BLEND IN: NOBODY NOTICES YOU UNLESS THEY ARE VERY CLOSE. RUNNING BREAKS IT.'],
   ['VIDEOKE', 'WHILE SOMEONE IS SINGING, NOTHING YOU DO NEAR THE MACHINE CAN BE HEARD. THUNDER DOES THE SAME FOR THE WHOLE YARD.'],
   ['KUTING', 'FINISH THE STORY AND TIGRE FOLLOWS YOU ON EVERY KUPIT. HE IS ONLY HERE TO WATCH.'],
-  ['LARO', 'SOME LEVELS PLAY DIFFERENTLY: TUMBANG PRESO, HABOL! AND A NIGHT AS MINGMING. THEIR STARS PAY PRIZES, PHOTOS FOR THE ALBUM OR NEW LOOKS. A BONUS GAME CAN BE SKIPPED AFTER TWO TRIES.'],
+  ['MINI-GAMES', 'SOME LEVELS PLAY DIFFERENTLY: TUMBANG PRESO, HABOL! AND A NIGHT AS MINGMING. THEIR STARS PAY PRIZES, PHOTOS FOR THE ALBUM OR NEW LOOKS. A BONUS GAME CAN BE SKIPPED AFTER TWO TRIES.'],
 ], [ // the design overhaul's rules
-  ['SAPAT NA', 'COINS COME OUT ONE AT A TIME (THE DOTS OVER A STASH). LET GO AT THE QUOTA: ANYTHING MORE IS SOBRA, EVERY EXTRA COIN CLINKS LOUDER, AND AN EMPTY PURSE IS EASY TO NOTICE.'],
+  ['SAPAT NA', 'COINS COME OUT ONE AT A TIME (THE DOTS OVER A STASH). LET GO AT THE QUOTA: ANYTHING MORE IS SOBRA, AND EVERY EXTRA COIN CLINKS LOUDER.'],
   ['KASABWAT', 'IN SOME LEVELS TWO KIDS GO TOGETHER. Z (OR THE PURPLE BUTTON) SWITCHES WHO YOU CONTROL. THE OTHER WAITS WHERE YOU LEFT THEM: HIDE THEM FIRST. BOTH MUST REACH THE EXIT.'],
-  ['HINALA', "THE HOUSE REMEMBERS. SOBRA, EMPTY STASHES, ALARMS AND CLOSE CALLS MAKE THE FAMILY SUSPICIOUS (MAMA'S FACE IN THE HIDEOUT), AND THE HOUSE CHANGES: A PURSE MOVES, SOMEONE WATCHES MORE. A CLEAN RUN CALMS THEM."],
   ['CREW', 'BING, KUYA RAMIL AND NENE JOIN AS THE STORY GOES ON. BEFORE EACH LEVEL, PICK WHO GOES. BING CRAWLS UNDER TABLES AND BEDS. KUYA RAMIL TALKS AWAY ONE CLOSE CALL A LEVEL.'],
   ['GEAR', "ALING NENA'S SELLS FIVE TRICKS, EACH BOUGHT ONCE: MEDYAS (QUIET ON CREAKY BOARDS), PANYO (MUFFLES A CLASP), HOLEN (ROLLING MARBLES), BAON (START WITH A SLIPPER AND BREAD), BULSA (CARRY MORE)."],
 ], [
   ['KITTENS', "YOUR COINS BUY WHAT MINGMING AND HER KITTENS NEED AT ALING NENA'S. THE HIDEOUT CHANGES WITH EVERY ONE."],
   ['MILK', 'A FULL BOWL OF MILK SPILLS IF YOU RUN. IN A STORM, THUNDER COVERS YOUR NOISE.'],
   ['CREDITS', 'KUPIT IS A PIXEL STEALTH GAME MADE IN PLAIN JAVASCRIPT: NO ENGINE, NO DOWNLOADS. THE ART, THE MUSIC AND THE FONT ARE ALL DRAWN AND PLAYED IN CODE.'],
-  ['WORDS', 'KUPIT: TO POCKET SOMETHING SNEAKILY. HINGI: TO ASK FOR IT. TAGO: HIDE. BUKAS / SARA: OPEN / CLOSE. HULI: CAUGHT. KAIN NA: DINNER IS READY.'],
+  ['WORDS', 'KUPIT: TO POCKET SOMETHING SNEAKILY. HINGI: TO ASK FOR IT. HULI KA: CAUGHT YOU. MUNTIK NA: THAT WAS CLOSE. SAPAT NA: THAT IS ENOUGH. KAIN NA: DINNER IS READY.'],
   ['MORE', 'TSINELAS: SLIPPERS. ALKANSYA: PIGGY BANK. BAYONG: WOVEN BAG. PANDESAL: BREAD ROLL. SARI-SARI: CORNER STORE. TANOD: VILLAGE WATCHMAN.'],
   ['SAVES', 'YOUR PROGRESS STAYS ON THIS DEVICE. OPTIONS > COPY SAVE CODE MOVES IT TO ANOTHER ONE.'],
   ['OFFLINE', 'INSTALL IT FROM THE BROWSER MENU AND IT PLAYS WITHOUT INTERNET.'],
   ['THANKS', 'SALAMAT SA PAGLALARO!'],
 ]];
 let helpPage = 0;
+let helpFrom = 'options'; // where the help's BACK goes: 'options' or 'paused'
 
 function wrap(text, cols) {
   const out = []; let line = '';
@@ -660,11 +626,12 @@ function updateHelp() {
   const next = () => { helpPage = (helpPage + 1) % HELP.length; sfx.click(); };
   if (input.pressed('ArrowRight') || input.pressed('d') || hit(input.tapPos, helpNext()) || input.pressed('Enter') || input.pressed(' ') || input.pressed('e')) next();
   else if (input.pressed('ArrowLeft') || input.pressed('a')) { helpPage = (helpPage + HELP.length - 1) % HELP.length; sfx.click(); }
-  else if (input.pressed('Escape') || hit(input.tapPos, helpBack())) { sfx.unlock(); setMode(prevMode); }
+  else if (input.pressed('Escape') || hit(input.tapPos, helpBack())) { sfx.unlock(); const to = helpFrom; setMode(to); if (to === 'options') sel = OPT_HELP_ITEM; }
 }
 
 // ---- options -----------------------------------------------------------------------
-const OPT_Y = 44, OPT_GAP = 19;
+const OPT_Y = 44, OPT_GAP = 18;
+const OPT_HELP_ITEM = 12; // HOW TO PLAY
 let eraseArmed = 0; // NEW GAME: seconds left to tap it a second time
 const pct = (v) => `${Math.round(v * 100)}%`;
 function optionItems() {
@@ -674,7 +641,7 @@ function optionItems() {
     canVibrate() ? `VIBRATE: ${hapticsOn() ? 'ON' : 'OFF'}` : 'VIBRATE: NOT ON THIS DEVICE',
     `VISUAL PULSE: ${settings.pulse ? 'ON' : 'OFF'}`, `BUTTONS: ${settings.left ? 'LEFT' : 'RIGHT'}-HANDED`,
     `GHOST OF BEST RUN: ${settings.ghost ? 'ON' : 'OFF'}`, 'COPY SAVE CODE', 'LOAD SAVE CODE',
-    eraseArmed > 0 ? 'SIGURADO KA? TAP AGAIN TO ERASE' : 'NEW GAME (ERASE SAVE)', 'BACK',
+    eraseArmed > 0 ? 'SURE? TAP AGAIN TO ERASE' : 'NEW GAME (ERASE SAVE)', 'HOW TO PLAY', 'BACK',
     ...(playtest ? [`COPY PLAYTEST LOG (${ptRead().length})`] : []),
   ];
 }
@@ -682,7 +649,7 @@ const OPT_HELP = [
   'MUSIC VOLUME', 'BEEPS AND CREAKS', 'SILENCE EVERYTHING (M KEY)', 'HOW MUCH THE SCREEN SHAKES', 'COLOUR FLASH ON A CLOSE CALL',
   'PHONE BUZZES ON ALERTS', 'COLOURED SCREEN EDGE INSTEAD OF A BUZZ', 'MIRROR THE BUTTONS FOR YOUR LEFT THUMB',
   'SEE-THROUGH KID REPLAYS YOUR BEST TIME', 'MOVE YOUR SAVE TO ANOTHER PHONE', 'PASTE A CODE FROM ANOTHER PHONE',
-  'START OVER: STORY, COINS, STARS AND CREW ARE ERASED', '', 'ALL DEATHS, PAUSES AND IDLE MOMENTS (JSON)',
+  'START OVER: STORY, COINS, STARS AND CREW ARE ERASED', 'THE RULES, AND WHAT THE WORDS MEAN', '', 'ALL DEATHS, PAUSES AND IDLE MOMENTS (JSON)',
 ];
 
 function drawOptions() {
@@ -740,61 +707,17 @@ function updateOptions() {
       eraseArmed = 0;
       save = newGameSave(save); clearGhosts(); persist(); applySettings(save); setMuted(save.muted);
       unlocked = grantUnlocks(save, { pasko: isPasko() }); persist();
-      run = null; play = null; shopReturn = null;
+      play = null; shopReturn = null;
       setMode('title'); say('NEW GAME! START THE STORY', C.green);
       return;
     }
-    case 12: setMode(prevMode); return;
-    case 13: copyText(JSON.stringify(ptRead(), null, 1)).then((ok) => say(ok ? 'PLAYTEST LOG COPIED' : 'COULD NOT COPY', ok ? C.green : C.orange)); break;
+    case 12: helpFrom = 'options'; helpPage = 0; setMode('help'); return;
+    case 13: setMode(prevMode); return;
+    case 14: copyText(JSON.stringify(ptRead(), null, 1)).then((ok) => say(ok ? 'PLAYTEST LOG COPIED' : 'COULD NOT COPY', ok ? C.green : C.orange)); break;
   }
   persist(); applySettings(save);
   if (pick === 5) vibrate(40);
   if (pick !== 2 && pick < 9) sfx.click();
-}
-
-// ---- random house -----------------------------------------------------------------
-const HOUSE_Y = 100, HOUSE_GAP = 20;
-const houseItems = () => [
-  'NEW HOUSE', isPasko() ? 'DAILY: NOCHE BUENA' : 'DAILY HOUSE', `DIFFICULTY: ${save.houseDiff}`,
-  ...MUTATOR_ORDER.map((k) => `${MUTATORS[k].name}: ${save.mutators.includes(k) ? 'ON' : 'OFF'}`), 'BACK',
-];
-const dailyStars = () => (save.daily && save.daily.id === dailyId() ? save.daily.stars : 0);
-const housesToday = () => (save.houseDay.id === dailyId() ? save.houseDay.n : 0);
-const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-
-function drawHouse() {
-  g.fillStyle = C.ink; g.fillRect(0, 0, VIEW_W, VIEW_H);
-  drawText(g, 'RANDOM HOUSE', VIEW_W / 2, 18, C.gold, { scale: 3, align: 'center', shadow: C.gold2 });
-  drawText(g, 'A NEW HOUSE EVERY TIME.', VIEW_W / 2, 46, C.white, { align: 'center' });
-  const streak = save.streak.last === dailyId() || save.streak.last === prevDailyId(dailyId()) ? save.streak.n : 0;
-  drawText(g, `HOUSES CLEARED: ${save.houses}   DAILY STREAK: ${streak}`, VIEW_W / 2, 60, C.yellow, { align: 'center' });
-  const m = mutatorMult(save.mutators), day = Math.max(0.25, 1 - 0.15 * housesToday());
-  drawText(g, `PAYOUT X${(m * day).toFixed(2)}${housesToday() ? `  (${housesToday()} CLEARED TODAY)` : ''}`, VIEW_W / 2, 74, m > 1 ? C.green : C.gray, { align: 'center' });
-  drawText(g, 'MUTATORS: HARDER RULES, MORE COINS', VIEW_W / 2, 86, C.dgray, { align: 'center' });
-  drawMenu(g, houseItems(), sel, HOUSE_Y, HOUSE_GAP);
-  const d = dailyStars(), dd = dailyDiff(), wd = DAYS[new Date(Date.now() + 8 * 3600e3).getUTCDay()];
-  drawText(g, `TODAY (${wd}): DAILY HOUSE IS LEVEL ${dd}`, VIEW_W / 2, 248, C.gray, { align: 'center' });
-  drawText(g, 'SAME HOUSE FOR EVERYONE (MANILA TIME)', VIEW_W / 2, 258, C.dgray, { align: 'center' });
-  if (d) for (let i = 0; i < 3; i++) drawStar(g, VIEW_W / 2 - 22 + i * 15, 270, i < d);
-  else drawText(g, 'NOT PLAYED YET TODAY', VIEW_W / 2, 272, C.dgray, { align: 'center' });
-  const k = MUTATOR_ORDER[sel - 3];
-  if (k) drawText(g, `${MUTATORS[k].desc}  X${MUTATORS[k].mult}`, VIEW_W / 2, 292, C.yellow, { align: 'center' });
-  drawText(g, 'LEVEL 1 EASY ... LEVEL 5 HARD', VIEW_W / 2, 306, C.dgray, { align: 'center' });
-  drawMsg(320);
-}
-
-function updateHouse() {
-  if (input.pressed('Escape')) { setMode('title'); return; }
-  const n = houseItems().length;
-  const pick = menuPick(n, HOUSE_Y, HOUSE_GAP);
-  if (pick === 0) startHouse(newSeed(), save.houseDiff);
-  else if (pick === 1) startDaily();
-  else if (pick === 2) { save.houseDiff = (save.houseDiff % 5) + 1; persist(); sfx.click(); }
-  else if (pick >= 3 && pick < 3 + MUTATOR_ORDER.length) {
-    const k = MUTATOR_ORDER[pick - 3];
-    save.mutators = save.mutators.includes(k) ? save.mutators.filter((x) => x !== k) : [...save.mutators, k];
-    persist(); sfx.click();
-  } else if (pick === n - 1) setMode('title');
 }
 
 // ---- dev tools (opened from the pause menu while dev mode is on) ---------------------
@@ -808,7 +731,7 @@ function drawDevMenu() {
   play.draw(g);
   dim(0.82);
   drawText(g, 'DEV TOOLS', VIEW_W / 2, 18, C.red, { scale: 3, align: 'center', shadow: C.ink });
-  drawText(g, `${cur.name}  (${run ? 'HOUSE' : `${idx + 1}/${levels.length}`})`, VIEW_W / 2, 46, C.white, { align: 'center' });
+  drawText(g, `${cur.name}  (${idx + 1}/${levels.length})`, VIEW_W / 2, 46, C.white, { align: 'center' });
   drawMenu(g, devItems(), sel, DEV_Y, DEV_GAP);
   drawText(g, 'N NEXT B PREV C CLEAR G GOD U QUOTA O EXIT I INFO', VIEW_W / 2, 336, C.dgray, { align: 'center' });
 }
@@ -824,8 +747,8 @@ function updateDevMenu() {
   else if (pick === 2) { w.devGoToExit(); setMode('play'); input.reset(); }
   else if (pick === 3) { w.devClear(); setMode('play'); input.reset(); }
   else if (pick === 4) { if (w.devNextPhase()) { setMode('play'); input.reset(); } else sfx.creak(); }
-  else if (pick === 5) { if (!run) goLevel(idx - 1); else sfx.creak(); }
-  else if (pick === 6) { if (!run) goLevel(idx + 1); else sfx.creak(); }
+  else if (pick === 5) goLevel(idx - 1);
+  else if (pick === 6) goLevel(idx + 1);
   else if (pick === 7) dev.info = !dev.info;
   else if (pick === 8) dev.speed = SPEEDS[(SPEEDS.indexOf(dev.speed) + 1) % SPEEDS.length];
   else if (pick === 9) { save.bank += 50; persist(); sfx.coin(); }
@@ -843,8 +766,8 @@ function devKeys() {
   if (input.pressed('u')) w.devFillQuota();
   if (input.pressed('o')) w.devGoToExit();
   if (input.pressed('c')) w.devClear();
-  if (input.pressed('n') && !run) goLevel(idx + 1);
-  if (input.pressed('b') && !run) goLevel(idx - 1);
+  if (input.pressed('n')) goLevel(idx + 1);
+  if (input.pressed('b')) goLevel(idx - 1);
 }
 
 // ---- pause ------------------------------------------------------------------------
@@ -854,7 +777,7 @@ function drawPaused() {
   play.draw(g);
   dim(0.75);
   drawText(g, 'PAUSED', VIEW_W / 2, 40, C.gold, { scale: 5, align: 'center', shadow: C.gold2 });
-  if (!cur.hingi) play.drawMissions(g, 88, run ? 0 : save.missions[cur.id] | 0);
+  if (!cur.hingi) play.drawMissions(g, 88, save.missions[cur.id] | 0);
   drawMenu(g, pauseItems(), sel, PAUSE_Y);
 }
 
@@ -863,7 +786,7 @@ function updatePaused() {
   const pick = menuPick(pauseItems().length, PAUSE_Y);
   if (pick === 0) { input.reset(); setMode('play'); }
   else if (pick === 1) restart();
-  else if (pick === 2) { prevMode = 'paused'; helpPage = 0; setMode('help'); }
+  else if (pick === 2) { prevMode = 'paused'; helpFrom = 'paused'; helpPage = 0; setMode('help'); }
   else if (pick === 3) { prevMode = 'paused'; setMode('options'); }
   else if (pick === 4) { prevMode = 'paused'; setMode('levels'); sel = idx; }
   else if (pick === 5) setMode('title');
@@ -872,8 +795,8 @@ function updatePaused() {
 
 // ---- caught / clear -----------------------------------------------------------------
 const END_Y = 236;
-const skippable = () => !run && cur.bonus && (fails[cur.id] | 0) >= 2 && idx < levels.length - 1;
-const caughtItems = () => (run ? ['TRY AGAIN', 'NEW HOUSE', 'HOUSE MENU'] : skippable() ? ['TRY AGAIN', 'SKIP FOR NOW', 'MAP'] : ['TRY AGAIN', 'MAP', 'HIDEOUT']);
+const skippable = () => cur.bonus && (fails[cur.id] | 0) >= 2 && idx < levels.length - 1;
+const caughtItems = () => (skippable() ? ['TRY AGAIN', 'SKIP FOR NOW', 'MAP'] : ['TRY AGAIN', 'MAP', 'HIDEOUT']);
 function drawCaught() {
   play.draw(g);
   dim();
@@ -906,16 +829,11 @@ function updateCaught() {
   if (pick === 0) restart();
   else if (pick === 1 && skippable()) { save.unlocked = Math.max(save.unlocked, idx + 1); persist(); sfx.click(); begin(idx + 1); } // a bonus game never blocks the story
   else if (pick === 2 && skippable()) { prevMode = 'title'; setMode('levels'); sel = idx; }
-  else if (pick === 1) { if (run) startHouse(newSeed(), run.daily ? save.houseDiff : run.diff); else { prevMode = 'title'; setMode('levels'); sel = idx; } }
-  else if (pick === 2) setMode(run ? 'house' : 'title');
+  else if (pick === 1) { prevMode = 'title'; setMode('levels'); sel = idx; }
+  else if (pick === 2) setMode('title');
 }
 
-const clearItems = () => {
-  const last = !run && idx === levels.length - 1;
-  const shop = canBuyAnything() ? 'UPGRADES (NEW!)' : 'UPGRADES';
-  if (run?.daily) return ['COPY RESULT', 'PLAY AGAIN', 'HOUSE MENU', shop];
-  return [run ? 'NEW HOUSE' : last ? 'HIDEOUT' : 'NEXT LEVEL', 'PLAY AGAIN', run ? 'HOUSE MENU' : 'MAP', shop];
-};
+const clearItems = () => [idx === levels.length - 1 ? 'HIDEOUT' : 'NEXT LEVEL', 'PLAY AGAIN', 'MAP', canBuyAnything() ? 'UPGRADES (NEW!)' : 'UPGRADES'];
 
 // Something at Aling Nena's you can buy right now: a cat need the story has opened, or a piece of gear.
 const canBuyAnything = () => canAffordNeed() || UPGRADE_ORDER.some((id) => { const c = upgradeCost(save, id); return c !== null && save.bank >= c; });
@@ -940,8 +858,7 @@ function drawClear() {
   dim(0.75);
   panel(50, 230);
   const r = play.result;
-  const last = !run && idx === levels.length - 1;
-  const head = run ? 'HOUSE CLEARED!' : cur.clearText || (cur.boss ? 'BOSS BEATEN!' : 'NICE KUPIT!');
+  const head = cur.clearText || (cur.boss ? 'BOSS BEATEN!' : 'NICE KUPIT!');
   drawText(g, head, VIEW_W / 2, 70, C.gold, { scale: head.length > 13 ? 3 : head.length > 9 ? 4 : 5, align: 'center', shadow: C.gold2 });
   const ids = missionIds(cur);
   for (let i = 0; i < 3 && !cur.epilogue; i++) { // the three missions: stars pop in one by one
@@ -951,27 +868,15 @@ function drawClear() {
     if (on && now && !had && age < at + 0.12) { g.fillStyle = C.white; g.fillRect(x - 2, y - 2, 9, 9); }
     drawStar(g, x, y, on);
     drawText(g, missionLabel(cur, ids[i]), x + 10, y + 1, on ? (now && !had ? C.gold : C.white) : C.dgray);
-    if (age > at) drawText(g, now && !had ? 'NEW!' : had ? 'DONE' : 'NOT YET', x + 160, y + 1, now && !had ? C.green : had ? C.gray : C.dgray, { align: 'right' });
+    if (age > at && now && !had) drawText(g, 'NEW!', x + 160, y + 1, C.green, { align: 'right' });
   }
-  const score = play.world.scoreText || `${cur.giveBack ? 'PUT BACK' : cur.hingi ? 'GIVEN' : 'COINS'} ${r.coins}${r.sobra ? ` (+${r.sobra} SOBRA)` : ''}`; // (a mini-game counts its own thing)
-  drawText(g, `${score}   TIME ${Math.floor(r.time)}S${r.catches ? `   ${play.drawFail ? 'TAGGED' : 'CLOSE CALLS'} ${r.catches}` : ''}`, VIEW_W / 2, 138, C.white, { align: 'center' });
-  if (run) drawText(g, `HOUSE ${cur.seed}   LEVEL ${run.diff}${run.daily ? '   DAILY' : ''}${run.mutators.length ? `   X${mutatorMult(run.mutators)}` : ''}`, VIEW_W / 2, 150, C.gray, { align: 'center' });
-  else drawText(g, newBest ? (play.rec ? 'NEW BEST TIME! (GHOST SAVED)' : 'NEW BEST TIME!') : `BEST ${Math.floor(save.best[cur.id] || r.time)}S`, VIEW_W / 2, 150, newBest ? C.green : C.gray, { align: 'center' });
-  if (cur.epilogue) drawText(g, 'YOU ONLY HAD TO ASK.', VIEW_W / 2, 162, C.pink, { align: 'center' });
-  else if (!run && starsOf(save.missions[cur.id] | 0) < 3) drawText(g, 'STARS STAY EARNED: COME BACK FOR THE REST', VIEW_W / 2, 162, C.gray, { align: 'center' });
-  drawText(g, `+${earned} COINS   BANK ${save.bank}`, VIEW_W / 2, 178, C.gold, { align: 'center' });
-  let y = 190;
-  if (hinalaShown && hinalaShown.d.parts.length && !run) { // what the house noticed this time (first clears only)
-    const { d, from, to } = hinalaShown, sign = (n) => (n > 0 ? `+${n}` : `${n}`);
-    const why = d.parts.slice().sort((a, b) => Math.abs(b.n) - Math.abs(a.n)).slice(0, 2).map((p) => `${p.label} ${sign(p.n)}`).join(', ');
-    drawText(g, `HINALA ${sign(d.total)}: ${why}`, VIEW_W / 2, y, d.total > 0 ? C.orange : C.green, { align: 'center' }); y += 11;
-    if (to > from) { drawText(g, `MAMA IS NOW ${TIERS[to].name} (${TIERS[to].en})`, VIEW_W / 2, y, C.orange, { align: 'center' }); y += 11; }
-  }
-  if (bossBonus) { drawText(g, `BOSS BONUS +${bossBonus}`, VIEW_W / 2, y, C.green, { align: 'center' }); y += 11; }
-  if (r.bonus) { drawText(g, `SECRET ALKANSYA +${r.bonus}`, VIEW_W / 2, y, C.green, { align: 'center' }); y += 11; }
-  if (run?.daily) { drawText(g, `DAILY STREAK: ${save.streak.n}`, VIEW_W / 2, y, C.orange, { align: 'center' }); y += 11; }
-  for (const u of unlocked.slice(0, 2)) { drawText(g, `NEW ${u.kind === 'outfit' ? 'OUTFIT' : 'DECOR'}: ${u.name}!`, VIEW_W / 2, y, C.pink, { align: 'center' }); y += 11; }
-  rewardsShown.forEach((w, k) => { // what the new stars paid: they pop in after the stars
+  const score = play.world.scoreText || `${cur.giveBack ? 'PUT BACK' : cur.hingi ? 'GIVEN' : 'COINS'} ${r.coins}`; // (a mini-game counts its own thing)
+  drawText(g, `${score}   TIME ${Math.floor(r.time)}S`, VIEW_W / 2, 140, C.white, { align: 'center' });
+  if (newBest) drawText(g, 'NEW BEST TIME!', VIEW_W / 2, 152, C.green, { align: 'center' });
+  if (cur.epilogue) drawText(g, 'YOU ONLY HAD TO ASK.', VIEW_W / 2, 164, C.pink, { align: 'center' });
+  drawText(g, `+${earned} COINS`, VIEW_W / 2, 178, C.gold, { align: 'center' });
+  let y = 192;
+  rewardsShown.slice(0, 2).forEach((w, k) => { // what the new stars paid: they pop in after the stars
     if (age < 1.7 + k * 0.3) return;
     const label = w.kind === 'coins' ? `PRIZE: ${w.name}` : w.kind === 'photo' ? 'NEW PHOTO FOR THE ALBUM!' : `NEW ${w.kind === 'outfit' ? 'OUTFIT' : 'DECOR'}: ${w.name}!`;
     const x = VIEW_W / 2 - (label.length * 4) / 2 + 5;
@@ -984,33 +889,16 @@ function drawClear() {
 }
 
 function updateClear() {
-  const last = !run && idx === levels.length - 1;
+  const last = idx === levels.length - 1;
   const pick = menuPick(4, END_Y, 21, age > 0.5);
   if (pick < 0) return;
   if (pick === 3) { openShop('clear'); return; }
-  if (run?.daily) {
-    if (pick === 0) copyText(shareText).then((ok) => say(ok ? 'RESULT COPIED! PASTE IT ANYWHERE' : 'COULD NOT COPY', ok ? C.green : C.orange));
-    else if (pick === 1) restart();
-    else if (pick === 2) setMode('house');
-    return;
-  }
   if (pick === 0) {
-    if (run) startHouse(newSeed(), run.diff);
-    else if (last) { if (!save.story.epilogue) startStory(EPILOGUE, () => { save.story.epilogue = true; persist(); setMode('title'); }); else setMode('title'); }
+    if (last) { if (!save.story.epilogue) startStory(EPILOGUE, () => { save.story.epilogue = true; persist(); setMode('title'); }); else setMode('title'); }
     else if (canBuyAnything()) openShop({ next: idx + 1 }); // upgrades between levels
     else begin(idx + 1);
   } else if (pick === 1) restart();
-  else if (pick === 2) { if (run) setMode('house'); else { prevMode = 'title'; setMode('levels'); sel = Math.min(idx + 1, levels.length - 1); } }
-}
-
-// The Daily House result as text anyone can paste into a chat.
-function makeShare(r) {
-  const stars = '⭐'.repeat(r.stars) + '▫️'.repeat(3 - r.stars);
-  return [
-    `KUPIT ${cur.pasko ? 'NOCHE BUENA' : 'DAILY'} ${dailyId()} (LEVEL ${run.diff})`,
-    `${stars} ⏱️${Math.floor(r.time)}s 👀${r.spotted} 🫣${r.catches}`,
-    `🔥 ${save.streak.n}-day streak`,
-  ].join('\n');
+  else if (pick === 2) { prevMode = 'title'; setMode('levels'); sel = Math.min(idx + 1, levels.length - 1); }
 }
 
 function afterPlay() {
@@ -1021,69 +909,42 @@ function afterPlay() {
   setMode('clear');
   starShown = [false, false, false];
   rewardsShown = [];
-  const r = play.result, today = dailyId();
-  if (run) { // Random House: pays coins (scaled), but no level unlocks or records (except the daily)
-    bossBonus = 0; starsBefore = 0;
-    if (run.daily) {
-      const prev = save.daily?.id === today ? save.daily.stars : 0;
-      earned = housePayout({ coins: r.coins, stars: r.stars, diff: run.diff, daily: true, prevStars: prev });
-      if (!prev) { // first clear today: the streak goes on (or starts over)
-        const s = save.streak;
-        s.n = s.last === prevDailyId(today) ? s.n + 1 : s.last === today ? s.n : 1;
-        s.last = today; s.best = Math.max(s.best || 0, s.n);
-      }
-      save.daily = { id: today, stars: Math.max(prev, r.stars) };
-      shareText = makeShare(r);
-    } else {
-      if (save.houseDay.id !== today) save.houseDay = { id: today, n: 0 };
-      earned = housePayout({ coins: r.coins, stars: r.stars, diff: run.diff, housesToday: save.houseDay.n, mult: mutatorMult(run.mutators) });
-      save.houseDay.n++;
-      if (run.diff >= 3) for (const m of run.mutators) save.mutatorClears[m] = true;
-    }
-    save.houses++;
-  } else {
-    const id = cur.id, t = r.time, first = save.stars[id] === undefined, prevStars = save.stars[id] || 0;
-    newBest = !save.best[id] || t < save.best[id];
-    if (newBest) { save.best[id] = t; if (play.rec) storeGhost(id, play.rec); }
-    // Stars are missions, and a mission done once stays done: this run's are added to the ones already earned.
-    starsBefore = cur.epilogue ? 0 : save.missions[id] | 0;
-    const mask = cur.epilogue ? 0 : starsBefore | maskOf(r.missions);
-    save.missions[id] = mask;
-    const stars = starsOf(mask), coins = cur.giveBack ? 0 : r.coins; // the epilogue has no stars; coins put back are not income
-    save.stars[id] = stars;
-    save.unlocked = Math.max(save.unlocked, Math.min(idx + 1, levels.length - 1));
-    while (save.unlocked < levels.length - 1 && save.stars[levels[save.unlocked].id] !== undefined) save.unlocked++; // (past levels already cleared: the v5 reorder)
-    bossBonus = cur.boss && first ? cur.boss.bonus : 0; // first clear only
-    const alk = r.bonus && !save.alkansya[id] ? r.bonus : 0;
-    if (r.bonus) save.alkansya[id] = true;
-    if (r.photo && save.story.photo !== 'in') save.story.photo = r.photo; // NINANG's party: the family photo (with Jun, or without)
-    earned = campaignPayout({ coins, stars, prevStars, first, bossBonus, alkansya: alk });
-    rewardsShown = grantRewards(save, cur, mask & ~starsBefore); // a mini-game's stars pay prizes, photos and looks
-    for (const w of rewardsShown) if (w.kind === 'coins') { earned += w.n; save.bank -= w.n; } // (paid with the rest, just below)
-    hinalaShown = null;
-    if (first && !cur.hingi && !special(cur)) { // HINALA moves on first clears only (retries and replays never change it)
-      const ch = chapterOf(idx), before = hinalaNow(idx), d = hinalaDelta(r, cur);
-      save.hinalaAt[id] = tierOf(before);
-      save.hinala = hinalaNext(before, d, ch);
-      save.hinalaPlay = Math.max(0, Math.min(100, (save.hinalaPlay | 0) + d.total)); // Jun's own share, no floors
-      save.ledger[id] = { by: r.takenBy || {}, sobra: r.sobra | 0, emptied: r.emptied | 0, catches: r.catches | 0, spills: r.spills | 0, coins: r.coins | 0 };
-      hinalaShown = { d, from: tierOf(before), to: tierOf(save.hinala) };
-      if (cur.giveBack && play.level.returnPlan) save.bank = Math.max(0, save.bank - play.level.returnPlan.fromBank); // IBALIK: the coins put back come out of the bank
-    }
+  const r = play.result;
+  const id = cur.id, t = r.time, first = save.stars[id] === undefined, prevStars = save.stars[id] || 0;
+  newBest = !save.best[id] || t < save.best[id];
+  if (newBest) { save.best[id] = t; if (play.rec) storeGhost(id, play.rec); }
+  // Stars are missions, and a mission done once stays done: this run's are added to the ones already earned.
+  starsBefore = cur.epilogue ? 0 : save.missions[id] | 0;
+  const mask = cur.epilogue ? 0 : starsBefore | maskOf(r.missions);
+  save.missions[id] = mask;
+  const stars = starsOf(mask), coins = cur.giveBack ? 0 : r.coins; // the epilogue has no stars; coins put back are not income
+  save.stars[id] = stars;
+  save.unlocked = Math.max(save.unlocked, Math.min(idx + 1, levels.length - 1));
+  while (save.unlocked < levels.length - 1 && save.stars[levels[save.unlocked].id] !== undefined) save.unlocked++; // (past levels already cleared: the v5 reorder)
+  bossBonus = cur.boss && first ? cur.boss.bonus : 0; // first clear only
+  const alk = r.bonus && !save.alkansya[id] ? r.bonus : 0;
+  if (r.bonus) save.alkansya[id] = true;
+  if (r.photo && save.story.photo !== 'in') save.story.photo = r.photo; // NINANG's party: the family photo (with Jun, or without)
+  earned = campaignPayout({ coins, stars, prevStars, first, bossBonus, alkansya: alk });
+  rewardsShown = grantRewards(save, cur, mask & ~starsBefore); // a mini-game's stars pay prizes, photos and looks
+  for (const w of rewardsShown) if (w.kind === 'coins') { earned += w.n; save.bank -= w.n; } // (paid with the rest, just below)
+  if (first && !cur.hingi && !special(cur)) { // the first clear's take, for IBALIK (game/ibalik.js)
+    save.ledger[id] = { by: r.takenBy || {}, sobra: r.sobra | 0, emptied: r.emptied | 0, catches: r.catches | 0, spills: r.spills | 0, coins: r.coins | 0 };
+    if (cur.giveBack && play.level.returnPlan) save.bank = Math.max(0, save.bank - play.level.returnPlan.fromBank); // IBALIK: the coins put back come out of the bank
   }
   save.bank += earned;
   unlocked = grantUnlocks(save, { pasko: isPasko() });
   persist();
   // The storm: the moment Jun is through the door with the kittens, he is caught. The ending plays before the results.
-  if (!run && cur.ending && !save.story.ending) {
+  if (cur.ending && !save.story.ending) {
     startStory(ENDING, () => { save.story.ending = true; persist(); setMode('clear'); starShown = [false, false, false]; sfx.clear(); });
-  } else if (!run && AFTER[cur.id] && !save.story.after[cur.id]) { // a scene that closes this level's story beat
+  } else if (AFTER[cur.id] && !save.story.after[cur.id]) { // a scene that closes this level's story beat
     startStory(AFTER[cur.id], () => { save.story.after[cur.id] = true; for (const p of AFTER[cur.id]) if (p.flag) save.story[p.flag] = true; persist(); setMode('clear'); starShown = [false, false, false]; });
   }
 }
 
 const shopCtx = { get save() { return save; }, persist, back: shopBack, get backLabel() { return shopReturn?.next !== undefined ? 'NEXT LEVEL >' : 'BACK'; }, go: (m) => { cosmeticsScreen.sel = 0; if (grantUnlocks(save, { pasko: isPasko() }).length) persist(); setMode(m); } };
-const crewCtx = { get save() { return save; }, persist, back: () => setMode('title'), go: () => {} };
+const albumCtx = { get save() { return save; }, persist, back: () => setMode('title'), go: () => {} };
 const upgradesCtx = { get save() { return save; }, persist, back: () => setMode('store'), go: () => {} };
 const cosmeticsCtx = { get save() { return save; }, persist, back: () => setMode('store'), go: () => {} };
 
@@ -1148,9 +1009,7 @@ function frame(now) {
     store: [() => shopScreen.update(input, shopCtx, dt), () => shopScreen.draw(g, shopCtx)],
     upgrades: [() => upgradesScreen.update(input, upgradesCtx, dt), () => upgradesScreen.draw(g, upgradesCtx)],
     cosmetics: [() => cosmeticsScreen.update(input, cosmeticsCtx, dt), () => cosmeticsScreen.draw(g, cosmeticsCtx)],
-    chars: [() => charScreen.update(input, crewCtx, dt), () => charScreen.draw(g, crewCtx)],
-    album: [() => updateAlbum(input, crewCtx), () => drawAlbum(g, crewCtx)],
-    house: [updateHouse, drawHouse],
+    album: [() => updateAlbum(input, albumCtx), () => drawAlbum(g, albumCtx)],
     dev: [updateDevMenu, drawDevMenu],
     paused: [updatePaused, drawPaused], caught: [updateCaught, drawCaught], clear: [updateClear, drawClear],
     card: [updateCard, drawCard] };
@@ -1192,9 +1051,6 @@ Promise.all([loadLevels(), loadAtlas()]).then(([l]) => {
   const q = new URLSearchParams(location.search);
   const jump = Number(q.get('level')); // ?level=2 jumps to level 2
   if (jump >= 1 && jump <= levels.length) start(jump - 1);
-  const hs = Number(q.get('house')); // ?house=1234&diff=3
-  if (hs) startHouse(hs, Number(q.get('diff')) || 2);
-  if (q.has('daily')) startDaily();
 }).catch((e) => {
   console.error(e);
   loadError = String((e && e.message) || e || 'UNKNOWN ERROR');
@@ -1204,9 +1060,9 @@ let loadError = null;
 requestAnimationFrame(frame);
 
 // Debug hook for automated checks: window.__kupit
-window.__kupit = { get play() { return play; }, get mode() { return mode; }, start, startHouse, startDaily, input,
+window.__kupit = { get play() { return play; }, get mode() { return mode; }, start, input,
   card: (i) => showCard(i), /* tools/qa/shot.mjs card:N */
-  story: (panels, i = 0) => { startStory(panels, () => setMode('title')); story.i = i; age = 99; }, go: (m) => setMode(m), /* for tools/qa/shot.mjs */ get save() { return save; }, get cur() { return cur; }, get run() { return run; }, get loadError() { return loadError; } };
+  story: (panels, i = 0) => { startStory(panels, () => setMode('title')); story.i = i; age = 99; }, go: (m) => setMode(m), /* for tools/qa/shot.mjs */ get save() { return save; }, get cur() { return cur; }, get loadError() { return loadError; } };
 
 // ---- installable + offline (PWA) --------------------------------------------------------
 // The service worker serves one consistent, versioned copy of the game. When a new version has downloaded

@@ -106,7 +106,7 @@ export class PresoScene extends ModeScene {
     const s = this.sim;
     if (this.sharedEvent(e)) return;
     switch (e.type) {
-      case 'go': sfx.whistle(); this.pop('LARO!', C.green, 160, 0.9, 5); this.showTip('preso-aim', this.touch ? 'HOLD BATO TO AIM. LET GO WHEN THE X IS ON THE CAN' : 'HOLD E TO AIM. LET GO WHEN THE X IS ON THE CAN'); break;
+      case 'go': sfx.whistle(); this.pop('LARO!', C.green, 160, 0.9, 5); this.showTip('preso-aim', this.touch ? 'HOLD THROW TO AIM. LET GO WHEN THE X IS ON THE CAN' : 'HOLD E TO AIM. LET GO WHEN THE X IS ON THE CAN'); break;
       case 'throw': sfx.whoosh(); break;
       case 'land': sfx.thud(); this.burst(e.x, e.y, 4, ['#d8d4dc', C.white], { speed: 20, up: 10, g: 40, l: 0.4, s: 1 }); break;
       case 'tumba':
@@ -127,7 +127,7 @@ export class PresoScene extends ModeScene {
         break;
       case 'swap': this.nenaSay = { text: `IKAW NA, ${e.who.name}!`, t: 1.6 }; break;
       case 'reset': sfx.click(); break;
-      case 'tapTooShort': this.say(this.touch ? 'HOLD BATO, THEN LET GO' : 'HOLD E, THEN LET GO', C.yellow, 1.6); break;
+      case 'tapTooShort': this.say(this.touch ? 'HOLD THROW, THEN LET GO' : 'HOLD E, THEN LET GO', C.yellow, 1.6); break;
     }
   }
 
@@ -283,12 +283,12 @@ export class PresoScene extends ModeScene {
     this.drawBig(g);
     // control strip
     const ctx = s.context(), aiming = !!s.aim;
-    const line = aiming ? 'LET GO ON THE CAN!' : ctx?.kind === 'pulot' ? 'PULOT: PICK IT UP' : ctx?.label === 'BALIK!' ? 'BACK BEHIND THE LINE!' : ctx?.kind === 'aim' ? 'HOLD BATO TO AIM' : j.slippers === 0 ? 'GET YOUR TSINELAS' : s.can.state !== 'up' ? 'TAYA IS FIXING THE CAN' : '';
-    this.drawStrip(g, line, aiming ? C.green : ctx?.kind ? C.gold : C.gray, s.time < 14 ? (this.touch ? 'DRAG: MOVE   HOLD BATO: AIM' : 'WASD MOVE  HOLD E AIM  A/D TURN') : null);
+    const line = aiming ? 'LET GO ON THE CAN!' : ctx?.kind === 'pulot' ? 'PICK UP YOUR SLIPPER' : ctx?.label === 'GO BACK' ? 'BACK BEHIND THE LINE!' : ctx?.kind === 'aim' ? (this.touch ? 'HOLD THROW TO AIM' : 'HOLD E TO AIM') : j.slippers === 0 ? 'GET YOUR TSINELAS' : s.can.state !== 'up' ? 'TAYA IS FIXING THE CAN' : '';
+    this.drawStrip(g, line, aiming ? C.green : ctx?.kind ? C.gold : C.gray, s.time < 14 ? (this.touch ? 'DRAG: MOVE   HOLD THROW: AIM' : 'WASD MOVE  HOLD E AIM  A/D TURN') : null);
     drawText(g, 'IN HAND', 150, MAP_H + 8, C.dgray);
     for (let i = 0; i < 2; i++) { g.globalAlpha = i < j.slippers ? 1 : 0.25; drawObj(g, 'tsinela', 156 + i * 9, MAP_H + 21, 'blue'); g.globalAlpha = 1; }
-    const label = aiming ? 'BATO!' : ctx?.kind ? ctx.label : ctx?.label || 'BATO';
-    this.drawRoundButton(g, BUTTON, label.slice(0, 6), { on: !!ctx?.kind || aiming, down: this.input.action(), icon: (gg, x, y) => drawObj(gg, ctx?.kind === 'pulot' ? 'hand' : 'tsinela', x, y, 'blue'), hint: ctx?.kind === 'aim' && j.throws === 0 && !aiming });
+    const label = aiming ? 'THROW!' : ctx?.kind ? ctx.label : ctx?.label || 'THROW';
+    this.drawRoundButton(g, BUTTON, label.slice(0, 7), { on: !!ctx?.kind || aiming, down: this.input.action(), icon: (gg, x, y) => drawObj(gg, ctx?.kind === 'pulot' ? 'hand' : 'tsinela', x, y, 'blue'), hint: ctx?.kind === 'aim' && j.throws === 0 && !aiming });
     const st = this.input.stick();
     if (st) { g.globalAlpha = 0.35; disc(g, st.sx, st.sy, 22, C.white); g.globalAlpha = 0.7; disc(g, st.x, st.y, 8, C.white); g.globalAlpha = 1; }
   }

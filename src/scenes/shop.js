@@ -1,16 +1,14 @@
-// Sari-sari store (permanent upgrades), cosmetics (outfits + title decor) and character select.
+// Sari-sari store (permanent upgrades) and cosmetics (outfits + title decor).
 import { drawText } from '../ui/font.js';
 import { drawButton, buttonRect, hit } from '../ui/menu.js';
-import { drawCoin, drawActor, drawPortrait, drawStar } from '../render/sprites.js';
+import { drawCoin, drawStar } from '../render/sprites.js';
 import { C } from '../render/palette.js';
 import { VIEW_W } from '../core/input.js';
 import { sfx } from '../core/audio.js';
 import {
   NEEDS, NEED_ORDER, hasNeed, needCost, buyNeed, needOpen,
-  UPGRADES, UPGRADE_ORDER, CHARACTERS, CHAR_ORDER, OUTFITS, OUTFIT_ORDER, DECOR, DECOR_ORDER,
-  upgradeCost, buyUpgrade, pickChar, owns, buyCosmetic, totalStars,
+  UPGRADES, UPGRADE_ORDER, OUTFITS, OUTFIT_ORDER, DECOR, DECOR_ORDER, upgradeCost, buyUpgrade, buyCosmetic,
 } from '../game/progression.js';
-import { MUTATORS } from '../game/house.js';
 
 const ROW_Y = 44;
 const rowRect = (i, rowH) => ({ x: 10, y: ROW_Y + i * rowH, w: VIEW_W - 20, h: rowH - 4 });
@@ -132,9 +130,8 @@ export const upgradesScreen = makeList({
 
 // How a locked cosmetic is earned, in a few words.
 function howText(how) {
-  if (how.stars) return `${how.stars} STARS`;
-  if (how.mutator) return `${MUTATORS[how.mutator].name} LV3+`;
   if (how.pasko) return 'PASKO SEASON';
+  if (how.reward) return 'A MINI-GAME PRIZE';
   return '';
 }
 
@@ -174,32 +171,6 @@ export const cosmeticsScreen = makeList({
     const res = buyCosmetic(save, outfit ? 'outfit' : 'decor', id);
     if (res === 'bought') { if (outfit) save.outfit = id; ctx.persist(); sfx.buy(); s.say(`GOT ${def.name}!`, C.green); }
     else if (res === 'poor') { sfx.creak(); s.say('NOT ENOUGH COINS', C.orange); }
-    else { sfx.creak(); s.say(`UNLOCK: ${howText(def.how)} (YOU HAVE ${totalStars(save)} STARS)`, C.orange); }
-  },
-});
-
-export const charScreen = makeList({
-  title: 'THE CREW',
-  items: CHAR_ORDER,
-  rowH: 56,
-  drawRow(g, id, r, { save }) {
-    const c = CHARACTERS[id], own = owns(save, id), cur = save.char === id;
-    const look = save.outfit && save.outfit !== 'basic' ? `${c.look}~${save.outfit}` : c.look;
-    g.fillStyle = C.ink; g.fillRect(r.x + 3, r.y + 5, 28, 28);
-    if (!drawPortrait(g, look, r.x + 3, r.y + 5)) drawActor(g, look, r.x + 16, r.y + 30, 0, 0);
-    if (!own) { g.globalAlpha = 0.55; g.fillStyle = C.ink; g.fillRect(r.x + 3, r.y + 5, 28, 28); g.globalAlpha = 1; }
-    drawText(g, c.name, r.x + 34, r.y + 6, C.white);
-    if (cur) drawText(g, 'SELECTED', r.x + r.w - 5, r.y + 6, C.green, { align: 'right' });
-    else if (own) drawText(g, 'TAP TO PICK', r.x + r.w - 5, r.y + 6, C.gray, { align: 'right' });
-    else drawText(g, 'JOINS IN THE STORY', r.x + r.w - 5, r.y + 6, C.dgray, { align: 'right' });
-    drawText(g, c.lines[0], r.x + 34, r.y + 20, C.yellow);
-    drawText(g, c.lines[1], r.x + 34, r.y + 32, C.gray);
-    drawText(g, `SKILL: ${c.skill.label}  COOLDOWN ${c.skill.cd}S`, r.x + 34, r.y + 42, C.gray);
-  },
-  pick(id, ctx, s) {
-    const res = pickChar(ctx.save, id);
-    if (res === 'locked') { sfx.creak(); s.say(`${CHARACTERS[id].name} DOES NOT KNOW THE SECRET YET`, C.orange); return; }
-    ctx.persist();
-    sfx.click(); s.say(`PLAYING AS ${CHARACTERS[id].name}`, C.white);
+    else { sfx.creak(); s.say(`UNLOCK: ${howText(def.how)}`, C.orange); }
   },
 });

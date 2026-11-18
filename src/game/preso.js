@@ -77,9 +77,9 @@ export class Preso extends MiniSim {
     const k = this.jun;
     if (this.beat || this.introT > 0 || this.status !== 'play') return null;
     const mine = this.slips.find((s) => s.owner === k && s.state === 'ground' && dist(s, k) < SAFE_R + 4);
-    if (mine) return { kind: 'pulot', label: 'PULOT', obj: mine };
-    if (!this.inField(k) && k.slippers > 0) return this.can.state === 'up' ? { kind: 'aim', label: 'BATO' } : { kind: null, label: 'WAIT' };
-    if (this.inField(k) && k.slippers > 0) return { kind: null, label: 'BALIK!' };
+    if (mine) return { kind: 'pulot', label: 'PICK UP', obj: mine };
+    if (!this.inField(k) && k.slippers > 0) return this.can.state === 'up' ? { kind: 'aim', label: 'THROW' } : { kind: null, label: 'WAIT' };
+    if (this.inField(k) && k.slippers > 0) return { kind: null, label: 'GO BACK' };
     return null;
   }
 

@@ -18,7 +18,7 @@
  "howto": [
   ["pusa", "YOU ARE MINGMING. TATAY'S FISH IS ON THE TABLE"],
   ["table", "JUMP UP ON TABLES AND SOFAS: UP THERE THEY SEE YOU FROM HALF AS FAR"],
-  ["tabig", "TABIG: KNOCK A CUP OFF THE COUNTER TO PULL PEOPLE AWAY"],
+  ["tabig", "SWAT: KNOCK A CUP OFF THE COUNTER TO PULL PEOPLE AWAY"],
   ["hole", "BRING IT HOME: THE GAP IN THE SALA FLOOR. ASO SMELLS THE FISH!"]
  ],
  "tiles": [
@@ -50,7 +50,7 @@
  "quota": 0,
  "par": 70,
  "targets": [
-  {"kind": "isda", "at": [4, 3], "coins": 0, "time": 1.2, "carry": true, "must": true, "noSpill": true, "verb": "KAGAT", "scent": true}
+  {"kind": "isda", "at": [4, 3], "coins": 0, "time": 1.2, "carry": true, "must": true, "noSpill": true, "verb": "BITE", "scent": true}
  ],
  "hide": [
   {"kind": "box", "at": [1, 15]},

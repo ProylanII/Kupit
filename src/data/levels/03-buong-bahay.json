@@ -190,53 +190,6 @@
    ]
   }
  ],
- "hinala": {
-  "1": {
-   "news": "MAMA COUNTS HER PURSE NOW",
-   "do": [
-    {
-     "stop": 0,
-     "at": [
-      1,
-      15,
-      3,
-      1.5708,
-      "bilang"
-     ]
-    }
-   ]
-  },
-  "2": {
-   "news": "THE BEDROOM DOOR IS LOCKED NOW",
-   "do": [
-    {
-     "lock": [
-      4,
-      14
-     ],
-     "key": "blue",
-     "keyAt": [
-      1,
-      8
-     ]
-    }
-   ]
-  },
-  "3": {
-   "news": "LOLA SLEEPS LIGHTLY NOW",
-   "do": [
-    {
-     "adult": 1,
-     "cfg": {
-      "lightSleeper": true
-     }
-    }
-   ]
-  }
- },
- "news": [
-  "MAMA MOVED HER PURSE TO THE BEDROOM"
- ],
  "devices": [
   {
    "kind": "radio",

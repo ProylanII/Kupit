@@ -2,7 +2,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { World } from '../src/game/world.js';
-import { generateHouse } from '../src/game/house.js';
 
 const dir = new URL('../src/data/levels/', import.meta.url);
 const files = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8'));
@@ -30,7 +29,7 @@ for (const f of files) {
 }
 
 test('god mode: a chasing adult cannot catch you; without it you are caught', () => {
-  const L = generateHouse(1500, 2);
+  const L = JSON.parse(readFileSync(new URL('02-kusina.json', dir), 'utf8'));
   const mk = (god) => {
     const w = new World(L);
     w.god = god;
@@ -45,7 +44,7 @@ test('god mode: a chasing adult cannot catch you; without it you are caught', ()
 });
 
 test('devClear finishes a level at any time', () => {
-  const w = new World(generateHouse(1600, 1));
+  const w = new World(JSON.parse(readFileSync(new URL('01-sala.json', dir), 'utf8')));
   w.devClear();
   assert.equal(w.status, 'clear');
 });

@@ -4,7 +4,6 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { World } from '../src/game/world.js';
 import { TILE } from '../src/world/tilemap.js';
-import { generateHouse } from '../src/game/house.js';
 import { validateLevel } from '../src/game/validate.js';
 import { hasGlyph } from '../src/ui/font.js';
 
@@ -108,22 +107,6 @@ test('the validator rejects a patrol that needs a locked door', () => {
   assert.ok(validateLevel(L).some((e) => /route .* has no path/.test(e)));
 });
 
-test('random houses: no patrol ever opens the locked door', () => {
-  let locked = 0;
-  for (let s = 2000; s < 2030; s++) for (const d of [3, 4, 5]) {
-    const L = generateHouse(s, d);
-    if (!L.locks) continue;
-    locked++;
-    const w = new World(L);
-    w.god = true;
-    for (let i = 0; i < 60 * 60; i++) {
-      step(w);
-      for (const l of L.locks) assert.equal(w.map.ch(l.at[0], l.at[1]), 'D', `house ${s}/${d}: lock ${l.at} opened`);
-    }
-  }
-  assert.ok(locked > 20, 'expected plenty of houses with a lock');
-});
-
 // One timed lever, one gate, nobody around.
 const leverLevel = () => ({
   id: 'v', name: 'V', quota: 1, par: 60,
@@ -191,15 +174,6 @@ test('no throwing while stunned', () => {
   w.update(1 / 60, { ...idle, throwPressed: true });
   assert.equal(w.projectiles.length, 0);
   assert.equal(w.player.items.length, 1);
-});
-
-test('random houses never put a hiding spot right next to a purse', () => {
-  for (let s = 1000; s < 1060; s++) for (let d = 1; d <= 5; d++) {
-    const L = generateHouse(s, d);
-    for (const h of L.hide) for (const t of L.targets) {
-      assert.ok(Math.abs(h.at[0] - t.at[0]) + Math.abs(h.at[1] - t.at[1]) > 1, `house ${s}/${d}: hide ${h.at} next to target ${t.at}`);
-    }
-  }
 });
 
 test('the pixel font has a glyph for every character the game draws', () => {

@@ -106,13 +106,13 @@ test('storm: thunder hides the noise you make; between claps an adult hears you 
   assert.notEqual(lure(loud), 'patrol', 'between claps the same noise brings her over');
 });
 
-test('hingi: nobody can catch you, the button says HINGI, and the one you ask answers', () => {
+test('hingi: nobody can catch you, the button says ASK, and the one you ask answers', () => {
   const L = byId.hingi, w = new World(L);
   assert.ok(w.adults.every((a) => a.cfg.harmless));
   const gift = w.targets[0];
   w.player.x = gift.x; w.player.y = gift.y + 12;
   step(w, 1);
-  assert.equal(w.prompt.label, 'HINGI');
+  assert.equal(w.prompt.label, 'ASK');
   step(w, 60 * 2, { ...IDLE, action: true });
   assert.ok(gift.done);
   assert.equal(w.adults[gift.from].say?.text, gift.say);

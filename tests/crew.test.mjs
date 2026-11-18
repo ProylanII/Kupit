@@ -6,7 +6,6 @@ import { readFileSync } from 'node:fs';
 import { World } from '../src/game/world.js';
 import { TILE } from '../src/world/tilemap.js';
 import { UNDER_SEE } from '../src/entities/adult.js';
-import { delta } from '../src/game/hinala.js';
 import { validateLevel } from '../src/game/validate.js';
 import { fresh } from '../src/core/save.js';
 
@@ -64,11 +63,6 @@ test('PALUSOT: no excuses once a boss is in its final phase', () => {
   assert.ok(w.finalPhase);
   w.caught(w.adults[0]);
   assert.equal(w.catches, 1);
-});
-
-test('PALUSOT costs a little suspicion: they wonder (HINALA +3)', () => {
-  const d = delta({ palusot: 1, coins: 2 });
-  assert.equal(d.parts.find((p) => p.id === 'palusot')?.n, 3);
 });
 
 test('levels suggest a kid on the card (a valid one, with a short reason), and the save remembers picks', () => {

@@ -333,45 +333,5 @@
    "time": 6
   }
  ],
- "hinala": {
-  "1": {
-   "news": "TATAY CHECKS HIS WALLET NOW",
-   "do": [
-    {
-     "stop": 3,
-     "at": [
-      12,
-      20,
-      3,
-      0,
-      "bilang"
-     ]
-    }
-   ]
-  },
-  "2": {
-   "news": "MAMA KEEPS HER PURSE BY THE APARADOR",
-   "do": [
-    {
-     "move": 2,
-     "to": [
-      3,
-      4
-     ]
-    }
-   ]
-  },
-  "3": {
-   "news": "MAMA CHECKS THE HIDING SPOTS",
-   "do": [
-    {
-     "adult": 0,
-     "cfg": {
-      "checksHides": true
-     }
-    }
-   ]
-  }
- },
  "notes": "Near-miss: Jomar on his phone at the hall door; when the call ends his eyes are on the hall. The payday wallet is safest while Tatay showers (10 s, deaf). Timed lever: pull it, then 6 s to reach the gate to the exit nook (the nook is only reached through that gate). Lola is not in this one: the new things are the scrolling map, Jomar and the shower. Tita sits in the top room facing the gate and the piggy: pull the lever and run for the gate while she is on the phone."
 }

@@ -1,4 +1,4 @@
-// Design overhaul Phase 4C: the level pass (Blueprint 7). Rules R1-R7 live in tools/level-rules.mjs.
+// Design overhaul Phase 4C: the level pass (Blueprint 7). Rules R1-R6 live in tools/level-rules.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -50,31 +50,21 @@ test('L2 KUSINA: quota 5 of 7 (purse 3, the coin jar by the stove 2, piggy 2); r
   assert.ok(!L.tiles.some((r) => r.includes('D')), 'no doors yet (L3 teaches them)');
 });
 
-test('L3 BUONG BAHAY: the purse moved to the bedroom; no lever yet; tier 2 locks the bedroom (Mama has that key)', async () => {
-  const { applyHinala } = await import('../src/game/hinala.js');
+test('L3 BUONG BAHAY: the purse is in the bedroom; no lever yet', () => {
   const L = load('03-buong-bahay');
   assert.deepEqual(L.missions, ['noWake', 'sakto']);
   assert.ok(!L.switches && !L.tiles.some((r) => r.includes('G')), 'the lever and gate moved to L6');
   assert.ok(L.devices.some((d) => d.kind === 'radio') && L.traps.some((t) => t.kind === 'lego'));
-  assert.deepEqual(applyHinala(L, 0).news, ['MAMA MOVED HER PURSE TO THE BEDROOM']);
-  const t2 = applyHinala(L, 2);
-  assert.equal(t2.news[0], 'THE BEDROOM DOOR IS LOCKED NOW');
-  const w = new World(t2);
-  assert.ok(w.locks.has('4,14') && !w.adultLocks.has('4,14'), 'locked for the kids, not for Mama');
+  assert.ok(!L.hinala && !L.news, 'the house never changes behind your back (the arcade pass)');
 });
 
-test('L5 BAKURAN: no lever yet, exit across the yard, a crawl table; HINALA takes away the nap and the dog sleep', async () => {
-  const { applyHinala } = await import('../src/game/hinala.js');
+test('L5 BAKURAN: no lever yet, exit across the yard, a crawl table; Tatay dozes', () => {
   const L = load('04-bakuran');
   assert.ok(!L.switches && !L.tiles.some((r) => r.includes('G')));
   assert.equal(L.targets.reduce((n, t) => n + t.coins, 0), 6);
   assert.equal(L.items.filter((i) => i.kind === 'pandesal').length, 2);
   const naps = (lvl) => { const w = new World(lvl), t = w.adults[1]; w.player.hidden = { kind: 'box', x: 0, y: 0 }; let n = 0; for (let i = 0; i < 60 * 30; i++) { w.update(1 / 60, idle); if (t.busy?.name === 'DOZING') n++; } return n; };
-  assert.ok(naps(L) > 60, 'Tatay dozes at tier 0');
-  assert.equal(naps(applyHinala(L, 2)), 0, 'not at tier 2');
-  const w3 = new World(applyHinala(L, 3)), aso = w3.adults[0];
-  w3.player.hidden = { kind: 'box', x: 0, y: 0 };
-  for (let i = 0; i < 60 * 30; i++) { w3.update(1 / 60, idle); assert.ok(aso.awake, 'the dog never sleeps at tier 3'); }
+  assert.ok(naps(L) > 60, 'Tatay dozes');
 });
 
 test('L6 SWELDO: payday wallet by the shower; the ligo mission counts coins taken while Tatay showers', () => {
@@ -129,17 +119,8 @@ test('L9 GABI: Jomar walks the long hall; 30 s before dinner Mama calls HUGAS KA
 test('level pass: the rules hold for every level the pass has reached', () => {
   for (const id of ['01-sala', '02-kusina', '03-buong-bahay', '04-bakuran', 'kwarto', 'gatas', '05-gabi', 'sampayan', 'ibalik', 'barangay', 'palengke']) {
     const r = rules(load(id));
-    for (const k of ['R1', 'R2', 'R6', 'R7']) assert.ok(r[k].ok, `${id} ${k} ${JSON.stringify(r[k])}`);
+    for (const k of ['R1', 'R2', 'R6']) assert.ok(r[k].ok, `${id} ${k} ${JSON.stringify(r[k])}`);
   }
-});
-
-test('L10 KASABWAT: HINALA 2 brings the washing in sooner (a level setting), 3 lets the dog loose', async () => {
-  const { applyHinala } = await import('../src/game/hinala.js');
-  const L = load('sampayan');
-  assert.equal(applyHinala(L, 2).laundryDown.every, 18);
-  assert.equal(applyHinala(L, 2).laundryDown.floor, ';', 'the rest of the setting is kept');
-  assert.equal(L.laundryDown.every, 25, 'the level file is untouched');
-  assert.equal(new World(applyHinala(L, 3)).adults[3].cfg.cycle, null);
 });
 
 test('L11 IBALIK: put back J = sobra clamped 5..12, from the bank first, split by the ledger, one coin each at least', async () => {
@@ -223,11 +204,8 @@ test('L14 BARANGAY escort: she meows every 10 s unless hushed; a grown-up who se
   assert.equal(MISSIONS.catUnseen.ok(s), false);
 });
 
-test('L14 BARANGAY: outside the house only tanod close calls reach HINALA (+2 each)', async () => {
-  const { delta } = await import('../src/game/hinala.js');
+test('L14 BARANGAY: no family out here, nothing to take', () => {
   const L = load('barangay');
-  assert.equal(delta({ catches: 2, spotted: 3, sobra: 4, tanod: 1 }, L).total, 2);
-  assert.equal(delta({ catches: 1 }, L).total, 0);
   assert.ok(!L.adults.some((a) => ['mama', 'tatay', 'lola', 'tita', 'kuya'].includes(a.type)), 'no family out here');
   assert.equal(L.targets.length, 0, 'nothing to take from strangers');
 });

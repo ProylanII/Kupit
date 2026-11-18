@@ -5,7 +5,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { playBot } from './bot.mjs';
-import { generateHouse, dailySeed, dailyDiff, isPasko, MUTATOR_ORDER } from '../src/game/house.js';
 
 const dir = new URL('../src/data/levels/', import.meta.url);
 const files = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8'));
@@ -23,14 +22,3 @@ for (const L of levels) {
   });
 }
 
-test('walkthrough: generated houses at every difficulty, each mutator, and the next two weeks of Daily Houses', () => {
-  const bad = [];
-  const check = (name, L) => { const r = playBot(L, { run: true }); if (!r.ok) bad.push(`${name}: ${why(r)}`); };
-  for (let d = 1; d <= 5; d++) for (let s = 1000; s < 1008; s++) check(`house ${s} diff ${d}`, generateHouse(s, d));
-  for (const m of [...MUTATOR_ORDER.map((k) => [k]), MUTATOR_ORDER]) for (let s = 1000; s < 1003; s++) check(`house ${s} ${m}`, generateHouse(s, 3, { mutators: m }));
-  for (let i = 0; i < 14; i++) {
-    const date = new Date(Date.now() + i * 86400e3);
-    check(`daily ${date.toISOString().slice(0, 10)}`, generateHouse(dailySeed(date), dailyDiff(date), { pasko: isPasko(date) }));
-  }
-  assert.deepEqual(bad, []);
-});

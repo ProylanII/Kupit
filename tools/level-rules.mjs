@@ -4,7 +4,6 @@
 //       rooms here are joined by open gaps, not doors); the way out shares at most 70% of its tiles with the way in
 //   R4  at least one of the two missions is specific to the level (sakto, silent, noCatch, fast are generic)
 //   R6  every stash sits beside furniture that explains it, and has an owner
-//   R7  the level is valid at every HINALA tier
 // R3 (a designed near-miss) and R5 (one new mechanic per level) are review items: see docs/LEVEL_PASS.md.
 // Boss levels, the storm and the epilogue are Phase 5/6 and are listed but not judged.
 import { readFileSync } from 'node:fs';
@@ -12,7 +11,6 @@ import { TileMap, FURNITURE } from '../src/world/tilemap.js';
 import { findPath } from '../src/world/pathfind.js';
 import { hasLos } from '../src/world/los.js';
 import { validateLevel } from '../src/game/validate.js';
-import { applyHinala } from '../src/game/hinala.js';
 import { OWNERS } from '../src/entities/target.js';
 
 export const GENERIC = new Set(['sakto', 'silent', 'noCatch', 'fast']);
@@ -58,10 +56,6 @@ export function rules(L) {
     if (!furn || !owner) bare.push(`${t.kind || 'purse'}@${t.at}${furn ? '' : ' no furniture'}${owner ? '' : ' no owner'}`);
   }
   out.R6 = { ok: !bare.length, note: bare.join(' ') };
-  // R7
-  const tierErr = [];
-  for (let tier = 1; tier <= 3; tier++) for (const e of validateLevel(applyHinala(L, tier))) tierErr.push(`t${tier}: ${e}`);
-  out.R7 = { ok: !tierErr.length, tiers: L.hinala ? Object.keys(L.hinala).join('') : '-', note: tierErr.slice(0, 2).join('; ') };
   out.judged = judged(L);
   return out;
 }
@@ -70,15 +64,15 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '
   const dir = new URL('../src/data/levels/', import.meta.url);
   const files = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8'));
   const mark = (r) => (r.ok ? ' ok ' : 'FAIL');
-  console.log('level             R1 coins/quota   R2 rooms/overlap   R4 missions                R6    R7 tiers   notes');
+  console.log('level             R1 coins/quota   R2 rooms/overlap   R4 missions                R6    notes');
   let fails = 0;
   for (const f of files) {
     const L = JSON.parse(readFileSync(new URL(f, dir), 'utf8'));
     if (L.mode) continue; // (a mini-game: no rooms to lint, its own simulation)
     const r = rules(L);
-    const notes = [r.R1.note, r.R6.note, r.R7.note].filter(Boolean).join(' | ');
-    if (r.judged) fails += ['R1', 'R2', 'R4', 'R6', 'R7'].filter((k) => !r[k].ok).length;
-    console.log(`${L.id.padEnd(17)} ${mark(r.R1)} ${String(r.R1.ratio).padEnd(9)}  ${mark(r.R2)} ${r.R2.sameRoom ? 'same' : 'diff'} ${String(r.R2.overlap).padEnd(5)}  ${mark(r.R4)} ${r.R4.missions.padEnd(20)}  ${mark(r.R6)}  ${mark(r.R7)} ${r.R7.tiers.padEnd(4)}  ${r.judged ? '' : '(phase 5/6) '}${notes}`);
+    const notes = [r.R1.note, r.R6.note].filter(Boolean).join(' | ');
+    if (r.judged) fails += ['R1', 'R2', 'R4', 'R6'].filter((k) => !r[k].ok).length;
+    console.log(`${L.id.padEnd(17)} ${mark(r.R1)} ${String(r.R1.ratio).padEnd(9)}  ${mark(r.R2)} ${r.R2.sameRoom ? 'same' : 'diff'} ${String(r.R2.overlap).padEnd(5)}  ${mark(r.R4)} ${r.R4.missions.padEnd(20)}  ${mark(r.R6)}  ${r.judged ? '' : '(phase 5/6) '}${notes}`);
   }
   console.log(`\n${fails} rule failures in the levels this pass judges`);
 }

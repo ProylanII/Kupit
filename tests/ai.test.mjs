@@ -3,7 +3,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { TILE } from '../src/world/tilemap.js';
 import { World } from '../src/game/world.js';
-import { delta } from '../src/game/hinala.js';
 
 const c = (t) => t * TILE + TILE / 2;
 const idle = { mv: { x: 0, y: 0, mag: 0, run: false }, action: false, actionPressed: false, throwPressed: false };
@@ -141,13 +140,7 @@ test('A5: Mama notices a door Jun left open, looks in the room beyond and shuts 
   assert.equal(w.map.ch(5, 3), 'D', 'closed again');
 });
 
-test('A5: evidence (spills and found things) feeds HINALA', () => {
-  const d = delta({ evidence: 2 });
-  assert.equal(d.parts.find((p) => p.id === 'evidence').n, 6);
-});
-
 // ---- Phase 4B-2: A7, A8, A9, A11, A13, A14-A17
-import { applyHinala } from '../src/game/hinala.js';
 
 test('A7: waits at route points vary a little, the same way every run (seeded)', () => {
   const run = () => {
@@ -225,13 +218,6 @@ test('A13/A16: later cycles vary; Tita takes quick texts and long calls, and the
   assert.ok(rings >= 4);
 });
 
-test('A14: Mama hurries a little more at each HINALA tier', () => {
-  const L = open({ adults: [{ type: 'mama', at: [6, 3] }] });
-  assert.equal(applyHinala(L, 2).adults[0].cfg.speedMul, 1.08);
-  const w = new World(applyHinala(L, 3));
-  assert.ok(Math.abs(w.adults[0].cfg.speed - 26 * 1.12) < 1e-9);
-});
-
 test('A15: Lola does not chase; she calls out and the others come to her', () => {
   const w = new World(open({ adults: [{ type: 'lola', at: [6, 3], face: Math.PI, cycle: { on: 99, off: 1 } }, { type: 'mama', at: [12, 1], face: 0 }] }));
   const l = w.adults[0], m = w.adults[1];
@@ -242,10 +228,10 @@ test('A15: Lola does not chase; she calls out and the others come to her', () =>
   assert.ok(Math.hypot(m.target.x - l.x, m.target.y - l.y) < 20, 'Mama goes to where Lola called from');
 });
 
-test('A8: family members passing swap a line that follows the house mood', () => {
+test('A8: family members passing swap a line of small talk', () => {
   const lvl = open({ adults: [{ type: 'mama', at: [6, 3], face: 0 }, { type: 'tatay', at: [7, 3], face: Math.PI }] });
-  const w = new World({ ...lvl, hinalaTier: 2 });
+  const w = new World(lvl);
   w.player.hidden = { kind: 'box', x: 0, y: 0 };
   for (let i = 0; i < 60 * 9; i++) w.update(1 / 60, idle);
-  assert.ok(['MAY NAWAWALA NA NAMAN!', 'BANTAYAN NATIN ANG PITAKA.'].includes(w.adults[0].say?.text) || w.chatT > 0 && w.chatT <= 25);
+  assert.ok(['KUMAIN KA NA?', 'ANG INIT NGAYON!', 'NAKITA MO ANG REMOTE?'].includes(w.adults[0].say?.text) || w.chatT > 0 && w.chatT <= 25);
 });

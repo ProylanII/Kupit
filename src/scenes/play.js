@@ -65,7 +65,7 @@ function edgePoint(sx, sy, m) {
 
 // One-time tips, shown at the top of the screen (never under your thumbs). id -> text or (play) => text.
 const TIPS = {
-  hide: 'TAGO! PRESS ACT TO HIDE. MOVE TO COME OUT',
+  hide: 'A HIDING SPOT! PRESS ACT TO HIDE. MOVE TO COME OUT',
   throw: (p) => (p.input.touchUsed ? 'TSINELAS! HOLD THE BLUE BUTTON TO AIM, LET GO' : 'TSINELAS! HOLD Q TO AIM, LET GO TO THROW'),
   pandesal: 'PANDESAL! THROW IT NEAR ASO TO KEEP HIM BUSY',
   cycle: (p) => (p.input.touchUsed ? 'TWO KINDS OF ITEMS: TAP THE SMALL DOT TO SWITCH' : 'TWO KINDS OF ITEMS: R SWITCHES WHICH ONE'),
@@ -88,18 +88,18 @@ const TIPS = {
   bisita: 'GUESTS BLOCK THE VIEW. WALK WITH ONE TO BLEND IN',
   trike: 'TRICYCLE! IT KNOCKS YOU DOWN. TIME YOUR CROSSING',
   seenHide: 'THEY SAW YOU HIDE! THE EYE MEANS: NOT SAFE HERE',
-  sapat: 'COINS PAST THE QUOTA ARE SOBRA. SOMEONE MAY NOTICE',
-  emptied: 'AN EMPTY STASH IS EASY TO NOTICE. LEAVE A LITTLE?',
+  sapat: 'THAT IS ENOUGH. EXTRA COINS (SOBRA) CLINK LOUDER',
+  emptied: 'EMPTY! THE LAST COIN MAKES A LOUD KLAK',
   holen: 'HOLEN! IT ROLLS ON, TICKING. DOGS IGNORE IT',
   panyo: 'PANYO: THE HANDKERCHIEF MUFFLED IT. ONCE A LEVEL',
   medyas: 'MEDYAS: IN SOCKS THE CREAKY BOARD STAYS QUIET',
-  maliit: 'MALIIT: UNDER HERE ONLY SOMEONE RIGHT NEXT TO YOU SEES',
-  palusot: 'ONE EXCUSE A LEVEL. THEY STILL WONDER (HINALA +3)',
+  maliit: 'UNDER HERE ONLY SOMEONE RIGHT NEXT TO YOU SEES YOU',
+  palusot: 'KUYA RAMIL TALKED YOU OUT OF IT. ONCE A LEVEL',
   team: 'TWO OF YOU: Z (OR THE PURPLE BUTTON) SWITCHES KIDS',
   dark: 'IN THE DARK THEY ONLY SEE YOU UP CLOSE. AVOID LIGHT',
   cat: 'UP ON A TABLE OR SOFA THEY SEE YOU FROM HALF AS FAR',
-  tabig: (p) => (p.input.touchUsed ? 'TABIG: THE GREEN BUTTON KNOCKS A CUP OFF. IT PULLS THEM AWAY' : 'TABIG: F KNOCKS A CUP OFF. IT PULLS THEM AWAY'),
-  tulo: 'BUHAT A CONTAINER, SAHOD IT UNDER A DRIP. TAPON IT WHEN FULL',
+  tabig: (p) => (p.input.touchUsed ? 'SWAT: THE GREEN BUTTON KNOCKS A CUP OFF. IT PULLS THEM AWAY' : 'SWAT: F KNOCKS A CUP OFF. IT PULLS THEM AWAY'),
+  tulo: 'LIFT A CONTAINER, CATCH A DRIP WITH IT, DUMP IT WHEN FULL',
   tapon: 'EMPTY IT DOWN THE DRAIN. DO IT IN THE THUNDER: NOBODY HEARS',
   baha: 'WALK INTO A SANDBAG TO PUSH IT. PUSH IT INTO THE BROKEN KANAL',
   mingming: 'MINGMING ONLY COMES WHEN IT IS QUIET. WAIT FOR THE THUNDER TO PASS',
@@ -1192,16 +1192,10 @@ export class Play {
 
     // tips / tutorial coach / level hint: one line at the top, away from your thumbs
     const th = this.coach ? 'coach' : null; // the tutorial draws its own panel (drawCoachHud)
-    // HINALA: what changed in the house since last time comes first, then the level's own hint
-    // (it waits for a tip or the coach to finish, then stays up for 4 seconds)
-    const news = this.level.news?.[0];
-    const showNews = !!news && !this.tip && !th && w.time < 30 && (this.newsT || 0) < 4; // 4 s on screen, counted only while shown
-    if (showNews) { if (this.newsLast !== undefined) this.newsT = (this.newsT || 0) + Math.min(0.1, Math.max(0, w.time - this.newsLast)); this.newsLast = w.time; if (this.newsT >= 4) this.newsDone = w.time; }
-    else this.newsLast = undefined;
-    const line = this.tip ? this.tip.text : th || (showNews ? `NEW IN THE HOUSE: ${news}` : this.level.hint && (news ? this.newsDone !== undefined && w.time - this.newsDone < 6 : w.time < 8) ? this.level.hint : null);
+    const line = this.tip ? this.tip.text : th || (this.level.hint && w.time < 8 ? this.level.hint : null);
     if (line && !this.coach && !(w.patience && w.time / w.patience > 0.75 && !this.tip)) {
       g.globalAlpha = 0.75; g.fillStyle = C.ink; g.fillRect(0, 18, VIEW_W, 11); g.globalAlpha = 1;
-      drawText(g, line, VIEW_W / 2, 21, this.tip ? C.green : th ? C.white : showNews ? C.orange : C.yellow, { align: 'center' });
+      drawText(g, line, VIEW_W / 2, 21, this.tip ? C.green : th ? C.white : C.yellow, { align: 'center' });
     }
     this.tipButton = this.tip && !this.coach ? TIP_BUTTONS[this.tip.id] || null : null; // drawn after the buttons
     if (this.toast) {
@@ -1232,7 +1226,7 @@ export class Play {
     for (const k of w.player.keys) { drawObj(g, 'key', kx, MAP_H + 24, k); kx += L ? -10 : 10; }
     const hints = this.level.tutorial || w.time < 12; // control reminders: the first level, and the first seconds of the rest
     if (!hints) { /* a clean strip */ }
-    else if (!L) drawText(g, this.input.touchUsed ? 'DRAG: MOVE   DRAG FAR: RUN' : w.mods.cat ? 'SHIFT RUN  E BITE / HIDE  F TABIG' : 'SHIFT RUN  E ACT  Q THROW  F SKILL', 6, MAP_H + 32, C.dgray);
+    else if (!L) drawText(g, this.input.touchUsed ? 'DRAG: MOVE   DRAG FAR: RUN' : w.mods.cat ? 'SHIFT RUN  E BITE / HIDE  F SWAT' : 'SHIFT RUN  E ACT  Q THROW  F SKILL', 6, MAP_H + 32, C.dgray);
     else drawText(g, this.input.touchUsed ? 'DRAG: MOVE' : 'E ACT Q THROW', tx, MAP_H + 32, C.dgray, al);
 
     // KASABWAT: switch to the other kid (their initial; grey while it cools down or once they are out)
@@ -1258,8 +1252,8 @@ export class Play {
     disc(g, BUTTON.x, BUTTON.y, BUTTON.r, C.ink);
     disc(g, BUTTON.x, BUTTON.y, BUTTON.r - 2, pr ? (down ? C.gold : C.gold2) : C.dgray);
     if (pr) this.actIcon(g, pr, BUTTON.x, BUTTON.y - 7);
-    const label = pr ? pr.label : this.level.hingi ? 'HINGI' : w.mods.cat ? 'KAGAT' : this.level.tulo ? 'SAGIP' : 'KUPIT';
-    drawText(g, label.length > 6 ? label.slice(0, 6) : label, BUTTON.x, BUTTON.y + (pr ? 2 : -2), pr ? C.ink : C.gray, { align: 'center' });
+    const label = pr ? pr.label : this.level.hingi ? 'ASK' : w.mods.cat ? 'BITE' : this.level.tulo ? 'SAVE' : 'TAKE';
+    drawText(g, label.length > 7 ? label.slice(0, 7) : label, BUTTON.x, BUTTON.y + (pr ? 2 : -2), pr ? C.ink : C.gray, { align: 'center' });
 
     // throw button (hold to aim) + item selector
     const items = w.player.items;

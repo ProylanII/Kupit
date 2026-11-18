@@ -1,19 +1,15 @@
-// Headless soak run: every handmade level and a sample of generated houses, fast-forwarded with an idle
+// Headless soak run: every handmade level, fast-forwarded with an idle
 // player and with a wandering one. Catches stuck adults, patrols blocked forever, NaN positions and crashes.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { World } from '../src/game/world.js';
-import { generateHouse } from '../src/game/house.js';
 import { mulberry32 } from '../src/core/rng.js';
 import { TILE } from '../src/world/tilemap.js';
 
 const dir = new URL('../src/data/levels/', import.meta.url);
 const files = JSON.parse(readFileSync(new URL('index.json', dir), 'utf8'));
 const levels = files.map((f) => JSON.parse(readFileSync(new URL(f, dir), 'utf8'))).filter((L) => !L.mode); // (mini-games: tests/minigames.test.mjs)
-const houses = [];
-for (let d = 1; d <= 5; d++) for (const seed of [4001, 4002]) houses.push(generateHouse(seed, d));
-houses.push(generateHouse(4003, 4, { mutators: ['bisita', 'brownout'] }), generateHouse(4004, 3, { pasko: true }));
 
 const finite = (...v) => v.every(Number.isFinite);
 
@@ -50,10 +46,3 @@ test('soak: every level, idle 60s and wandering 40s', () => {
   }
 });
 
-test('soak: generated houses at every difficulty, with mutators and Pasko', () => {
-  for (const L of houses) {
-    const { w, moved } = soak(L, 'idle', 45);
-    w.adults.forEach((a, k) => { if (a.pts.length > 1) assert.ok(moved[k] > TILE, `${L.id}: ${a.type} #${k} never moved`); });
-    soak(L, 'walk', 30);
-  }
-});

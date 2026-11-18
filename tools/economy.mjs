@@ -3,7 +3,7 @@
 //   sakto  takes only the quota (SOBRA never), 2 stars, finds the alkansya half the time
 //   sobra  empties every stash, 3 stars, finds every alkansya
 // Targets: the sakto player can buy every need when it opens (or within a level) and owns 3 of the 5 gear items by
-// the end of Chapter 4; the sobra player gets everything sooner, and pays for it in HINALA, not in coins.
+// the end of Chapter 4; the sobra player gets everything sooner, and pays for it in noise, not in coins.
 import { readFileSync } from 'node:fs';
 import { UPGRADES, UPGRADE_ORDER, NEEDS, NEED_ORDER, OUTFITS, DECOR, campaignPayout } from '../src/game/progression.js';
 import { BEFORE, AFTER, CHAPTERS } from '../src/data/story.js';

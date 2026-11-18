@@ -1,16 +1,17 @@
 // Tests for the November 2026 roadmap: failure state, sound propagation, kupit profiles, throw aim,
-// boss signatures + archetypes, daily/mutators, save schema, economy, ghosts.
+// boss signatures + archetypes, save schema, economy, ghosts.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { World, SCOLD_TIME, GRACE_TIME } from '../src/game/world.js';
 import { TILE, TileMap } from '../src/world/tilemap.js';
 import { soundField, heardDistance } from '../src/world/sound.js';
 import { findPath } from '../src/world/pathfind.js';
-import { generateHouse, dailyId, dailySeed, dailyDiff, prevDailyId, isPasko, mutatorMult } from '../src/game/house.js';
+import { readFileSync } from 'node:fs';
 import { validateLevel, idleSafe } from '../src/game/validate.js';
 import { migrate, saveCode, readSaveCode, fresh, SAVE_VERSION } from '../src/core/save.js';
-import { computeMods, FLOORS, campaignPayout, housePayout, grantUnlocks, totalStars, buyCosmetic } from '../src/game/progression.js';
+import { computeMods, FLOORS, campaignPayout, grantUnlocks, buyCosmetic, isPasko } from '../src/game/progression.js';
 import { encodeGhost, decodeGhost, ghostAt } from '../src/game/ghost.js';
+const lvl = (id) => JSON.parse(readFileSync(new URL(`../src/data/levels/${id}.json`, import.meta.url), 'utf8'));
 
 const c = (t) => t * TILE + TILE / 2;
 const idle = { mv: { x: 0, y: 0, mag: 0, run: false }, action: false, actionPressed: false, throwPressed: false, abilityPressed: false };
@@ -260,42 +261,8 @@ test('a tricycle knocks you down (stun + horn noise) but never catches you', () 
 });
 
 // ---------------------------------------------------------------- T2 generator + daily
-test('daily house rolls over at midnight Manila time, harder on weekends', () => {
-  assert.equal(dailyId(new Date(Date.UTC(2026, 10, 8, 16, 30))), '2026-11-9', '00:30 in Manila is already the 9th');
-  assert.equal(dailyId(new Date(Date.UTC(2026, 10, 8, 15, 30))), '2026-11-8');
-  assert.equal(dailySeed(new Date(Date.UTC(2026, 10, 8, 16, 30))), dailySeed(new Date(Date.UTC(2026, 10, 9, 10))));
-  assert.equal(prevDailyId('2026-3-1'), '2026-2-28');
-  assert.equal(prevDailyId('2027-1-1'), '2026-12-31');
-  assert.equal(dailyDiff(new Date(Date.UTC(2026, 10, 8, 4))), 5, 'Sunday');
-  assert.equal(dailyDiff(new Date(Date.UTC(2026, 10, 9, 4))), 2, 'Monday');
-  assert.ok(isPasko(new Date(Date.UTC(2026, 11, 24))) && isPasko(new Date(Date.UTC(2027, 0, 5))) && !isPasko(new Date(Date.UTC(2027, 1, 1))));
-});
-
-test('mutators and Pasko keep houses valid; riskier stashes hold more', () => {
-  for (const seed of [1100, 1200, 1300]) {
-    const base = generateHouse(seed, 3);
-    const t = generateHouse(seed, 3, { mutators: ['tsinelas'] });
-    assert.ok(t.noThrow && !t.items.some((i) => i.kind === 'tsinelas' || i.kind === 'pandesal'));
-    const b = generateHouse(seed, 3, { mutators: ['bisita'] });
-    assert.ok(b.adults.length >= base.adults.length + 1);
-    const n = generateHouse(seed, 3, { mutators: ['brownout'] });
-    assert.ok(n.night && n.brownout);
-    const p = generateHouse(seed, 4, { pasko: true });
-    assert.ok(p.pasko && p.night && p.name === 'NOCHE BUENA');
-    for (const L of [t, b, n, p]) { assert.deepEqual(validateLevel(L), []); assert.ok(idleSafe(L, 4)); }
-  }
-  assert.equal(mutatorMult(['brownout', 'bisita']), 1.875);
-  // risk ordering: the target with the most adult waypoints near it never holds fewer coins than a quieter one
-  for (let seed = 1000; seed < 1020; seed++) {
-    const L = generateHouse(seed, 4);
-    const risk = (t) => L.adults.reduce((s, a) => s + (a.route || [a.at]).filter((q) => Math.abs(q[0] - t.at[0]) + Math.abs(q[1] - t.at[1]) <= 4).length, 0);
-    const ts = [...L.targets].sort((a, b) => risk(a) - risk(b));
-    for (let i = 1; i < ts.length; i++) if (risk(ts[i]) > risk(ts[i - 1])) assert.ok(ts[i].coins >= ts[i - 1].coins, `seed ${seed}`);
-  }
-});
-
 test('gameplay randomness is seeded: the same inputs replay identically', () => {
-  const L = generateHouse(1234, 5);
+  const L = lvl('05-gabi');
   const run = () => {
     const w = new World(L);
     const moves = [[1, 0], [0, -1], [-1, 0], [0, 1]];
@@ -330,30 +297,23 @@ test('kid traits and gear can never remove the tension (floors)', () => {
   }
 });
 
-test('payouts: replays pay less, houses pay less each time today, the daily pays once', () => {
+test('payouts: replays pay less', () => {
   assert.equal(campaignPayout({ coins: 6, stars: 2, first: true, bossBonus: 10 }), 18);
   assert.equal(campaignPayout({ coins: 6, stars: 3, prevStars: 2, first: false }), 4, 'half coins + 1 new star');
-  const h0 = housePayout({ coins: 6, stars: 3, diff: 3, housesToday: 0 }), h5 = housePayout({ coins: 6, stars: 3, diff: 3, housesToday: 5 });
-  assert.ok(h0 > h5 && h5 >= 1);
-  assert.ok(housePayout({ coins: 6, stars: 3, diff: 5 }) > housePayout({ coins: 6, stars: 3, diff: 1 }));
-  assert.ok(housePayout({ coins: 6, stars: 3, diff: 3, mult: 1.5 }) > h0);
-  assert.equal(housePayout({ coins: 6, stars: 3, diff: 3, daily: true, prevStars: 3 }), 0);
 });
 
-test('star milestones and mutator clears unlock cosmetics; cosmetics can be bought', () => {
+test('cosmetics are bought (no star gifts); the Pasko outfit is free in season', () => {
   const s = fresh();
-  s.stars = Object.fromEntries(Array.from({ length: 4 }, (_, i) => [`l${i}`, 3]));
-  assert.equal(totalStars(s), 12);
-  const got = grantUnlocks(s);
-  assert.ok(got.some((u) => u.id === 'jersey'));
-  assert.equal(grantUnlocks(s).length, 0, 'only once');
-  s.mutatorClears.bisita = true;
-  assert.ok(grantUnlocks(s).some((u) => u.id === 'barong'));
+  s.stars = Object.fromEntries(Array.from({ length: 19 }, (_, i) => [`l${i}`, 3]));
+  assert.equal(grantUnlocks(s).length, 0, 'stars alone unlock nothing');
   assert.ok(grantUnlocks(s, { pasko: true }).some((u) => u.id === 'pasko'));
-  s.bank = 20;
+  assert.equal(grantUnlocks(s, { pasko: true }).length, 0, 'only once');
+  assert.ok(isPasko(new Date(Date.UTC(2026, 11, 24))) && isPasko(new Date(Date.UTC(2027, 0, 5))) && !isPasko(new Date(Date.UTC(2027, 1, 1))));
+  s.bank = 40;
   assert.equal(buyCosmetic(s, 'decor', 'pusa'), 'bought');
-  assert.equal(s.bank, 14);
-  assert.equal(buyCosmetic(s, 'decor', 'jeep'), 'locked');
+  assert.equal(s.bank, 34);
+  assert.equal(buyCosmetic(s, 'decor', 'jeep'), 'bought', 'the old star gifts are in the store now');
+  assert.equal(buyCosmetic(s, 'outfit', 'jersey'), 'poor');
 });
 
 // ---------------------------------------------------------------- N6 ghosts

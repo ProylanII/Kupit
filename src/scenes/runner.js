@@ -453,8 +453,8 @@ export class RunnerScene extends ModeScene {
     const arrow = (up) => (gg, x, y) => { gg.fillStyle = C.ink; for (let i = 0; i < 4; i++) gg.fillRect(x - i, up ? y - 2 + i : y + 1 - i, 1 + i * 2, 1); };
     const hintJump = this.tip?.id === 'habol-jump' || this.signs.some((t) => t.icon !== 'down' && t.x - s.x < 90);
     const hintSlide = this.signs.some((t) => t.icon === 'down' && t.x - s.x < 90);
-    this.drawRoundButton(g, SLIDE_BTN, 'DAUSDOS', { down: this.prevSlide, col: '#2f5fbf', colDown: '#4f8fff', icon: arrow(false), hint: hintSlide });
-    this.drawRoundButton(g, BUTTON, 'TALON', { down: this.prevJump, icon: arrow(true), hint: hintJump });
+    this.drawRoundButton(g, SLIDE_BTN, 'SLIDE', { down: this.prevSlide, col: '#2f5fbf', colDown: '#4f8fff', icon: arrow(false), hint: hintSlide });
+    this.drawRoundButton(g, BUTTON, 'JUMP', { down: this.prevJump, icon: arrow(true), hint: hintJump });
   }
 
   drawFail(g) {

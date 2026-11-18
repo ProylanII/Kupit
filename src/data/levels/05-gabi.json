@@ -235,35 +235,5 @@
    "say": "HUGAS KAMAY!"
   }
  ],
- "hinala": {
-  "2": {
-   "news": "LOLA KEEPS HER BAYONG BY HER PILLOW",
-   "do": [
-    {
-     "move": 2,
-     "to": [
-      13,
-      2
-     ]
-    }
-   ]
-  },
-  "3": {
-   "news": "THE KITCHEN DOOR IS LOCKED NOW",
-   "do": [
-    {
-     "lock": [
-      6,
-      12
-     ],
-     "key": "red",
-     "keyAt": [
-      12,
-      9
-     ]
-    }
-   ]
-  }
- },
  "notes": "Jomar walks the long hall end to end (Ramil yells to send him the other way). Near-miss: 30 s before dinner Mama calls HUGAS KAMAY and walks up to the kids rooms, past wherever you are hiding."
 }
