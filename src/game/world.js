@@ -11,7 +11,7 @@ import { MISSIONS, missionIds } from './missions.js';
 import { windowLights, lightSources, sightMul } from '../world/light.js';
 
 export const REACH = 18;          // interact distance (px)
-export const THROW_SPEED = 140, THROW_MAX = 72;
+export const THROW_SPEED = 140, THROW_MAX = 72, AIM_MIN = 10;
 const DEVICE_PULSE = 1.5;
 const SMELL = 140;                // dogs smell food from this far
 const PROGRESS_DECAY = 0.12;      // an interrupted kupit keeps most of its progress for a while
@@ -765,26 +765,32 @@ export class World {
   get throwMax() { return THROW_MAX * this.mods.throwRange; }
 
   // Where a throw would land right now: { x, y, max } (max = the range ring around the player).
-  aimPreview() {
+  // Where a throw would land. at: a world point to aim at (the mouse or a finger): the throw goes that way, as far as
+  // that point but never past the throw range. Without it: straight ahead as far as it goes. Walls stop it.
+  aimPreview(at = null) {
     const p = this.player;
     if (!p.items.length || p.hidden || this.noThrow) return null;
-    const [fx, fy] = p.facing(), m = Math.hypot(fx, fy) || 1;
-    const ux = fx / m, uy = fy / m, max = this.throwMax;
-    let x = p.x, y = p.y - 2, d = 0;
-    while (d < max) {
+    const max = this.throwMax, y0 = p.y - 2;
+    const dx = at ? at.x - p.x : 0, dy = at ? at.y - y0 : 0, dm = Math.hypot(dx, dy);
+    let ux, uy, range = max;
+    if (at && dm >= 2) { ux = dx / dm; uy = dy / dm; range = Math.max(AIM_MIN, Math.min(max, dm)); }
+    else { const [fx, fy] = p.facing(), m = Math.hypot(fx, fy) || 1; ux = fx / m; uy = fy / m; }
+    let x = p.x, y = y0, d = 0;
+    while (d < range) {
       const nx = x + ux * 2, ny = y + uy * 2;
       if (this.map.isSolidAt(nx, ny)) break;
       x = nx; y = ny; d += 2;
     }
-    return { x, y, max, hitWall: d < max };
+    return { x, y, max, range, ux, uy, hitWall: d < range };
   }
 
-  throwItem() {
+  throwItem(at = null) {
     const p = this.player;
+    const a = this.aimPreview(at);
     const kind = p.items.pop();
-    const [fx, fy] = p.facing();
-    const m = Math.hypot(fx, fy) || 1;
-    this.projectiles.push({ kind, x: p.x, y: p.y - 2, vx: (fx / m) * THROW_SPEED, vy: (fy / m) * THROW_SPEED, d: 0, origin: { x: p.x, y: p.y } });
+    let ux = a?.ux, uy = a?.uy;
+    if (!a) { const [fx, fy] = p.facing(), m = Math.hypot(fx, fy) || 1; ux = fx / m; uy = fy / m; }
+    this.projectiles.push({ kind, x: p.x, y: p.y - 2, vx: ux * THROW_SPEED, vy: uy * THROW_SPEED, d: 0, range: a ? a.range : this.throwMax, origin: { x: p.x, y: p.y } });
     this.stats.throws++;
     this.emit({ type: 'throw' });
   }
@@ -843,7 +849,7 @@ export class World {
     }
   }
 
-  // input: {mv, action, actionPressed, throwPressed, throwAim, cyclePressed, abilityPressed}
+  // input: {mv, action, actionPressed, throwPressed, throwAim, aimAt (a world point, or none), cyclePressed, abilityPressed}
   update(dt, input) {
     if (this.status !== 'play') return;
     if (this.kids) { // KASABWAT: switch who you control (before anything else reads this.player this frame)
@@ -908,8 +914,8 @@ export class World {
       this.emit({ type: 'laundry', x: mx * TILE + 8, y: my * TILE + 8, left: this.laundryRuns.length });
     }
     const canThrow = p.items.length && !p.hidden && !p.under && !stealing && p.stunT <= 0 && !this.noThrow;
-    this.aim = input.throwAim && canThrow ? this.aimPreview() : null;
-    if (input.throwPressed && canThrow) this.throwItem();
+    this.aim = input.throwAim && canThrow ? this.aimPreview(input.aimAt) : null;
+    if (input.throwPressed && canThrow) this.throwItem(input.aimAt);
     if (input.abilityPressed) this.useAbility();
 
     // --- player move (BAGYO: wading through the flood and carrying a container both slow you down)
@@ -1043,7 +1049,7 @@ export class World {
     for (const pr of this.projectiles) {
       const nx = pr.x + pr.vx * dt, ny = pr.y + pr.vy * dt;
       pr.d += Math.hypot(pr.vx, pr.vy) * dt;
-      if (map.isSolidAt(nx, ny) || pr.d >= this.throwMax) { pr.done = true; this.land(pr); } else { pr.x = nx; pr.y = ny; }
+      if (map.isSolidAt(nx, ny) || pr.d >= (pr.range ?? this.throwMax)) { pr.done = true; this.land(pr); } else { pr.x = nx; pr.y = ny; }
     }
     compact(this.projectiles);
     // HOLEN: a marble keeps rolling, ticking little lures along its line until it hits something (then it is gone)

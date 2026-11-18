@@ -2,7 +2,7 @@
 // Every build has its own cache ("kupit-<version>", the version is stamped below by `npm run build` from
 // precache.json). A new version downloads in the background into a fresh cache and then WAITS: the page
 // shows "UPDATE READY" and only switches when the player taps it, so old and new files never mix.
-const VERSION = '4e0c9069'; // stamped by tools/build-precache.mjs
+const VERSION = 'eed2a62d'; // stamped by tools/build-precache.mjs
 const CACHE = `kupit-${VERSION}`;
 const ROOT = new URL('./', self.location).pathname; // the app's folder, e.g. "/" or "/kupit/"
 

@@ -93,7 +93,7 @@ export const SALA_STEPS = [
   },
   {
     id: 'throw',
-    say: (k) => ['MAMA CAN SEE THE EXIT. THROW THE TSINELAS', keyOr(k, 'HOLD THE BLUE BUTTON, AIM AT THE MARK, LET GO', 'HOLD Q, AIM AT THE MARK, LET GO')],
+    say: (k) => ['MAMA CAN SEE THE EXIT. THROW THE TSINELAS', keyOr(k, 'HOLD THE BLUE BUTTON, SLIDE ONTO THE MARK, LET GO', 'PRESS Q, POINT AT THE MARK, CLICK')],
     focus: (w, m) => m.throwAt,
     aim: true, // the mark turns green when the throw would land on it
     btn: () => 'throw',

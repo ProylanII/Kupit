@@ -5,7 +5,7 @@ export const VIEW_H = 392;
 // On-screen buttons. Right-handed positions; setLeftHanded() mirrors them (the objects are mutated in place,
 // so every module that imported them sees the new layout).
 export const BUTTON = { x: 214, y: 372, r: 18 };  // action
-export const BUTTON2 = { x: 176, y: 372, r: 14 }; // throw item (hold to aim, release to throw)
+export const BUTTON2 = { x: 176, y: 372, r: 14 }; // throw item (phone: hold, slide to the spot, let go)
 export const ABILITY_BTN = { x: 100, y: 372, r: 11 }; // character skill
 export const PAUSE_BTN = { x: 138, y: 372, r: 10 }; // pause
 export const ITEM_BTN = { x: 156, y: 357, r: 8 };  // cycle which item you throw next
@@ -19,6 +19,12 @@ export function setLeftHanded(on) {
   PAUSE_BTN.x = m(RIGHT.PAUSE_BTN); ITEM_BTN.x = m(RIGHT.ITEM_BTN); SWAP_BTN.x = m(RIGHT.SWAP_BTN);
 }
 const STICK_R = 22;
+// Throwing. Computer: Q starts aiming and the mouse points; a click (or Q again) throws there, Esc or a right click
+// cancels. Holding Q and letting go also throws (straight ahead if the mouse never moved). Phone: hold the throw
+// button and slide your finger to the spot; let go to throw. Let go without leaving the button: a quick throw straight
+// ahead. Slide back onto the button: cancelled.
+export const FINGER_UP = 14;  // the landing mark sits this far above the finger, so the finger doesn't hide it
+const HOLD_THROW = 0.3;       // Q held at least this long: letting go throws; a quick tap keeps aiming
 
 export class Input {
   constructor(canvas) {
@@ -34,8 +40,10 @@ export class Input {
     this.abilityTap = false; // latched so a very short tap still counts
     this.cycleTap = false;
     this.prevA = false;
-    this.prevT = false;
     this.touchUsed = false;
+    this.mouse = null;      // where the mouse is over the canvas (game pixels), for aiming
+    this.aimKey = null;     // aiming with Q: { t0, sticky, m0, mouseAim }
+    this.throwReq = null;   // a throw for the next step: { at } (at: a screen point, or null = straight ahead)
     this.hits = new Set();  // keys pressed this frame (no auto-repeat)
     this.hitsUsed = false;  // the world already consumed this frame's key presses (fixed-step substeps)
     this.tapPos = null;     // pointer-down position this frame, game pixels
@@ -43,21 +51,39 @@ export class Input {
 
     addEventListener('keydown', (e) => {
       const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      if (k === 'Escape' && this.aimKey) { this.aimKey = null; e.preventDefault(); return; } // Esc cancels the aim (no pause)
+      if (!e.repeat && (k === 'q' || k === 'k') && this.buttonEnabled && this.button2Enabled) { // (only while playing)
+        if (!this.aimKey) this.aimKey = { t0: performance.now(), sticky: false, m0: this.mouse ? { ...this.mouse } : null, mouseAim: false };
+        else if (this.aimKey.sticky) this.fireKeyAim();
+      }
       if (!e.repeat) this.hits.add(k);
       if (!this.keys.has(k) && (k === 'Enter' || k === ' ' || k === 'e')) this.tapped = true;
       this.keys.add(k);
       if (k.startsWith('Arrow') || k === ' ' || k === 'Tab') e.preventDefault();
     });
-    addEventListener('keyup', (e) => this.keys.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key));
-    addEventListener('blur', () => { this.keys.clear(); this.pointers.clear(); });
+    addEventListener('keyup', (e) => {
+      const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      this.keys.delete(k);
+      if ((k === 'q' || k === 'k') && this.aimKey && !this.aimKey.sticky) {
+        if ((performance.now() - this.aimKey.t0) / 1000 >= HOLD_THROW) this.fireKeyAim(); // held: letting go throws
+        else this.aimKey.sticky = true; // a tap: keep aiming; the mouse points, a click (or Q again) throws
+      }
+    });
+    addEventListener('blur', () => { this.keys.clear(); this.pointers.clear(); this.aimKey = null; });
 
     canvas.addEventListener('pointerdown', (e) => {
       const p = this.pos(e);
       if (e.pointerType !== 'mouse') this.touchUsed = true;
+      else this.mouse = p;
       this.tapped = true;
       this.tapPos = p;
       const near = (b, pad) => Math.hypot(p.x - b.x, p.y - b.y) <= b.r + pad;
       if (this.buttonEnabled && near(PAUSE_BTN, 6)) { this.pauseTap = true; return; }
+      if (this.aimKey && e.pointerType === 'mouse') { // aiming with Q: a click throws right there, a right click cancels
+        if (e.button === 2) this.aimKey = null;
+        else { this.aimKey.mouseAim = true; this.fireKeyAim(); }
+        return;
+      }
       if (this.buttonEnabled && this.itemEnabled && near(ITEM_BTN, 5)) { this.cycleTap = true; return; }
       if (this.buttonEnabled && this.swapEnabled && near(SWAP_BTN, 5)) { this.swapTap = true; return; }
       const onBtn = this.buttonEnabled && near(BUTTON, 6);
@@ -65,16 +91,31 @@ export class Input {
       const onBtn3 = !onBtn && !onBtn2 && this.abilityEnabled && near(ABILITY_BTN, 5);
       if (onBtn3) this.abilityTap = true;
       const role = onBtn ? 'btn' : onBtn2 ? 'btn2' : onBtn3 ? 'btn3' : 'stick';
-      this.pointers.set(e.pointerId, { role, sx: p.x, sy: p.y, x: p.x, y: p.y });
+      this.pointers.set(e.pointerId, { role, sx: p.x, sy: p.y, x: p.x, y: p.y, left: false, back: false });
       try { canvas.setPointerCapture(e.pointerId); } catch { /* ignore */ }
     });
     canvas.addEventListener('pointermove', (e) => {
+      const p = this.pos(e);
+      if (e.pointerType === 'mouse') {
+        this.mouse = p;
+        const a = this.aimKey;
+        if (a && (!a.m0 || Math.hypot(p.x - a.m0.x, p.y - a.m0.y) > 3)) a.mouseAim = true; // the mouse is doing the aiming now
+      }
       const q = this.pointers.get(e.pointerId);
-      if (q) { const p = this.pos(e); q.x = p.x; q.y = p.y; }
+      if (!q) return;
+      q.x = p.x; q.y = p.y;
+      if (q.role === 'btn2') { // dragging out of the throw button aims; coming back onto it cancels
+        const d = Math.hypot(p.x - BUTTON2.x, p.y - BUTTON2.y);
+        if (d > BUTTON2.r + 8) q.left = true;
+        q.back = q.left && d <= BUTTON2.r + 3;
+      }
     });
-    const up = (e) => this.pointers.delete(e.pointerId);
-    canvas.addEventListener('pointerup', up);
-    canvas.addEventListener('pointercancel', up);
+    canvas.addEventListener('pointerup', (e) => {
+      const q = this.pointers.get(e.pointerId);
+      if (q?.role === 'btn2' && this.button2Enabled && !q.back) this.throwReq = { at: q.left ? { x: q.x, y: q.y - FINGER_UP } : null };
+      this.pointers.delete(e.pointerId);
+    });
+    canvas.addEventListener('pointercancel', (e) => this.pointers.delete(e.pointerId));
   }
 
   pos(e) {
@@ -113,11 +154,20 @@ export class Input {
     return false;
   }
 
+  // Aiming right now (Q, or a finger on the throw button that hasn't come back onto it to cancel).
   throwHeld() {
-    if (this.keys.has('q') || this.keys.has('k')) return true;
-    for (const q of this.pointers.values()) if (q.role === 'btn2') return true;
-    return false;
+    for (const q of this.pointers.values()) if (q.role === 'btn2') return !q.back;
+    return !!this.aimKey;
   }
+
+  // Where the aim points, in screen (game) pixels, or null for straight ahead.
+  aimPoint() {
+    for (const q of this.pointers.values()) if (q.role === 'btn2') return q.left && !q.back ? { x: q.x, y: q.y - FINGER_UP } : null;
+    const a = this.aimKey, m = this.mouse;
+    return a && a.mouseAim && m ? { x: m.x, y: m.y } : null;
+  }
+
+  fireKeyAim() { this.throwReq = { at: this.aimPoint() }; this.aimKey = null; }
 
   abilityHeld() {
     if (this.keys.has('f') || this.keys.has('x')) return true;
@@ -126,27 +176,30 @@ export class Input {
   }
 
   // One snapshot per simulation step with press edges, for the game world.
-  // Throwing: holding the button aims (shows where it lands), letting go throws.
+  // Throwing: throwAim while aiming (with aimAt, the screen point it aims at, or null for straight ahead), and
+  // throwPressed on the step a throw is let go (aimAt is then where it goes).
   // Several steps can run in one frame (fixed timestep): key presses only count on the first.
   poll() {
     const a = this.action(), t = this.throwHeld(), b = this.abilityHeld();
     const hits = this.hitsUsed ? new Set() : this.hits;
+    const req = this.throwReq;
+    this.throwReq = null;
     const r = {
       mv: this.move(), action: a, actionPressed: a && !this.prevA,
-      throwAim: t, throwPressed: !t && this.prevT,
+      throwAim: t, throwPressed: !!req, aimAt: req ? req.at : t ? this.aimPoint() : null,
       cyclePressed: this.cycleTap || hits.has('r') || hits.has('Tab'),
       abilityPressed: (b && !this.prevAb) || this.abilityTap || hits.has('f') || hits.has('x'),
       swapPressed: this.swapTap || hits.has('z'), // KASABWAT: switch kids
     };
     this.abilityTap = false; this.cycleTap = false; this.swapTap = false;
     this.hitsUsed = true;
-    this.prevA = a; this.prevT = t; this.prevAb = b;
+    this.prevA = a; this.prevAb = b;
     return r;
   }
 
   pressed(k) { return this.hits.has(k); }
   // Drop held pointers/keys so a menu tap doesn't turn into a stick drag when play starts.
-  reset() { this.pointers.clear(); this.keys.clear(); this.prevA = this.prevT = this.prevAb = false; this.cycleTap = this.abilityTap = this.swapTap = false; }
+  reset() { this.pointers.clear(); this.keys.clear(); this.prevA = this.prevAb = false; this.cycleTap = this.abilityTap = this.swapTap = false; this.aimKey = null; this.throwReq = null; }
   consumeTap() { const t = this.tapped; this.tapped = false; return t; }
   endFrame() { this.tapped = false; this.hits.clear(); this.hitsUsed = false; this.tapPos = null; this.pauseTap = false; }
 }

@@ -66,7 +66,7 @@ function edgePoint(sx, sy, m) {
 // One-time tips, shown at the top of the screen (never under your thumbs). id -> text or (play) => text.
 const TIPS = {
   hide: 'A HIDING SPOT! PRESS ACT TO HIDE. MOVE TO COME OUT',
-  throw: (p) => (p.input.touchUsed ? 'TSINELAS! HOLD THE BLUE BUTTON TO AIM, LET GO' : 'TSINELAS! HOLD Q TO AIM, LET GO TO THROW'),
+  throw: (p) => (p.touch ? 'TSINELAS! HOLD THE BLUE BUTTON, SLIDE TO A SPOT, LET GO' : 'TSINELAS! PRESS Q, POINT WITH THE MOUSE, CLICK'),
   pandesal: 'PANDESAL! THROW IT NEAR ASO TO KEEP HIM BUSY',
   cycle: (p) => (p.input.touchUsed ? 'TWO KINDS OF ITEMS: TAP THE SMALL DOT TO SWITCH' : 'TWO KINDS OF ITEMS: R SWITCHES WHICH ONE'),
   skill: (p) => `SKILL READY: ${p.world.mods.skill.label}! ${p.input.touchUsed ? 'GREEN BUTTON' : 'PRESS F'}`,
@@ -226,7 +226,9 @@ export class Play {
     this.input.abilityEnabled = true;
     this.input.swapEnabled = !!w.kids && w.kids.every((k) => !k.out); // KASABWAT
     this.input.itemEnabled = new Set(w.player.items).size > 1;
-    w.update(dt, this.input.poll());
+    const inp = this.input.poll();
+    if (inp.aimAt) inp.aimAt = { x: inp.aimAt.x + this.cam.x, y: inp.aimAt.y + this.cam.y }; // (the aim is a point on screen)
+    w.update(dt, inp);
     if (this.coach?.update(dt)) sfx.pickup(); // a tutorial step done
     this.steps++;
     this.cardT = Math.max(0, this.cardT - dt);
@@ -1285,7 +1287,7 @@ export class Play {
     const pulse = Math.floor(performance.now() / 250) % 2;
     ring(g, btn.x, btn.y, btn.r + 3 + pulse, C.gold, 1); ring(g, btn.x, btn.y, btn.r + 5 + pulse, C.ink, 2);
     const keyName = kind === 'throw' ? 'Q' : kind === 'skill' ? 'F' : 'E';
-    const label = this.touch ? (hold ? 'HOLD' : 'TAP') : `${hold ? 'HOLD ' : ''}${keyName}`;
+    const label = this.touch ? (kind === 'throw' ? 'HOLD + SLIDE' : hold ? 'HOLD' : 'TAP') : kind === 'throw' ? 'Q + CLICK' : `${hold ? 'HOLD ' : ''}${keyName}`;
     const lw = textWidth(label) + 4, lx = Math.max(1, Math.min(VIEW_W - lw - 1, btn.x - lw / 2)), ly = btn.y - btn.r - 16 - pulse;
     g.fillStyle = C.gold; g.fillRect(lx, ly, lw, 9); drawText(g, label, lx + 2, ly + 2, C.ink);
   }
