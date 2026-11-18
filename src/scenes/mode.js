@@ -126,11 +126,18 @@ export class ModeScene {
     g.globalAlpha = 1;
   }
 
-  // the field shifted down onto the control strip (a tall phone), with the band above it filled
+  // the field shifted down onto the control strip (a tall phone), with the band above it filled: by the scene's own
+  // scenery when it has some (drawAbove: what stands above the field's top edge), else a plain colour
   beginField(g, band = C.ink) {
-    if (EXTRA > 0) { g.fillStyle = band; g.fillRect(0, 0, VIEW_W, EXTRA); }
+    if (EXTRA > 0) {
+      if (this.drawAbove) this.drawAbove(g, EXTRA);
+      else { g.fillStyle = band; g.fillRect(0, 0, VIEW_W, EXTRA); }
+    }
     g.save(); g.translate(0, EXTRA);
   }
+  // the top bar goes to the top edge of the screen (out of the field's shift)
+  beginTopBar(g) { g.save(); g.translate(0, -EXTRA); }
+  endTopBar(g) { g.restore(); }
   endField(g) { this.cuts.draw(g, 112); g.restore(); }
 
   drawTopTip(g, y = 26) {

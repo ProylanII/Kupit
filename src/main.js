@@ -20,7 +20,7 @@ import { dev, initDev, setDev, SPEEDS } from './core/dev.js';
 import { music } from './core/music.js';
 import { loadAtlas } from './render/atlas.js';
 import { hapticsOn, vibrate, canVibrate } from './core/haptics.js';
-import { settings, applySettings, SHAKE_LEVELS, shakeLabel, VOLUME_STEPS } from './core/settings.js';
+import { settings, applySettings, VOLUME_STEPS, isCalm, setCalm } from './core/settings.js';
 import { loadGhost, storeGhost, clearGhosts } from './game/ghost.js';
 import { INTRO, BEFORE, AFTER, ENDING, EPILOGUE, NAMES, CHAPTERS } from './data/story.js';
 import { missionIds, missionLabel, maskOf, starsOf } from './game/missions.js';
@@ -103,7 +103,7 @@ const tips = { get seen() { return save.seen; }, mark(id) { save.seen[id] = true
 
 function launch() {
   const Scene = sceneFor(cur);
-  const ghost = settings.ghost && Scene === Play ? loadGhost(cur.id) : null;
+  const ghost = Scene === Play ? loadGhost(cur.id) : null;
   const L = special(cur) ? cur : prepare(cur);
   play = new Scene(L, input, { char: save.char, upgrades: save.upgrades, lives: 3, alkansyaFound: !!save.alkansya[cur.id] },
     { tips, ghost, outfit: save.outfit, record: true, log: playtest ? ptEvent : null,
@@ -638,24 +638,25 @@ function updateHelp() {
 
 // ---- options -----------------------------------------------------------------------
 const OPT_Y = 44, OPT_GAP = 18;
-const OPT_HELP_ITEM = 12; // HOW TO PLAY
+// Ten rows (the arcade pass): sound, feel, the save, help. MUTE ALL is the M key now (and picking a volume unmutes);
+// shake, flash and the pulsing edge are one CALM SCREEN switch; the ghost of your best run is simply always there.
+const OPT = { MUSIC: 0, SFX: 1, VIBRATE: 2, CALM: 3, BUTTONS: 4, COPY: 5, LOAD: 6, ERASE: 7, HELP: 8, BACK: 9, LOG: 10 };
+const OPT_HELP_ITEM = OPT.HELP;
 let eraseArmed = 0; // NEW GAME: seconds left to tap it a second time
-const pct = (v) => `${Math.round(v * 100)}%`;
+const pct = (v) => (isMuted() ? 'MUTED' : `${Math.round(v * 100)}%`);
 function optionItems() {
   return [
-    `MUSIC: ${pct(settings.music)}`, `SOUND FX: ${pct(settings.sfx)}`, `MUTE ALL: ${isMuted() ? 'ON' : 'OFF'}`,
-    `SCREEN SHAKE: ${shakeLabel(settings.shake)}`, `SCREEN FLASH: ${settings.flash ? 'ON' : 'OFF'}`,
-    canVibrate() ? `VIBRATE: ${hapticsOn() ? 'ON' : 'OFF'}` : 'VIBRATE: NOT ON THIS DEVICE',
-    `VISUAL PULSE: ${settings.pulse ? 'ON' : 'OFF'}`, `BUTTONS: ${settings.left ? 'LEFT' : 'RIGHT'}-HANDED`,
-    `GHOST OF BEST RUN: ${settings.ghost ? 'ON' : 'OFF'}`, 'COPY SAVE CODE', 'LOAD SAVE CODE',
+    `MUSIC: ${pct(settings.music)}`, `SOUND FX: ${pct(settings.sfx)}`,
+    canVibrate() ? `VIBRATE: ${hapticsOn() ? 'ON' : 'OFF'}` : 'VIBRATE: NOT ON THIS PHONE',
+    `CALM SCREEN: ${isCalm(settings) ? 'ON' : 'OFF'}`, `BUTTONS: ${settings.left ? 'LEFT' : 'RIGHT'}-HANDED`,
+    'COPY SAVE CODE', 'LOAD SAVE CODE',
     eraseArmed > 0 ? 'SURE? TAP AGAIN TO ERASE' : 'NEW GAME (ERASE SAVE)', 'HOW TO PLAY', 'BACK',
     ...(playtest ? [`COPY PLAYTEST LOG (${ptRead().length})`] : []),
   ];
 }
 const OPT_HELP = [
-  'MUSIC VOLUME', 'BEEPS AND CREAKS', 'SILENCE EVERYTHING (M KEY)', 'HOW MUCH THE SCREEN SHAKES', 'COLOUR FLASH ON A CLOSE CALL',
-  'PHONE BUZZES ON ALERTS', 'COLOURED SCREEN EDGE INSTEAD OF A BUZZ', 'MIRROR THE BUTTONS FOR YOUR LEFT THUMB',
-  'SEE-THROUGH KID REPLAYS YOUR BEST TIME', 'MOVE YOUR SAVE TO ANOTHER PHONE', 'PASTE A CODE FROM ANOTHER PHONE',
+  'MUSIC VOLUME (M MUTES EVERYTHING)', 'BEEPS AND CREAKS', 'PHONE BUZZES ON ALERTS', 'NO SHAKING, NO FLASHES',
+  'MIRROR THE BUTTONS FOR YOUR LEFT THUMB', 'MOVE YOUR SAVE TO ANOTHER PHONE', 'PASTE A CODE FROM ANOTHER PHONE',
   'START OVER: STORY, COINS, STARS AND CREW ARE ERASED', 'THE RULES, AND WHAT THE WORDS MEAN', '', 'ALL DEATHS, PAUSES AND IDLE MOMENTS (JSON)',
 ];
 
@@ -664,8 +665,8 @@ function drawOptions() {
   drawText(g, 'OPTIONS', VIEW_W / 2, 14, C.gold, { scale: 3, align: 'center', shadow: C.gold2 });
   const items = optionItems();
   items.forEach((l, i) => drawButton(g, { ...buttonRect(i, OPT_Y, OPT_GAP, 200) }, l, i === sel));
-  drawText(g, eraseArmed > 0 && sel === 11 ? 'YOUR SETTINGS STAY. THIS CANNOT BE UNDONE' : OPT_HELP[sel] || '', VIEW_W / 2, 314, eraseArmed > 0 && sel === 11 ? C.orange : C.gray, { align: 'center' });
-  drawMsg(326);
+  drawText(g, eraseArmed > 0 && sel === OPT.ERASE ? 'YOUR SETTINGS STAY. THIS CANNOT BE UNDONE' : OPT_HELP[sel] || '', VIEW_W / 2, OPT_Y + items.length * OPT_GAP + 8, eraseArmed > 0 && sel === OPT.ERASE ? C.orange : C.gray, { align: 'center' });
+  drawMsg(OPT_Y + items.length * OPT_GAP + 20);
 }
 
 async function copyText(text) {
@@ -688,17 +689,13 @@ function updateOptions() {
   const o = save.opts;
   const cycle = (list, v) => list[(list.indexOf(v) + 1) % list.length] ?? list[0];
   switch (pick) {
-    case 0: o.music = cycle(VOLUME_STEPS, o.music); break;
-    case 1: o.sfx = cycle(VOLUME_STEPS, o.sfx); break;
-    case 2: toggleSound(); break;
-    case 3: o.shake = cycle(SHAKE_LEVELS, o.shake); break;
-    case 4: o.flash = !o.flash; break;
-    case 5: if (canVibrate()) { save.haptics = !hapticsOn(); } break;
-    case 6: o.pulse = !o.pulse; break;
-    case 7: o.left = !o.left; break;
-    case 8: o.ghost = !o.ghost; break;
-    case 9: copyText(saveCode(save)).then((ok) => say(ok ? 'SAVE CODE COPIED!' : 'COULD NOT COPY', ok ? C.green : C.orange)); break;
-    case 10: {
+    case OPT.MUSIC: if (isMuted()) toggleSound(); else o.music = cycle(VOLUME_STEPS, o.music); break; // (muted: the first tap unmutes)
+    case OPT.SFX: if (isMuted()) toggleSound(); else o.sfx = cycle(VOLUME_STEPS, o.sfx); break;
+    case OPT.VIBRATE: if (canVibrate()) { save.haptics = !hapticsOn(); } break;
+    case OPT.CALM: setCalm(o, !isCalm(o)); break;
+    case OPT.BUTTONS: o.left = !o.left; break;
+    case OPT.COPY: copyText(saveCode(save)).then((ok) => say(ok ? 'SAVE CODE COPIED!' : 'COULD NOT COPY', ok ? C.green : C.orange)); break;
+    case OPT.LOAD: {
       let code = null;
       try { code = prompt('PASTE YOUR KUPIT SAVE CODE:'); } catch { /* no prompt */ }
       if (!code) break;
@@ -708,7 +705,7 @@ function updateOptions() {
       say('SAVE LOADED!', C.green);
       break;
     }
-    case 11: { // NEW GAME: the first tap asks, the second (within 3 s) erases
+    case OPT.ERASE: { // NEW GAME: the first tap asks, the second (within 3 s) erases
       if (prevMode === 'paused') { say('QUIT THE LEVEL FIRST, THEN START OVER', C.orange); sfx.creak(); return; }
       if (eraseArmed <= 0) { eraseArmed = 3; sfx.creak(); return; }
       eraseArmed = 0;
@@ -718,13 +715,13 @@ function updateOptions() {
       setMode('title'); say('NEW GAME! START THE STORY', C.green);
       return;
     }
-    case 12: helpFrom = 'options'; helpPage = 0; setMode('help'); return;
-    case 13: setMode(prevMode); return;
-    case 14: copyText(JSON.stringify(ptRead(), null, 1)).then((ok) => say(ok ? 'PLAYTEST LOG COPIED' : 'COULD NOT COPY', ok ? C.green : C.orange)); break;
+    case OPT.HELP: helpFrom = 'options'; helpPage = 0; setMode('help'); return;
+    case OPT.BACK: setMode(prevMode); return;
+    case OPT.LOG: copyText(JSON.stringify(ptRead(), null, 1)).then((ok) => say(ok ? 'PLAYTEST LOG COPIED' : 'COULD NOT COPY', ok ? C.green : C.orange)); break;
   }
   persist(); applySettings(save);
-  if (pick === 5) vibrate(40);
-  if (pick !== 2 && pick < 9) sfx.click();
+  if (pick === OPT.VIBRATE) vibrate(40);
+  if (pick < OPT.COPY) sfx.click();
 }
 
 // ---- dev tools (opened from the pause menu while dev mode is on) ---------------------
@@ -828,7 +825,7 @@ function drawCaught() {
     drawText(g, cur.failTitle || 'BALIK SA KWARTO!', VIEW_W / 2, 104, C.orange, { scale: 3, align: 'center', shadow: C.ink });
     drawText(g, `${a.cfg.name}: "${a.cfg.scold || a.cfg.shout}"`, VIEW_W / 2, 155, C.white, { align: 'center' });
     if (play.reason === 'escape') drawText(g, 'TOO SLOW! RUN FOR THE EXIT NEXT TIME', VIEW_W / 2, 165, C.orange, { align: 'center' });
-    else if (play.world.lives > 1) drawText(g, `${play.world.catches} CLOSE CALLS. NO CHANCES LEFT!`, VIEW_W / 2, 165, C.orange, { align: 'center' });
+    else if (play.world.lives > 1) drawText(g, `${play.world.catches} CLOSE CALL${play.world.catches === 1 ? '' : 'S'}. NO CHANCES LEFT!`, VIEW_W / 2, 165, C.orange, { align: 'center' });
   }
   drawText(g, `COINS ${play.world.coins}/${cur.quota}   TIME ${Math.floor(play.world.time)}S`, VIEW_W / 2, 177, C.gray, { align: 'center' });
   if (age > 0.5) drawMenu(g, caughtItems(), sel, END_Y);

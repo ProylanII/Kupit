@@ -119,6 +119,23 @@ export class RunnerScene extends ModeScene {
   }
 
   // ---------------------------------------------------------------- drawing
+  // a tall phone: the sky goes on up over the field, deeper blue higher up, with a saranggola (a kite) on the wind
+  drawAbove(g, h) {
+    const t = performance.now() / 1000, mid = Math.floor(h / 2);
+    r(g, C.sky, 0, 0, VIEW_W, mid); r(g, '#6fa3d8', 0, mid, VIEW_W, h - mid);
+    for (let x = 0; x < VIEW_W; x += 2) r(g, C.sky, x, mid, 1, 1);
+    for (let i = 0; i < 3; i++) {
+      const w = 22 + i * 9, x = ((i * 91 + t * (2 + i)) % (VIEW_W + 70)) - 45, y = 30 + ((i * 37) % Math.max(1, h - 40));
+      r(g, '#f6f1e7', Math.round(x), y, w, 4); r(g, '#f6f1e7', Math.round(x) + 5, y - 3, w - 12, 3); r(g, '#e2d8c4', Math.round(x) + 2, y + 4, w - 4, 1);
+    }
+    if (h < 40) return;
+    const kx = 52 + Math.round(Math.sin(t * 0.9) * 6), ky = Math.round(h * 0.45 + Math.sin(t * 1.7) * 3);
+    for (let i = 0; i < 26; i++) r(g, C.white, kx + i * 2, ky + 9 + Math.round(i * 1.6 + Math.sin(t * 2 + i / 3) * 1.5), 1, 1); // the string
+    for (let i = 0; i < 6; i++) { r(g, C.red, kx - i, ky + i, i * 2 + 1, 1); r(g, C.gold, kx - 5 + i, ky + 6 + i, 11 - i * 2, 1); } // the kite
+    r(g, C.ink, kx, ky, 1, 12);
+    for (let i = 0; i < 4; i++) r(g, i % 2 ? C.white : C.red, kx - 1 + Math.round(Math.sin(t * 4 + i) * 1.5), ky + 13 + i * 3, 2, 2); // its tail
+  }
+
   draw(g) {
     this.beginField(g, '#6fa3d8'); // (the sky goes on up)
     this.drawField(g);
@@ -458,6 +475,7 @@ export class RunnerScene extends ModeScene {
 
   drawHud(g, now) {
     const s = this.sim;
+    this.beginTopBar(g); // (the top bar and the tip under it: at the top edge of the screen)
     g.globalAlpha = 0.8; r(g, C.ink, 0, 0, VIEW_W, 24); g.globalAlpha = 1;
     this.coinCount(g, 4, 4, `${s.coinsGot}/${s.coinsTotal}`, s.coinsGot >= s.coinsTotal ? C.green : C.white);
     drawText(g, this.level.name, VIEW_W / 2, 4, C.gold, { align: 'center', shadow: C.ink });
@@ -472,6 +490,7 @@ export class RunnerScene extends ModeScene {
     const head = getSprite('tigre', 0, 'sit'); g.drawImage(head, tx - Math.floor(head.width / 2), 12);
     const pg = Math.round(s.progress * (VIEW_W - 8)); r(g, '#2a2440', 4, 22, VIEW_W - 8, 1); r(g, C.gold2, 4, 22, pg, 1); // how far down the street
     this.drawTopTip(g);
+    this.endTopBar(g);
     this.drawToast(g, 196);
     this.drawCard(g, 168);
     if (s.introT > 0) {
@@ -483,7 +502,7 @@ export class RunnerScene extends ModeScene {
     this.drawBig(g);
     // controls: DAUSDOS on the left thumb, TALON on the right
     this.drawStrip(g, null, C.gray, null);
-    if (s.time < 12 && s.status === 'play') drawText(g, this.touch ? 'TAP THE STREET: JUMP   SWIPE DOWN: SLIDE' : 'SPACE / W: JUMP    S / DOWN: SLIDE', VIEW_W / 2, MAP_H - 10, C.gray, { align: 'center' });
+    if (s.time < 12 && s.status === 'play' && !this.tip) drawText(g, this.touch ? 'TAP THE STREET: JUMP   SWIPE DOWN: SLIDE' : 'SPACE / W: JUMP    S / DOWN: SLIDE', VIEW_W / 2, MAP_H - 10, C.gray, { align: 'center' });
     const arrow = (up) => (gg, x, y) => { gg.fillStyle = C.ink; for (let i = 0; i < 4; i++) gg.fillRect(x - i, up ? y - 2 + i : y + 1 - i, 1 + i * 2, 1); };
     const hintJump = this.tip?.id === 'habol-jump' || this.signs.some((t) => t.icon !== 'down' && t.x - s.x < 90);
     const hintSlide = this.signs.some((t) => t.icon === 'down' && t.x - s.x < 90);

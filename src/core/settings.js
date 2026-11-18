@@ -16,6 +16,10 @@ export function applySettings(save) {
   setLeftHanded(!!settings.left);
 }
 
+// CALM SCREEN (one switch in Options): no screen shake, no colour flash, no pulsing edge
+export const isCalm = (o) => !(o.shake > 0) && !o.flash && !o.pulse;
+export function setCalm(o, on) { o.shake = on ? 0 : 1; o.flash = !on; o.pulse = !on; }
+
 export const SHAKE_LEVELS = [1, 0.4, 0];
 export const shakeLabel = (v) => (v >= 1 ? 'FULL' : v > 0 ? 'LOW' : 'OFF');
 export const VOLUME_STEPS = [0, 0.25, 0.5, 0.75, 1];

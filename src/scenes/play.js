@@ -1,7 +1,6 @@
 // Draws a World and turns its events into sound/particles. All rules live in game/world.js.
 import { TILE } from '../world/tilemap.js';
-import { angDiff } from '../world/los.js';
-import { DARK_MUL, BROWNOUT_MUL, inLight } from '../world/light.js';
+import { DARK_MUL, BROWNOUT_MUL, LIT_K, tileHash } from '../world/light.js';
 import { World } from '../game/world.js';
 import { buildBackground, drawLaundry, drawTallTop } from '../render/tiles.js';
 import { drawActor, drawTarget, drawCoin, drawObj, drawPortrait, getSprite, drawStar, KEY_COLORS } from '../render/sprites.js';
@@ -33,8 +32,11 @@ const PHASE_MOOD = { lola: 'shock', mama: 'angry', tatay: 'angry', ninang: 'happ
 let MAP_H = 352, TOP = 0;
 const HUD_BAND = 30;  // the top bar, the KAIN NA / boss bars and a one-line tip
 const HUD_FULL = 44;  // ...and a two-line tip
+const ROOF_MIN = 24;  // the least room worth drawing the roof in (below that the top bar sits on the map, as before)
 
 const YELLOW = hexToRgb(C.yellow), RED = hexToRgb(C.red);
+// inLight (world/light.js) over flat [x, y, lit radius] triples: the same test, cheap enough for every cone pixel
+const litAt = (pl, n, x, y) => { for (let i = 0; i < n * 3; i += 3) if (Math.hypot(pl[i] - x, pl[i + 1] - y) < pl[i + 2]) return true; return false; };
 const SUSPICIOUS = new Set(['investigate', 'inspect', 'search']);
 
 function disc(g, cx, cy, r, color) {
@@ -180,11 +182,14 @@ export class Play {
   }
 
   // Where the map window sits this frame (see MAP_H / TOP at the top of this file), and the top bar (hudY, screen y).
+  // A map that fits with room to spare (a tall phone) gets its house's roof and the sky over it in that room, and the
+  // top bar moves to the top edge of the screen, like a cut-away doll's house sitting on your thumbs.
   syncView() {
     const mh = this.world.map.h * TILE;
     if (mh + HUD_BAND <= STRIP_Y) { TOP = STRIP_Y - mh; MAP_H = mh; }
     else { TOP = Math.min(EXTRA, HUD_BAND); MAP_H = STRIP_Y - TOP; }
-    this.hudY = TOP >= HUD_FULL ? TOP - HUD_FULL : TOP >= HUD_BAND ? TOP - HUD_BAND : 0;
+    this.roof = TOP >= HUD_FULL + ROOF_MIN;
+    this.hudY = this.roof ? 0 : TOP >= HUD_FULL ? TOP - HUD_FULL : TOP >= HUD_BAND ? TOP - HUD_BAND : 0;
   }
 
   // Follow the player; maps bigger than the 240x352 view scroll, smaller ones stay put.
@@ -474,32 +479,58 @@ export class Play {
   // Vision cones: a soft wash of light that fades with distance and toward its edges, with a crisp rim so the
   // exact boundary is never in doubt. Calm = pale yellow, suspicious = stronger and dotted, about to chase = red
   // and solid: the state reads by brightness and texture as well as by colour.
+  //
+  // Speed (this runs every frame, per pixel): each cone only visits the box its rays can reach, a pixel is rejected by
+  // distance and by a dot product before any trig, and only the part of the buffer that changed is cleared and uploaded.
   drawCones(g) {
-    const d = this.coneData.data, cx = this.cx, cy = this.cy, W = this.world;
-    d.fill(0);
+    const d = this.coneData.data, cx = this.cx, cy = this.cy, W = this.world, BW = VIEW_W;
+    // clear what the last frame drew (buffer coordinates), and remember it: that area must be uploaded again too
+    const prev = this.coneBox;
+    if (prev) for (let y = prev.y0; y <= prev.y1; y++) d.fill(0, (y * BW + prev.x0) * 4, (y * BW + prev.x1 + 1) * 4);
+    let bx0 = Infinity, by0 = Infinity, bx1 = -1, by1 = -1; // what this frame draws
     const night = !!this.level.night && !(W.flashT > 0), darkK = this.level.brownout ? BROWNOUT_MUL : DARK_MUL;
     for (const a of this.world.adults) {
       if (!a.awake || a.freezeT > 0 || a.cfg.harmless) continue; // charmed adults see nothing, so no cone
       const range = a.range, fov = a.fov, va = a.va;
       if (range <= 0 || fov <= 0) continue; // busy with a routine that takes their eyes off the room
-      const N = a.rays.length - 1;
+      const rays = a.rays, N = rays.length - 1;
       const t = Math.min(1, a.alert * 1.4);
-      const col = [0, 1, 2].map((i) => Math.round(YELLOW[i] + (RED[i] - YELLOW[i]) * t));
+      const c0 = Math.round(YELLOW[0] + (RED[0] - YELLOW[0]) * t), c1 = Math.round(YELLOW[1] + (RED[1] - YELLOW[1]) * t), c2 = Math.round(YELLOW[2] + (RED[2] - YELLOW[2]) * t);
       const base = 62 + 110 * t; // calm cones stay out of the way of the room art
-      const x0 = Math.max(cx, Math.floor(a.x - range)), x1 = Math.min(cx + VIEW_W - 1, Math.ceil(a.x + range));
-      const y0 = Math.max(cy, Math.floor(a.y - range)), y1 = Math.min(cy + VIEW_H - 1, Math.ceil(a.y + range));
+      // the box the rays reach (each ray covers half a step either side of its angle), padded by a pixel or two
+      let rx0 = a.x, rx1 = a.x, ry0 = a.y, ry1 = a.y;
+      const step = (2 * fov) / N;
+      for (let i = 0; i <= N; i++) {
+        const r = Math.min(rays[i], range);
+        for (let h = -0.5; h <= 0.5; h += 0.25) {
+          const an = va - fov + step * (i + h), ex = a.x + Math.cos(an) * r, ey = a.y + Math.sin(an) * r;
+          if (ex < rx0) rx0 = ex; if (ex > rx1) rx1 = ex; if (ey < ry0) ry0 = ey; if (ey > ry1) ry1 = ey;
+        }
+      }
+      const x0 = Math.max(cx, Math.floor(rx0) - 2), x1 = Math.min(cx + VIEW_W - 1, Math.ceil(rx1) + 2);
+      const y0 = Math.max(cy, Math.floor(ry0) - 2), y1 = Math.min(cy + VIEW_H - 1, Math.ceil(ry1) + 2);
+      if (x0 > x1 || y0 > y1) continue;
       // A6: at night the cone reaches its full range only inside a pool of light (the pools near this cone)
       const darkR = night ? range * darkK : range;
       const pools = night ? (W.lights || []).filter((s) => Math.hypot(s.x - a.x, s.y - a.y) < range + s.r) : [];
+      const np = pools.length; // (as flat numbers, so the per-pixel check makes no closures: inLight in light.js)
+      const pl = this.poolBuf && this.poolBuf.length >= np * 3 ? this.poolBuf : (this.poolBuf = new Float64Array(Math.max(24, np * 3)));
+      for (let i = 0; i < np; i++) { const s = pools[i], rr = s.r * LIT_K; pl[i * 3] = s.x; pl[i * 3 + 1] = s.y; pl[i * 3 + 2] = rr; }
+      const cosV = Math.cos(va), sinV = Math.sin(va), cosF = fov >= Math.PI ? -2 : Math.cos(fov) - 1e-6, r2 = range * range;
+      let drew = false;
       for (let py = y0; py <= y1; py++) {
+        const dy = py + 0.5 - a.y, dy2 = dy * dy;
+        if (dy2 > r2) continue;
         for (let px = x0; px <= x1; px++) {
-          const dx = px + 0.5 - a.x, dy = py + 0.5 - a.y;
-          const dist = Math.hypot(dx, dy);
-          if (dist > range) continue;
-          const rel = angDiff(Math.atan2(dy, dx) - va);
+          const dx = px + 0.5 - a.x, d2 = dx * dx + dy2;
+          if (d2 > r2) continue;
+          const dist = Math.sqrt(d2);
+          const fwd = dx * cosV + dy * sinV; // how far along the look direction
+          if (fwd < dist * cosF) continue;   // outside the cone's angle (no trig needed to know)
+          const rel = Math.atan2(dy * cosV - dx * sinV, fwd); // the angle from the look direction, -PI..PI
           if (rel < -fov || rel > fov) continue;
-          let ray = a.rays[Math.round(((rel + fov) / (2 * fov)) * N)];
-          if (dist > darkR && !inLight(pools, px + 0.5, py + 0.5)) { if (dist > ray) continue; ray = Math.min(ray, darkR); if (dist > ray) continue; }
+          let ray = rays[Math.round(((rel + fov) / (2 * fov)) * N)];
+          if (dist > darkR && !litAt(pl, np, px + 0.5, py + 0.5)) { if (dist > ray) continue; ray = Math.min(ray, darkR); if (dist > ray) continue; }
           if (dist > ray) continue;
           const edge = Math.min(ray - dist, (fov - Math.abs(rel)) * dist); // px to the nearest boundary
           let al;
@@ -510,12 +541,19 @@ export class Play {
           }
           const o = ((py - cy) * VIEW_W + (px - cx)) * 4;
           if (al <= d[o + 3]) continue; // overlapping cones: the stronger one wins
-          d[o] = col[0]; d[o + 1] = col[1]; d[o + 2] = col[2]; d[o + 3] = Math.min(255, al);
+          d[o] = c0; d[o + 1] = c1; d[o + 2] = c2; d[o + 3] = Math.min(255, al);
+          drew = true;
         }
       }
+      if (drew) { bx0 = Math.min(bx0, x0 - cx); bx1 = Math.max(bx1, x1 - cx); by0 = Math.min(by0, y0 - cy); by1 = Math.max(by1, y1 - cy); }
     }
-    this.coneG.putImageData(this.coneData, 0, 0);
-    g.drawImage(this.coneCv, cx, cy);
+    const box = bx1 >= 0 ? { x0: bx0, y0: by0, x1: bx1, y1: by1 } : null;
+    this.coneBox = box;
+    // upload this frame's area and last frame's (now cleared) area; draw only this frame's
+    const ux0 = Math.min(box ? box.x0 : Infinity, prev ? prev.x0 : Infinity), uy0 = Math.min(box ? box.y0 : Infinity, prev ? prev.y0 : Infinity);
+    const ux1 = Math.max(box ? box.x1 : -1, prev ? prev.x1 : -1), uy1 = Math.max(box ? box.y1 : -1, prev ? prev.y1 : -1);
+    if (ux1 >= 0) this.coneG.putImageData(this.coneData, 0, 0, ux0, uy0, ux1 - ux0 + 1, uy1 - uy0 + 1);
+    if (box) g.drawImage(this.coneCv, box.x0, box.y0, box.x1 - box.x0 + 1, box.y1 - box.y0 + 1, cx + box.x0, cy + box.y0, box.x1 - box.x0 + 1, box.y1 - box.y0 + 1);
   }
 
   // Kittens follow the trail of your footsteps, each a little further behind, and sit when you stop.
@@ -673,10 +711,82 @@ export class Play {
 
   draw(g) {
     this.syncView();
-    if (TOP > 0) { g.fillStyle = C.ink; g.fillRect(0, 0, VIEW_W, TOP); }
+    if (this.roof) this.drawRoof(g);
+    else if (TOP > 0) { g.fillStyle = C.ink; g.fillRect(0, 0, VIEW_W, TOP); }
     g.save(); g.translate(0, TOP); // everything below is drawn in the map window's coordinates
     this.drawWindow(g);
     g.restore();
+  }
+
+  // The sky and this house's yero roof in the room above a map that fits (syncView); screen coordinates 0..TOP. The
+  // still part is drawn once into its own canvas; clouds, rain and lightning move on top of it.
+  drawRoof(g) {
+    const W = this.world, L = this.level, T = TOP, night = !!L.night, storm = !!L.storm, now = performance.now() / 1000;
+    const camX = Math.round(this.cam.x), key = `${T}|${night}|${camX}`;
+    if (this.roofKey !== key) { this.roofKey = key; this.roofCv = this.buildRoof(T, night, storm, camX); }
+    g.drawImage(this.roofCv, 0, 0);
+    const rh = Math.min(30, T - HUD_FULL - 4), sky = T - rh; // (where the roof's ridge is)
+    if (!night) { // a few clouds drifting over
+      g.fillStyle = C.white;
+      for (let i = 0; i < 3; i++) {
+        const w = 18 + i * 7, x = ((i * 83 + now * (3 + i)) % (VIEW_W + 60)) - 40, y = HUD_FULL - 14 + ((i * 11) % Math.max(1, sky - HUD_FULL));
+        g.globalAlpha = 0.8; g.fillRect(Math.round(x), y, w, 3); g.fillRect(Math.round(x) + 4, y - 2, w - 9, 2); g.globalAlpha = 1;
+      }
+    }
+    if (storm) { // rain over the roof, and the lightning lights it all up
+      g.fillStyle = C.sky3; g.globalAlpha = 0.45;
+      for (let i = 0; i < 46; i++) {
+        const x = (tileHash(i, 1, 21) % VIEW_W + now * 40) % VIEW_W, y = (tileHash(i, 2, 21) % T + now * 260) % T;
+        g.fillRect(Math.round(x), Math.round(y), 1, 4);
+      }
+      g.globalAlpha = 1;
+      if (W.flashT > 0) { g.globalAlpha = Math.min(0.55, W.flashT); g.fillStyle = C.white; g.fillRect(0, 0, VIEW_W, T); g.globalAlpha = 1; }
+    }
+  }
+
+  buildRoof(T, night, storm, camX) {
+    const cv = document.createElement('canvas'); cv.width = VIEW_W; cv.height = T;
+    const g = cv.getContext('2d'), f = (c, x, y, w, h) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
+    // the sky, three bands with dithered seams
+    const sky = storm ? [C.ink, C.skyN, C.skyN2] : night ? [C.skyN, C.skyN2, C.skyN3] : [C.sky, C.sky2, C.sky3];
+    const bh = Math.ceil(T / 3);
+    sky.forEach((c, i) => f(c, 0, i * bh, VIEW_W, bh));
+    for (let i = 1; i < 3; i++) for (let x = i & 1; x < VIEW_W; x += 2) f(sky[i], x, i * bh - 1, 1, 1);
+    if (night && !storm) {
+      for (let i = 0; i < 22; i++) f(i % 4 ? C.gray : C.white, tileHash(i, 1, 3) % VIEW_W, tileHash(i, 2, 3) % Math.max(1, T - 24), 1, 1);
+      disc(g, VIEW_W - 30, HUD_FULL + 6, 7, C.capiz); disc(g, VIEW_W - 28, HUD_FULL + 4, 2, C.capiz2); f(C.capiz2, VIEW_W - 34, HUD_FULL + 8, 2, 2);
+    } else if (!night) {
+      g.globalAlpha = 0.3; disc(g, 30, HUD_FULL + 4, 11, C.gold); g.globalAlpha = 1; disc(g, 30, HUD_FULL + 4, 6, C.yellow);
+    }
+    // the neighbours' roofs behind ours
+    const nb = night || storm ? C.wallD : C.block2, nbHi = night || storm ? C.wallL : C.block;
+    for (let i = -1; i < 9; i++) {
+      const h = 10 + tileHash(i + 40, 5, 9) % 16, w = 26 + tileHash(i + 40, 6, 9) % 14, x = i * 30 - (camX >> 2) % 30 + (tileHash(i + 40, 7, 9) % 8), top = T - 8 - h;
+      f(nb, x, top, w, T - top);
+      for (let k = 0; k < 6; k++) f(nbHi, x - 1 + k, top - 6 + k, w + 2 - k * 2, 1); // a little gable
+      if (night && tileHash(i + 40, 8, 9) % 3 === 0) f(C.gold2, x + 6, top + 6, 3, 3); // somebody is still up
+    }
+    // our roof: yero (corrugated iron) over the whole house, its eaves right on the top wall
+    const rh = Math.min(30, T - HUD_FULL - 4), y0 = T - rh, mw = this.world.map.w * TILE, x0 = -camX - 6, x1 = x0 + mw + 12;
+    const [ya, yb, hi] = night || storm ? [C.yeroN, C.yeroN2, C.yeroNHi] : [C.yero, C.yero2, C.yeroHi];
+    for (let y = y0; y < T - 3; y++) {
+      const inset = Math.round(((T - 3 - y) / rh) * mw * 0.3), l = x0 + inset, r = x1 - inset;
+      for (let x = Math.max(0, l); x < Math.min(VIEW_W, r); x++) {
+        let c = ((x - x0) >> 1) & 1 ? ya : yb;                        // the corrugation
+        if ((T - 3 - y) % 9 === 0) c = yb;                             // where one sheet overlaps the next
+        if (tileHash(x, y, 11) % 61 < 2) c = night || storm ? C.ink : C.purse; // rust
+        if (x === l || x === r - 1) c = hi;                            // the hips catch the light
+        f(c, x, y, 1, 1);
+      }
+    }
+    const rl = x0 + Math.round(mw * 0.3), rr = x1 - Math.round(mw * 0.3);
+    f(C.ink, rl - 1, y0 - 2, rr - rl + 2, 1); f(hi, rl, y0 - 1, rr - rl, 1); // the ridge cap
+    f(C.woodLine, x0, T - 3, x1 - x0, 2); f(C.ink, x0, T - 1, x1 - x0, 1);  // the fascia, and its shadow on the wall
+    // an antenna on the ridge, and a slipper somebody threw up there and never got back
+    const ax = rl + Math.round((rr - rl) * 0.7);
+    f(C.gray, ax, y0 - 16, 1, 15); f(C.gray, ax - 5, y0 - 15, 11, 1); f(C.gray, ax - 4, y0 - 12, 9, 1); f(C.gray, ax - 3, y0 - 9, 7, 1);
+    drawObj(g, 'tsinela', x0 + Math.round(mw * 0.42), T - 10, 'blue');
+    return cv;
   }
 
   drawWindow(g) {
@@ -741,7 +851,7 @@ export class Play {
     g.globalAlpha = 1;
 
     // your best run, as a see-through kid
-    const gh = this.ghost && settings.ghost ? ghostAt(this.ghost, w.time) : null;
+    const gh = this.ghost ? ghostAt(this.ghost, w.time) : null;
     if (gh && !gh.hidden) { g.globalAlpha = 0.3; drawActor(g, this.look, gh.x, gh.y, 0, Math.floor(w.time * 8) % 4); g.globalAlpha = 1; }
 
     const actors = this.actors;
@@ -1050,7 +1160,7 @@ export class Play {
   // While thunder rolls or the videoke is belting out a chorus over you: nobody can hear a thing you do.
   drawCover(g) {
     const c = this.world.cover;
-    if (!c) return;
+    if (!c || (this.tip && this.tip.id === c)) return; // (the tip already says it, the first time)
     g.globalAlpha = 0.8; g.fillStyle = C.ink; g.fillRect(VIEW_W / 2 - 56, 32, 112, 11); g.globalAlpha = 1;
     drawText(g, c === 'thunder' ? 'KULOG! NOBODY CAN HEAR YOU' : c === 'snore' ? 'HILIK! NOBODY CAN HEAR YOU' : 'VIDEOKE! NOBODY CAN HEAR YOU', VIEW_W / 2, 35, C.green, { align: 'center' });
   }
@@ -1094,9 +1204,10 @@ export class Play {
     const py = this.world.player.y - this.cy, fy = v.focus ? v.focus.y - this.cy : MAP_H;
     if (py < 150 || fy < 70) this.coachLow = true; else if (py > 200 && fy > 90) this.coachLow = false;
     const L0 = wrapBig(v.lines[0], 230), L1 = v.lines[1] ? wrapBig(v.lines[1], 230) : [], h = 9 + (L0.length + L1.length) * 10;
-    const band = this.hudY - h - 2 >= 0; // a tall phone: the panel waits above the map, so it never covers it
+    // a tall phone: the panel waits above the map, so it never covers it (with the roof: right under the top bar)
+    const band = this.roof ? 14 + h + 2 <= TOP : this.hudY - h - 2 >= 0;
     const low = !band && this.coachLow;
-    const y0 = band ? this.hudY - TOP - h - 2 : low ? MAP_H - h - 2 : 17;
+    const y0 = band ? (this.roof ? 14 - TOP : this.hudY - TOP - h - 2) : low ? MAP_H - h - 2 : 17;
     g.globalAlpha = 0.85; g.fillStyle = C.ink; g.fillRect(0, y0, VIEW_W, h); g.globalAlpha = 1;
     g.fillStyle = c.okT > 0 ? C.green : v.reactive ? col : C.gold; g.fillRect(0, low ? y0 : y0 + h - 1, VIEW_W, 1);
     L0.forEach((l, i) => drawBig(g, l, VIEW_W / 2, y0 + 3 + i * 10, v.reactive ? col : C.yellow, { align: 'center' }));
@@ -1300,9 +1411,11 @@ export class Play {
     if (w.player.blend) drawText(g, 'BLENDING IN', tx, MAP_H + 17, C.green, al);
     let kx = L ? VIEW_W - 9 : 9;
     for (const k of w.player.keys) { drawObj(g, 'key', kx, MAP_H + 24, k); kx += L ? -10 : 10; }
-    const hints = this.level.tutorial || w.time < 12; // control reminders: the first level, and the first seconds of the rest
+    // control reminders: the first seconds of a level (the tutorial's coach says it in its own panel)
+    const hints = !this.coach && w.time < 12;
     if (!hints) { /* a clean strip */ }
-    else if (!L) drawText(g, this.touch ? 'DRAG: MOVE   DRAG FAR: RUN' : w.mods.cat ? 'SHIFT RUN  E BITE / HIDE  F SWAT' : 'SHIFT RUN  E ACT  Q THROW  F SKILL', 6, MAP_H + 32, C.dgray);
+    // (kept left of the skill button and its hint ring; Q and F are taught by the tips that ring those buttons)
+    else if (!L) drawText(g, this.touch ? 'DRAG: MOVE  FAR: RUN' : w.mods.cat ? 'SHIFT RUN  E BITE' : 'SHIFT RUN  E ACT', 6, MAP_H + 32, C.dgray);
     else drawText(g, this.touch ? 'DRAG: MOVE' : 'E ACT Q THROW', tx, MAP_H + 32, C.dgray, al);
 
     g.save(); g.translate(0, -TOP); // (buttons and the stick: screen coordinates, where the input finds them)

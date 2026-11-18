@@ -16,6 +16,9 @@ export const C = {
   plaster: '#e6d3ae', plaster2: '#cdb88f', capiz: '#f3ead2', capiz2: '#d9cba6', block: '#a7a3ad', block2: '#86818f',
   red: '#ff4b4b', green: '#46e08a', yellow: '#ffe36b', orange: '#ff9a3c',
   blue: '#2f5fbf', pink: '#ff7eb6', purple: '#8a5fb5', teal: '#2fa59b',
+  // the roof over the house on a tall phone (play.js drawRoof): yero by day and by night, and the sky over it
+  yero: '#a4553f', yero2: '#8a4434', yeroHi: '#c4705a', yeroN: '#4e3346', yeroN2: '#41293b', yeroNHi: '#5e3e55',
+  sky: '#5d8fca', sky2: '#79a8d6', sky3: '#a3c4de', skyN: '#1e1832', skyN2: '#272043', skyN3: '#30285a',
 };
 
 export const hexToRgb = (hex) => [

@@ -61,6 +61,54 @@ function buildStreet() {
   return cv;
 }
 
+// What stands above the store on a tall phone (the band over the field, h px): Aling Nena's upper floor with its
+// capiz windows and a laundry line, the green-and-white awning over the store, a yero roof, the sky and the wires.
+function buildStoreTop(h) {
+  const cv = document.createElement('canvas'); cv.width = VIEW_W; cv.height = h;
+  const g = cv.getContext('2d');
+  const bands = [C.sky, C.sky2, C.sky3], bh = Math.ceil(h / 3);
+  bands.forEach((c, i) => r(g, c, 0, i * bh, VIEW_W, bh));
+  for (let i = 1; i < 3; i++) for (let x = i & 1; x < VIEW_W; x += 2) r(g, bands[i], x, i * bh - 1, 1, 1);
+  const awn = h - 8, floorH = Math.min(50, Math.max(0, awn - 6)), fy = awn - floorH, roofY = fy - 9;
+  // the electric wires across the sky, a pole on the right, two maya birds on a wire
+  r(g, '#5a4636', 222, 0, 3, roofY + 4); r(g, '#5a4636', 214, Math.max(2, roofY - 30), 19, 2);
+  for (const [y0, y1] of [[roofY - 28, roofY - 40], [roofY - 26, roofY - 18]]) {
+    for (let x = 0; x < 222; x++) { const y = Math.round(y0 + ((y1 - y0) * x) / 222 + Math.sin((x / 222) * Math.PI) * 5); if (y >= 0 && y < roofY) r(g, C.ink, x, y, 1, 1); }
+  }
+  for (const bx of [70, 78]) { const by = Math.round(roofY - 28 + ((-12) * bx) / 222 + Math.sin((bx / 222) * Math.PI) * 5) - 3; if (by > 0) { r(g, '#6e5334', bx, by, 4, 3); r(g, C.ink, bx + 3, by, 1, 1); } }
+  // the yero roof over the upper floor
+  if (roofY > -9) for (let y = Math.max(0, roofY); y < fy; y++) {
+    const inset = (fy - y) * 2;
+    for (let x = inset - 6; x < VIEW_W + 6 - inset; x += 2) r(g, ((x >> 1) & 1) ? C.yero : C.yero2, x, y, 2, 1);
+  }
+  if (fy > 0) r(g, C.ink, 0, fy - 1, VIEW_W, 1);
+  // the upper floor: wooden planks, two capiz windows, a plant, a laundry line
+  r(g, C.wood, 0, Math.max(0, fy), VIEW_W, floorH);
+  for (let y = fy + 4; y < awn; y += 5) if (y >= 0) r(g, C.woodLine, 0, y, VIEW_W, 1);
+  for (const wx of [30, 170]) {
+    const wy = fy + 12;
+    if (wy + 24 < 0) continue;
+    r(g, '#3b2a1c', wx - 2, wy - 2, 44, 28); r(g, C.capiz, wx, wy, 40, 24);
+    for (let x = wx + 4; x < wx + 40; x += 5) r(g, C.capiz2, x, wy, 1, 24);
+    for (let y = wy + 4; y < wy + 24; y += 5) r(g, C.capiz2, wx, y, 40, 1);
+    r(g, '#3b2a1c', wx + 19, wy, 2, 24); r(g, C.table, wx - 4, wy + 24, 48, 3); // the middle stile and the sill
+  }
+  r(g, C.pot, 38, fy + 30, 8, 6); r(g, C.leaf, 36, fy + 23, 12, 7); r(g, C.leaf2, 39, fy + 21, 6, 4); r(g, C.red, 41, fy + 22, 2, 2);
+  const lineY = fy + 14;
+  for (let x = 76; x < 166; x++) r(g, C.gray, x, lineY + Math.round(Math.sin(((x - 76) / 90) * Math.PI) * 3), 1, 1);
+  for (const [x, c] of [[86, C.pink], [104, C.blue], [124, C.yellow], [144, C.white]]) {
+    const y = lineY + Math.round(Math.sin(((x + 5 - 76) / 90) * Math.PI) * 3) + 1;
+    r(g, c, x, y, 12, 4); r(g, c, x + 2, y + 4, 8, 8); r(g, C.ink, x + 5, y, 2, 1); // a little shirt
+  }
+  // the awning over the store: green and white, scalloped
+  for (let x = 0; x < VIEW_W; x++) {
+    const c = Math.floor(x / 8) % 2 ? C.white : '#2fa55b', drop = (x % 8 === 0 || x % 8 === 7) ? 6 : 8;
+    r(g, c, x, awn, 1, drop);
+  }
+  r(g, '#227a43', 0, awn, VIEW_W, 1);
+  return cv;
+}
+
 // a little label over someone's head
 function tag(g, text, x, y, bg, fg = C.white) {
   const w = text.length * 4 + 3;
@@ -136,8 +184,13 @@ export class PresoScene extends ModeScene {
   }
 
   // ---- drawing
+  drawAbove(g, h) { // (a tall phone: the store's upper floor and the sky in the band over the field)
+    if (this.topH !== h) { this.topH = h; this.top = buildStoreTop(h); }
+    g.drawImage(this.top, 0, 0);
+  }
+
   draw(g) {
-    this.beginField(g); // (a dark band, like the other levels)
+    this.beginField(g);
     this.drawField(g);
     this.endField(g);
   }
@@ -290,6 +343,7 @@ export class PresoScene extends ModeScene {
 
   drawHud(g, now) {
     const s = this.sim, j = s.jun;
+    this.beginTopBar(g);
     g.globalAlpha = 0.78; r(g, C.ink, 0, 0, VIEW_W, 13); g.globalAlpha = 1;
     drawText(g, 'TUMBA', 4, 4, C.white, { shadow: C.ink });
     for (let i = 0; i < WIN; i++) { // a can per TUMBA you need
@@ -303,6 +357,7 @@ export class PresoScene extends ModeScene {
       r(g, C.ink, x, 3, 7, 6); r(g, used ? C.dgray : C.pink, x + 1, 4, 2, 4); r(g, used ? C.dgray : C.pink, x + 4, 4, 2, 4);
       if (used) r(g, C.red, x, 6, 7, 1);
     }
+    this.endTopBar(g);
     this.drawTopTip(g, 246); // (in the empty middle of the street: the store, Bing and the taya stay in view)
     this.drawToast(g, 196);
     this.drawCard(g, 176);
@@ -315,8 +370,10 @@ export class PresoScene extends ModeScene {
     this.drawBig(g);
     // control strip
     const ctx = s.context(), aiming = !!s.aim;
-    const line = aiming ? 'LET GO ON THE CAN!' : ctx?.kind === 'pulot' ? 'PICK UP YOUR SLIPPER' : ctx?.label === 'GO BACK' ? 'BACK BEHIND THE LINE!' : ctx?.kind === 'aim' ? (this.touch ? 'HOLD THROW TO AIM' : 'HOLD E TO AIM') : j.slippers === 0 ? 'GET YOUR TSINELAS' : s.can.state !== 'up' ? 'TAYA IS FIXING THE CAN' : '';
-    this.drawStrip(g, line, aiming ? C.green : ctx?.kind ? C.gold : C.gray, s.time < 14 ? (this.touch ? 'DRAG: MOVE   HOLD THROW: AIM' : 'WASD MOVE  HOLD E AIM  A/D TURN') : null);
+    // one place says each thing: while the tip explains aiming, the strip does not repeat it
+    const told = this.tip?.id === 'preso-aim';
+    const line = aiming ? 'LET GO ON THE CAN!' : ctx?.kind === 'pulot' ? 'PICK UP YOUR SLIPPER' : ctx?.label === 'GO BACK' ? 'BACK BEHIND THE LINE!' : ctx?.kind === 'aim' ? (told ? '' : this.touch ? 'HOLD THROW TO AIM' : 'HOLD E TO AIM') : j.slippers === 0 ? 'GET YOUR TSINELAS' : s.can.state !== 'up' ? 'TAYA IS FIXING THE CAN' : '';
+    this.drawStrip(g, line, aiming ? C.green : ctx?.kind ? C.gold : C.gray, s.time < 14 && !told ? (this.touch ? 'DRAG: MOVE' : 'WASD MOVE  A/D TURN') : null);
     drawText(g, 'IN HAND', 150, MAP_H + 8, C.dgray);
     for (let i = 0; i < 2; i++) { g.globalAlpha = i < j.slippers ? 1 : 0.25; drawObj(g, 'tsinela', 156 + i * 9, MAP_H + 21, 'blue'); g.globalAlpha = 1; }
     const label = aiming ? 'THROW!' : ctx?.kind ? ctx.label : ctx?.label || 'THROW';

@@ -146,3 +146,22 @@ The owner asked for a concise arcade game after the v0.3.0 audit. Five commits:
   the files with request interception, since a local server was not allowed this session); the real mouse, keyboard
   and touch throws checked in the browser at phone and desktop sizes.
 - Needs the owner: a playtest on a phone, and the release to main when happy (bump the version to 0.4.0 first).
+
+## Arcade polish — done (2026-11-18, on design-overhaul, not released)
+
+After a review of the arcade pass (speed on a cheap phone, the screen on a tall phone, things said twice):
+
+1. Speed: `drawCones` (play.js) visits only the box a cone's rays reach, rejects pixels without trig, and uploads only
+   what changed; the night-light check is closure-free. Same pixels as before (checked frame by frame on every stealth
+   level). With Chrome's CPU slowed 6x: BARANGAY 23 -> about 60 fps, the fiesta and BAGYO about 40 -> 60.
+2. Tall phones: a room that fits gets its yero roof and the sky (day, night, storm with rain) in the band above it, and
+   the top bar moves to the top edge; TUMBANG PRESO shows Aling Nena's upper floor and the wires, HABOL! more sky and a
+   kite (`drawAbove` in each mini-game, `beginTopBar` in mode.js). One place says each thing: the strip and footers stay
+   quiet while a tip says the same (PRESO aiming, HABOL! controls, BAGYO's KULOG banner, the tutorial's footer).
+   Menu buttons use the 5x7 font whenever the label fits.
+3. Options: 14 rows -> 10 (CALM SCREEN replaces shake/flash/pulse; MUTE ALL is the M key and a volume tap unmutes;
+   the ghost of the best run is always on). Desktop footer kept clear of the skill button.
+
+- Checks: `npm test` 288/288; smoke (phone + desktop, every level), ending and PWA QA pass; `npm run build` restamped.
+- TUMBANG PRESO keeps "hold THROW to aim" (the owner's call): its timing is the game there.
+- Needs the owner: a look at the new roofs and store front, then a phone playtest; release as 0.4.0 when happy.
