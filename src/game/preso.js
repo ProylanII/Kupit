@@ -258,6 +258,9 @@ export class Preso extends MiniSim {
     switch (k.state) {
       case 'line':
         if (this.moveTo(k, k.homeX, LINE_SPOT, RUN * 0.6, dt)) k.dir = 3;
+        // TUMBA (the can is down or being carried back): everybody with a slipper out in the street runs for it now,
+        // even with one still in hand. That is the whole point of knocking it over.
+        if (!up && mine.length) { k.state = 'fetch'; k.waitT = 0; break; }
         if (k.slippers > 0 && up && t?.state === 'guard') {
           if ((k.throwT -= dt) <= 0) {
             const a = Math.atan2(c.y - (k.y - 6), c.x - k.x) + this.gauss() * 0.06;
@@ -267,7 +270,7 @@ export class Preso extends MiniSim {
           }
         } else if (k.slippers === 0 && mine.length) {
           const safeFar = mine.some((s) => dist(s, c) > GUARD_R + 8);
-          if (!up || safeFar || (k.waitT += dt) > 5 + this.rng() * 3) { k.state = 'fetch'; k.waitT = 0; }
+          if (safeFar || (k.waitT += dt) > 1.6 + this.rng() * 1.6) { k.state = 'fetch'; k.waitT = 0; } // (a short wait for a gap, then go)
         }
         break;
       case 'fetch': {

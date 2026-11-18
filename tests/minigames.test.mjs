@@ -88,6 +88,33 @@ test('preso: a friend who is tagged becomes the taya, and the old taya joins the
   assert.equal(old.slippers, 2);
 });
 
+test('preso: after a TUMBA every friend with a slipper in the street runs for it, even with one still in hand', () => {
+  const s = new Preso({ ...byId.preso, intro: false });
+  const friends = s.kids.filter((k) => k.ai && k.role === 'thrower');
+  for (const k of friends) { // one slipper thrown short of the can, one still in hand
+    s.throwSlipper(k, -Math.PI / 2, 120);
+    k.throwT = 99;
+  }
+  for (let i = 0; i < 90; i++) s.update(STEP, none); // they land
+  assert.ok(friends.every((k) => k.slippers === 1 && s.slips.some((x) => x.owner === k && x.state === 'ground')));
+  s.knock({ owner: s.jun, vx: 0, vy: -100, first: false }); // TUMBA
+  const start = friends.map((k) => k.y);
+  for (let i = 0; i < 60; i++) s.update(STEP, none);
+  friends.forEach((k, n) => {
+    assert.ok(['fetch', 'onslip', 'back'].includes(k.state), `${k.id} is ${k.state}`);
+    assert.ok(start[n] - k.y > 20, `${k.id} ran into the street (${(start[n] - k.y).toFixed(0)} px)`);
+  });
+});
+
+test('preso: with both slippers thrown and the can up, a friend waits only a moment before going', () => {
+  const s = new Preso({ ...byId.preso, intro: false });
+  const toto = s.kids.find((k) => k.id === 'toto');
+  for (const k of s.kids) if (k.ai && k !== toto) k.throwT = 99; // nobody else knocks the can over meanwhile
+  s.throwSlipper(toto, -Math.PI / 2, 150); s.throwSlipper(toto, -Math.PI / 2 + 0.05, 150);
+  for (let i = 0; i < 60 * 4 && toto.state === 'line'; i++) s.update(STEP, none);
+  assert.notEqual(toto.state, 'line', 'he went for them within four seconds');
+});
+
 test('preso: three tags and you are out; a tap is not a throw', () => {
   const s = new Preso({ ...byId.preso, intro: false });
   s.update(STEP, { ...none, action: true, actionPressed: true });

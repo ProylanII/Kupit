@@ -153,6 +153,7 @@ export class PresoScene extends ModeScene {
     if (s.can.state === 'fly' || s.can.state === 'carried') this.drawCan(g);
     for (const sl of s.slips) if (sl.state === 'fly') this.drawSlip(g, sl, now);
     if (s.aim) this.drawAim(g, now);
+    for (const sl of s.slips) if (sl.owner === s.jun && sl.state !== 'fly' && sl.state !== 'gone') this.drawMineArrow(g, sl, now);
     this.drawParts(g);
     for (const k of s.kids) if (k.say) bubble(g, k.say.text, k.x, Math.round(k.y) - (k.role === 'taya' ? 44 : 38), C.ink, k.role === 'taya' && k.state === 'chase' ? C.orange : C.white);
     if (this.bingSay) bubble(g, this.bingSay.text, 40, 44);
@@ -181,7 +182,28 @@ export class PresoScene extends ModeScene {
       g.drawImage(spr, -Math.floor(spr.width / 2), -Math.floor(spr.height / 2)); g.restore();
       return;
     }
+    if (sl.owner === this.sim.jun) this.drawMineRing(g, sl, performance.now() / 1000);
     drawObj(g, 'tsinela', sl.x, sl.y, col);
+  }
+
+  // Jun's own slippers out on the street: a gold ring that pulses under them...
+  drawMineRing(g, sl, now) {
+    const p = 0.5 + 0.5 * Math.sin(now * 7), rx = 7 + Math.round(p), ry = 4;
+    g.globalAlpha = 0.45 + 0.4 * p;
+    for (let a = 0; a < 28; a++) {
+      const t = (a / 28) * Math.PI * 2;
+      r(g, C.gold, Math.round(sl.x + Math.cos(t) * rx), Math.round(sl.y + 1 + Math.sin(t) * ry), 1, 1);
+    }
+    g.globalAlpha = 1;
+  }
+
+  // ...and a bouncing arrow over them (drawn above the kids, so nobody hides it).
+  drawMineArrow(g, sl, now) {
+    const x = Math.round(sl.x), y = Math.round(sl.y) - 13 - Math.round(Math.abs(Math.sin(now * 5)) * 3);
+    for (let i = 0; i < 4; i++) r(g, C.ink, x - 4 + i, y + i, 9 - i * 2, 1);
+    r(g, C.ink, x - 2, y - 3, 5, 3);
+    for (let i = 0; i < 3; i++) r(g, C.gold, x - 3 + i, y + i, 7 - i * 2, 1);
+    r(g, C.gold, x - 1, y - 2, 3, 2);
   }
 
   drawCan(g) {
