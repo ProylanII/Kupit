@@ -126,7 +126,7 @@ Updated after each phase. See AUDIT.md for the findings and DECISIONS.md for the
 - Needs the owner: a playtest on a phone (PRESO aim timing, HABOL! speed, TULO on touch, MINGMING difficulty), and the
   merge to main when happy (version 0.3.0 is already set).
 
-## Arcade pass — done (2026-11-18, on design-overhaul, not released)
+## Arcade pass — done (2026-11-18, released as v0.4.0)
 
 The owner asked for a concise arcade game after the v0.3.0 audit. Five commits:
 
@@ -145,9 +145,9 @@ The owner asked for a concise arcade game after the v0.3.0 audit. Five commits:
 - Checks: `npm test` 288/288 (`tests/arcade.test.mjs` is new); smoke and ending QA pass in headless Chrome (run from
   the files with request interception, since a local server was not allowed this session); the real mouse, keyboard
   and touch throws checked in the browser at phone and desktop sizes.
-- Needs the owner: a playtest on a phone, and the release to main when happy (bump the version to 0.4.0 first).
+- Needs the owner: a playtest on a phone.
 
-## Arcade polish — done (2026-11-18, on design-overhaul, not released)
+## Arcade polish — done (2026-11-18, released as v0.4.0)
 
 After a review of the arcade pass (speed on a cheap phone, the screen on a tall phone, things said twice):
 
@@ -164,4 +164,4 @@ After a review of the arcade pass (speed on a cheap phone, the screen on a tall 
 
 - Checks: `npm test` 288/288; smoke (phone + desktop, every level), ending and PWA QA pass; `npm run build` restamped.
 - TUMBANG PRESO keeps "hold THROW to aim" (the owner's call): its timing is the game there.
-- Needs the owner: a look at the new roofs and store front, then a phone playtest; release as 0.4.0 when happy.
+- Needs the owner: a look at the new roofs and store front, and a phone playtest of v0.4.0.
